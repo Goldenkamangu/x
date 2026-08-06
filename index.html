@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LinkHub — Buyers & Sellers Marketplace</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="page-header">
+    <div class="brand-left">
+      <img src="logo.svg" alt="LinkHub logo" class="brand-logo" />
+    </div>
+    <div class="brand-center">
+      <p class="hero-text">Turn what you don’t need into cash with fast listings and easy buyer contact.</p>
+    </div>
+    <div class="brand-right" id="auth-area"></div>
+  </header>
+
+  <div id="loading-screen" class="loading-overlay" aria-live="polite">
+    <div class="loading-inner">
+      <img src="logo.svg" alt="LinkHub logo" class="loading-logo" />
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p class="loading-copy">don't need it, sell it</p>
+      <p class="loading-status">Loading marketplace<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></p>
+    </div>
+  </div>
+
+  <main class="container">
+    <section id="auth-section" class="card">
+      <h2>Sign up / Sign in</h2>
+      <form id="auth-form">
+        <input id="email" type="email" placeholder="Email" required />
+        <div class="password-field">
+          <input id="password" type="password" placeholder="Password" required />
+          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility"></button>
+        </div>
+        <div class="row">
+          <button id="btn-signup" type="button">Sign up</button>
+          <button id="btn-login" type="button">Log in</button>
+        </div>
+        <div id="auth-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="create-listing-section" class="card" style="display:none;">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">New Listing</span>
+          <h2>Create a Listing</h2>
+        </div>
+      </div>
+      <form id="listing-form" class="form-grid">
+        <label>
+          Title
+          <input id="title" placeholder="Product name or offer" required />
+        </label>
+        <label>
+          Condition
+          <input id="url" placeholder="Condition example: New, Used, Good" />
+        </label>
+        <label>
+          Category
+          <input id="category" placeholder="Category" />
+        </label>
+        <label>
+          Contact method
+          <select id="contact-method">
+            <option value="">Choose how buyers can reach you</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Telegram">Telegram</option>
+            <option value="Email">Email</option>
+            <option value="Phone">Phone</option>
+            <option value="Direct Message">Direct Message</option>
+          </select>
+        </label>
+        <label>
+          Contact details
+          <input id="contact-details" placeholder="Enter phone number, username, or email" />
+        </label>
+        <label class="full-width">
+          Description
+          <textarea id="description" placeholder="Describe the item, condition, or benefits"></textarea>
+        </label>
+        <label class="full-width">
+          Image (optional)
+          <input id="image" type="file" accept="image/*" />
+        </label>
+        <div class="row action-row">
+          <button id="create-listing" type="button">Create Listing</button>
+        </div>
+        <div id="listing-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="feed" class="card">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">Marketplace</span>
+          <h2>Listings</h2>
+        </div>
+        <div class="feed-controls">
+          <input id="search-input" type="search" placeholder="Search listings..." aria-label="Search listings" />
+          <div id="list-count" class="muted"></div>
+        </div>
+      </div>
+      <div id="listings" class="listing-grid"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
