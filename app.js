@@ -134,18 +134,29 @@ const authMsg = document.getElementById('auth-msg')
 const authSection = document.getElementById('auth-section')
 const createListingSection = document.getElementById('create-listing-section')
 const titleEl = document.getElementById('title')
+const priceEl = document.getElementById('price')
+const priceCurrencyEl = document.getElementById('price-currency')
+const paymentTypeEl = document.getElementById('payment-type')
+const deliveryTypeEl = document.getElementById('delivery-type')
 const urlEl = document.getElementById('url')
 const categoryEl = document.getElementById('category')
 const contactMethodEl = document.getElementById('contact-method')
 const contactDetailsEl = document.getElementById('contact-details')
 const descEl = document.getElementById('description')
 const imageEl = document.getElementById('image')
+const formEyebrow = document.getElementById('create-form-eyebrow')
+const formHeading = document.getElementById('create-form-heading')
+const editModeBadge = document.getElementById('edit-mode-badge')
+const toggleMoreBtn = document.getElementById('toggle-more')
 const createListingBtn = document.getElementById('create-listing')
+const cancelEditBtn = document.getElementById('cancel-edit')
 const listingMsg = document.getElementById('listing-msg')
 const listCount = document.getElementById('list-count')
 const listingsContainer = document.getElementById('listings')
 const searchEl = document.getElementById('search-input')
 let currentListings = []
+let currentUser = null
+let editingId = null
 
 // Auth actions
 btnSignup.addEventListener('click', async () => {
@@ -172,6 +183,42 @@ btnLogin.addEventListener('click', async () => {
   }
 })
 
+function enterEditMode() {
+  if (formEyebrow) formEyebrow.textContent = 'Editing Listing'
+  if (formHeading) formHeading.textContent = 'Update your listing'
+  if (editModeBadge) editModeBadge.style.display = 'inline-flex'
+  if (createListingSection) createListingSection.classList.add('create-listing-editing')
+  if (createListingBtn) createListingBtn.textContent = 'Save Changes'
+  if (cancelEditBtn) cancelEditBtn.style.display = ''
+}
+
+function exitEditMode() {
+  editingId = null
+  if (formEyebrow) formEyebrow.textContent = 'New Listing'
+  if (formHeading) formHeading.textContent = 'Create a Listing'
+  if (editModeBadge) editModeBadge.style.display = 'none'
+  if (createListingSection) createListingSection.classList.remove('create-listing-editing')
+  if (createListingBtn) createListingBtn.textContent = 'Create Listing'
+  if (cancelEditBtn) cancelEditBtn.style.display = 'none'
+}
+
+function setFormCompact(compact = true) {
+  if (!createListingSection) return
+  createListingSection.classList.toggle('compact', compact)
+  const adv = createListingSection.querySelector('.advanced-fields')
+  if (adv) adv.style.display = compact ? 'none' : ''
+  if (toggleMoreBtn) toggleMoreBtn.textContent = compact ? 'More options' : 'Less options'
+}
+
+// Toggle advanced fields
+toggleMoreBtn?.addEventListener('click', () => {
+  if (!createListingSection) return
+  const compact = createListingSection.classList.toggle('compact')
+  const adv = createListingSection.querySelector('.advanced-fields')
+  if (adv) adv.style.display = compact ? 'none' : ''
+  if (toggleMoreBtn) toggleMoreBtn.textContent = compact ? 'More options' : 'Less options'
+})
+
 function getDisplayNameFromEmail(email) {
   const localPart = String(email).split('@')[0] || ''
   const words = localPart.split(/[^a-zA-Z0-9]+/).filter(Boolean)
@@ -182,11 +229,14 @@ function getDisplayNameFromEmail(email) {
 async function handleAuthChange() {
   const { data } = await db.auth.getUser()
   const user = data.user
+  currentUser = user
   if (user) {
     const displayName = getDisplayNameFromEmail(user.email)
     authArea.innerHTML = `<div class="auth-pill-group"><span class="auth-pill">Welcome, ${escapeHtml(displayName)}</span><button id="btn-logout" class="auth-pill auth-logout" type="button">Logout</button></div>`
     authSection.style.display = 'none'
     createListingSection.style.display = ''
+    // Keep the form compact by default and allow expanding via More options
+    setFormCompact(true)
     document.getElementById('btn-logout').addEventListener('click', async () => {
       await db.auth.signOut()
       authMsg.textContent = 'Logged out.'
@@ -197,6 +247,8 @@ async function handleAuthChange() {
     authSection.style.display = ''
     createListingSection.style.display = 'none'
   }
+  // Re-render listings so owner-only actions update visibility
+  await fetchAndRenderListings()
 }
 
 const togglePasswordBtn = document.getElementById('toggle-password')
@@ -262,10 +314,17 @@ createListingBtn.addEventListener('click', async () => {
         localImageStore[path] = file
         image_url = URL.createObjectURL(file)
       }
+    } else if (editingId) {
+      const existingListing = currentListings.find((item) => item.id === editingId) || localState.listings.find((item) => item.id === editingId)
+      image_url = existingListing?.image_url ?? null
     }
 
     const obj = {
       title: titleEl.value.trim(),
+      price: priceEl.value.trim(),
+      price_currency: priceCurrencyEl?.value || null,
+      payment_type: paymentTypeEl.value,
+      delivery_type: deliveryTypeEl.value,
       url: urlEl.value.trim(),
       category: categoryEl.value.trim(),
       contact_method: contactMethodEl.value.trim(),
@@ -280,6 +339,8 @@ createListingBtn.addEventListener('click', async () => {
     }
 
     // If contact fields are empty, omit them so inserts against differing schemas don't fail.
+    if (!obj.payment_type) delete obj.payment_type
+    if (!obj.delivery_type) delete obj.delivery_type
     if (!obj.contact_method) delete obj.contact_method
     if (!obj.contact_details) delete obj.contact_details
 
@@ -318,20 +379,118 @@ createListingBtn.addEventListener('click', async () => {
       return res
     }
 
-    const { error } = await tryInsert(obj)
-    if (error) throw error
+    // If editing, perform update flow instead of insert
+    if (editingId) {
+      const updateObj = { ...obj }
+      if (!updateObj.contact_method) delete updateObj.contact_method
+      if (!updateObj.contact_details) delete updateObj.contact_details
 
-    listingMsg.textContent = 'Listing created successfully.'
+      if (useSupabase) {
+        const { error: upErr } = await db.from('listings').update(updateObj).eq('id', editingId)
+        if (upErr) throw upErr
+      } else {
+        const idx = localState.listings.findIndex((r) => r.id === editingId)
+        if (idx !== -1) {
+          localState.listings[idx] = { ...localState.listings[idx], ...updateObj }
+          persistLocalState()
+        }
+      }
+
+      listingMsg.textContent = 'Listing updated successfully.'
+      exitEditMode()
+      titleEl.value = ''
+      priceEl.value = ''
+      if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
+      paymentTypeEl.value = ''
+      urlEl.value = ''
+      categoryEl.value = ''
+      descEl.value = ''
+      contactMethodEl.value = ''
+      contactDetailsEl.value = ''
+      imageEl.value = ''
+      await fetchAndRenderListings()
+    } else {
+      const { error } = await tryInsert(obj)
+      if (error) throw error
+
+      listingMsg.textContent = 'Listing created successfully.'
+      titleEl.value = ''
+      priceEl.value = ''
+      if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
+        paymentTypeEl.value = ''
+        deliveryTypeEl.value = ''
+      urlEl.value = ''
+      categoryEl.value = ''
+      descEl.value = ''
+      contactMethodEl.value = ''
+      contactDetailsEl.value = ''
+      imageEl.value = ''
+      await fetchAndRenderListings()
+    }
+  } catch (err) {
+    listingMsg.textContent = err.message
+  }
+})
+
+// Cancel edit handler
+if (cancelEditBtn) {
+  cancelEditBtn.addEventListener('click', () => {
+    exitEditMode()
+    listingMsg.textContent = ''
     titleEl.value = ''
+    priceEl.value = ''
+    if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
+    paymentTypeEl.value = ''
+    deliveryTypeEl.value = ''
     urlEl.value = ''
     categoryEl.value = ''
     descEl.value = ''
     contactMethodEl.value = ''
     contactDetailsEl.value = ''
     imageEl.value = ''
-    await fetchAndRenderListings()
-  } catch (err) {
-    listingMsg.textContent = err.message
+  })
+}
+
+// Delegate edit/delete button clicks inside listings
+listingsContainer.addEventListener('click', async (ev) => {
+  const btn = ev.target.closest('button')
+  if (!btn) return
+  const id = btn.dataset && btn.dataset.id
+  if (!id) return
+  if (btn.classList.contains('delete-btn')) {
+    if (!currentUser) return alert('You must be signed in to delete listings.')
+    if (!confirm('Delete this listing? This cannot be undone.')) return
+    try {
+      if (useSupabase) {
+        const { error } = await db.from('listings').delete().eq('id', id)
+        if (error) throw error
+      } else {
+        localState.listings = localState.listings.filter((r) => r.id !== id)
+        persistLocalState()
+      }
+      await fetchAndRenderListings()
+    } catch (e) {
+      alert(e.message || 'Failed to delete listing')
+    }
+  }
+  if (btn.classList.contains('edit-btn')) {
+    const item = currentListings.find((r) => r.id === id) || localState.listings.find((r) => r.id === id)
+    if (!item) return
+    if (!currentUser || item.user_id !== currentUser.id) return alert('You can only edit your own listings.')
+    editingId = id
+    titleEl.value = item.title || ''
+      priceEl.value = item.price || ''
+      if (priceCurrencyEl) priceCurrencyEl.value = item.price_currency || item.currency || 'ZAR'
+    paymentTypeEl.value = item.payment_type || ''
+    deliveryTypeEl.value = item.delivery_type || ''
+    urlEl.value = item.url || ''
+    categoryEl.value = item.category || ''
+    contactMethodEl.value = item.contact_method || ''
+    contactDetailsEl.value = item.contact_details || ''
+    descEl.value = item.description || ''
+    imageEl.value = ''
+    enterEditMode()
+    window.scrollTo({ top: createListingSection.offsetTop - 20, behavior: 'smooth' })
   }
 })
 
@@ -340,6 +499,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     loadingScreen.classList.add('hidden')
   }, 1400)
+  // Ensure the listing form starts compact and toggle text is correct
+  try {
+    setFormCompact(true)
+  } catch (e) {}
 })
 
 searchEl?.addEventListener('input', () => renderFilteredListings())
@@ -364,7 +527,7 @@ function renderFilteredListings() {
   const term = searchEl?.value.trim().toLowerCase() || ''
   const filtered = currentListings.filter((item) => {
     if (!term) return true
-    const text = [item.title, item.category, item.description, item.contact_method, item.contact_details, item.url]
+    const text = [item.title, item.price, item.payment_type, item.delivery_type, item.category, item.description, item.contact_method, item.contact_details, item.url]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -383,8 +546,23 @@ function renderListing(l) {
   const d = document.createElement('div')
   d.className = 'listing'
   const parts = []
-  if (l.image_url) parts.push(`<img src="${l.image_url}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px">`)
+  if (l.image_url) parts.push(`<img src="${l.image_url}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:14px">`)
   parts.push(`<h3>${escapeHtml(l.title)}</h3>`)
+  if (l.price) {
+    try {
+      const num = Number(l.price)
+      const formatted = Number.isFinite(num) ? num.toFixed(2) : String(l.price)
+      const currencyCode = (l.price_currency || l.currency || '').toString().toUpperCase()
+      const symbolMap = { ZAR: 'R', USD: '$' }
+      const sym = symbolMap[currencyCode] || (l.price_currency || l.currency || '')
+      const display = sym ? `${sym}${formatted}` : formatted
+      parts.push(`<div><strong>Price:</strong> ${escapeHtml(display)}</div>`)
+    } catch (e) {
+      parts.push(`<div><strong>Price:</strong> ${escapeHtml(l.price)}</div>`)
+    }
+  }
+  if (l.payment_type) parts.push(`<div><strong>Payment:</strong> ${escapeHtml(l.payment_type)}</div>`)
+  if (l.delivery_type) parts.push(`<div><strong>Delivery:</strong> ${escapeHtml(l.delivery_type)}</div>`)
   if (l.category) parts.push(`<div><strong>Category:</strong> ${escapeHtml(l.category)}</div>`)
   if (l.url) parts.push(`<div><strong>Condition:</strong> ${escapeHtml(l.url)}</div>`)
   if (l.contact_method || l.contact_details) {
@@ -400,6 +578,11 @@ function renderListing(l) {
     } catch (e) {
       parts.push(`<div class="muted">Posted: ${escapeHtml(l.created_at)}</div>`)
     }
+  }
+
+  // Owner-only actions
+  if (currentUser && l.user_id && l.user_id === currentUser.id) {
+    parts.push(`<div class="listing-actions" style="margin-top:10px"><button class="edit-btn" data-id="${escapeHtml(l.id)}" type="button">Edit</button> <button class="delete-btn" data-id="${escapeHtml(l.id)}" type="button">Delete</button></div>`)
   }
 
   d.innerHTML = parts.join('\n')
