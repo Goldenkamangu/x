@@ -211,10 +211,14 @@ togglePasswordBtn.addEventListener('click', () => {
 createListingBtn.addEventListener('click', async () => {
   listingMsg.textContent = ''
   try {
+    // Get the signed-in user first — the storage policies require uploads to
+    // live under "<user_id>/filename", so the path needs the id up front.
+    const currentUser = (await db.auth.getUser()).data.user
+
     let image_url = null
     const file = imageEl.files && imageEl.files[0]
     if (file) {
-      const path = `${Date.now()}_${file.name}`
+      const path = `${currentUser?.id || 'anon'}/${Date.now()}_${file.name}`
       try {
         if (useSupabase && db.storage) {
           const storage = db.storage.from('listing-images')
@@ -260,7 +264,6 @@ createListingBtn.addEventListener('click', async () => {
       }
     }
 
-    const currentUser = (await db.auth.getUser()).data.user
     const obj = {
       title: titleEl.value.trim(),
       url: urlEl.value.trim(),
@@ -280,39 +283,38 @@ createListingBtn.addEventListener('click', async () => {
     if (!obj.contact_method) delete obj.contact_method
     if (!obj.contact_details) delete obj.contact_details
 
-    // Attempt insert; if Supabase reports missing columns, remove them and retry once.
+    // Attempt insert; strip whichever column Postgres/PostgREST reports as
+    // missing and retry, looping in case more than one column is absent.
     async function tryInsert(row) {
-      const res = await db.from('listings').insert([row])
-      if (res.error && typeof res.error.message === 'string') {
+      const attempt = { ...row }
+      let res = await db.from('listings').insert([attempt])
+      const patterns = [ /column \"([^\"]+)\" does not exist/gi, /Could not find the '([^']+)' column/gi ]
+
+      while (res.error && typeof res.error.message === 'string') {
         const msg = res.error.message
-        // Match patterns like: column "contact_method" does not exist
-        const patterns = [ /column \"([^\"]+)\" does not exist/gi, /Could not find the '([^']+)' column/gi ]
-        const cleaned = { ...row }
         let removed = false
         for (const p of patterns) {
           let m
           while ((m = p.exec(msg)) !== null) {
             const col = m[1]
-            if (col in cleaned) {
-              delete cleaned[col]
+            if (col in attempt) {
+              delete attempt[col]
               removed = true
             }
           }
         }
-        // If we removed any keys, retry once.
-        if (removed) {
-          const retry = await db.from('listings').insert([cleaned])
-          return retry
-        }
-        // Final fallback: if any insert error occurred, try again without contact fields.
-        if (res.error && ('contact_method' in cleaned || 'contact_details' in cleaned)) {
-          const minimal = { ...cleaned }
-          delete minimal.contact_method
-          delete minimal.contact_details
-          const retry2 = await db.from('listings').insert([minimal])
-          return retry2
-        }
+        if (!removed) break
+        res = await db.from('listings').insert([attempt])
       }
+
+      // Final fallback: if it's still failing for some other reason and
+      // contact fields are present, try once more without them.
+      if (res.error && ('contact_method' in attempt || 'contact_details' in attempt)) {
+        delete attempt.contact_method
+        delete attempt.contact_details
+        res = await db.from('listings').insert([attempt])
+      }
+
       return res
     }
 
