@@ -326,6 +326,8 @@ createListingBtn.addEventListener('click', async () => {
     urlEl.value = ''
     categoryEl.value = ''
     descEl.value = ''
+    contactMethodEl.value = ''
+    contactDetailsEl.value = ''
     imageEl.value = ''
     await fetchAndRenderListings()
   } catch (err) {
@@ -380,13 +382,27 @@ function renderFilteredListings() {
 function renderListing(l) {
   const d = document.createElement('div')
   d.className = 'listing'
-  d.innerHTML = `
-    ${l.image_url ? `<img src="${l.image_url}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px">` : ''}
-    <h3>${escapeHtml(l.title)}</h3>
-    <div class="muted">${l.category || ''}</div>
-    ${l.contact_method && l.contact_details ? `<div class="listing-contact">Contact via ${escapeHtml(l.contact_method)}: <strong>${escapeHtml(l.contact_details)}</strong></div>` : ''}
-    <p style="margin:8px 0">${escapeHtml(l.description || '')}</p>
-  `
+  const parts = []
+  if (l.image_url) parts.push(`<img src="${l.image_url}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px">`)
+  parts.push(`<h3>${escapeHtml(l.title)}</h3>`)
+  if (l.category) parts.push(`<div><strong>Category:</strong> ${escapeHtml(l.category)}</div>`)
+  if (l.url) parts.push(`<div><strong>Condition:</strong> ${escapeHtml(l.url)}</div>`)
+  if (l.contact_method || l.contact_details) {
+    const method = l.contact_method ? escapeHtml(l.contact_method) : ''
+    const details = l.contact_details ? `<strong>${escapeHtml(l.contact_details)}</strong>` : ''
+    parts.push(`<div><strong>Contact:</strong> ${method} ${details}</div>`)
+  }
+  if (l.description) parts.push(`<p style="margin:8px 0">${escapeHtml(l.description)}</p>`)
+  if (l.created_at) {
+    try {
+      const when = new Date(l.created_at).toLocaleString()
+      parts.push(`<div class="muted">Posted: ${escapeHtml(when)}</div>`)
+    } catch (e) {
+      parts.push(`<div class="muted">Posted: ${escapeHtml(l.created_at)}</div>`)
+    }
+  }
+
+  d.innerHTML = parts.join('\n')
   listingsContainer.appendChild(d)
 }
 
