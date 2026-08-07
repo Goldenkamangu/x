@@ -59,48 +59,82 @@
     <section id="create-listing-section" class="card" style="display:none;">
       <div class="section-header">
         <div>
-          <span class="eyebrow">New Listing</span>
-          <h2>Create a Listing</h2>
+          <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
+          <h2 id="create-form-heading">Create a Listing</h2>
         </div>
+        <div id="edit-mode-badge" class="edit-mode-badge" style="display:none">Editing listing</div>
       </div>
       <form id="listing-form" class="form-grid">
-        <label>
-          Title
-          <input id="title" placeholder="Product name or offer" required />
-        </label>
-        <label>
-          Condition
-          <input id="url" placeholder="Condition example: New, Used, Good" />
-        </label>
-        <label>
-          Category
-          <input id="category" placeholder="Category" />
-        </label>
-        <label>
-          Contact method
-          <select id="contact-method">
-            <option value="">Choose how buyers can reach you</option>
-            <option value="WhatsApp">WhatsApp</option>
-            <option value="Telegram">Telegram</option>
-            <option value="Email">Email</option>
-            <option value="Phone">Phone</option>
-            <option value="Direct Message">Direct Message</option>
-          </select>
-        </label>
-        <label>
-          Contact details
-          <input id="contact-details" placeholder="Enter phone number, username, or email" />
-        </label>
-        <label class="full-width">
-          Description
-          <textarea id="description" placeholder="Describe the item, condition, or benefits"></textarea>
-        </label>
-        <label class="full-width">
-          Image (optional)
-          <input id="image" type="file" accept="image/*" />
-        </label>
-        <div class="row action-row">
+        <div class="form-compact-header">
+          <div>
+            <label style="display:block;margin-bottom:6px">Title
+              <input id="title" placeholder="Product name or offer" required />
+            </label>
+          </div>
+          <div style="min-width:160px">
+            <label style="display:block;margin-bottom:6px">Price
+              <input id="price" placeholder="Enter a price or offer" />
+              <select id="price-currency" style="margin-left:8px;min-width:120px">
+                <option value="ZAR">ZAR - Rand (R)</option>
+                <option value="USD">USD - Dollar ($)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="form-actions-row">
+          <button id="toggle-more" type="button" class="muted-btn">More options</button>
           <button id="create-listing" type="button">Create Listing</button>
+          <button id="cancel-edit" type="button" style="display:none;background:#444;color:#fff;border:1px solid rgba(255,255,255,0.06);">Cancel</button>
+        </div>
+
+        <div class="advanced-fields">
+          <label>
+            Payment type
+            <select id="payment-type">
+              <option value="">Choose payment option</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+            </select>
+          </label>
+          <label>
+            Delivery / Pickup
+            <select id="delivery-type">
+              <option value="">Choose delivery option</option>
+              <option value="Delivery">Delivery</option>
+              <option value="Pickup">Pickup</option>
+            </select>
+          </label>
+          <label>
+            Condition
+            <input id="url" placeholder="Condition example: New, Used, Good" />
+          </label>
+          <label>
+            Category
+            <input id="category" placeholder="Category" />
+          </label>
+          <label>
+            Contact method
+            <select id="contact-method">
+              <option value="">Choose how buyers can reach you</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Telegram">Telegram</option>
+              <option value="Email">Email</option>
+              <option value="Phone">Phone</option>
+              <option value="Direct Message">Direct Message</option>
+            </select>
+          </label>
+          <label>
+            Contact details
+            <input id="contact-details" placeholder="Enter phone number, username, or email" />
+          </label>
+          <label class="full-width">
+            Description
+            <textarea id="description" placeholder="Describe the item, condition, or benefits"></textarea>
+          </label>
+          <label class="full-width">
+            Image (optional)
+            <input id="image" type="file" accept="image/*" />
+          </label>
         </div>
         <div id="listing-msg" class="muted"></div>
       </form>
