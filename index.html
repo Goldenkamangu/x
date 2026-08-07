@@ -34,7 +34,19 @@
         <input id="email" type="email" placeholder="Email" required />
         <div class="password-field">
           <input id="password" type="password" placeholder="Password" required />
-          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility"></button>
+          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+              <g class="eye">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+              </g>
+              <g class="eye-off">
+                <path d="M2.5 12s3.5-6.5 9.5-6.5c2.2 0 4.2.8 5.8 2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M21.5 12s-3.5 6.5-9.5 6.5c-2.2 0-4.2-.8-5.8-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </g>
+            </svg>
+          </button>
         </div>
         <div class="row">
           <button id="btn-signup" type="button">Sign up</button>
