@@ -154,9 +154,11 @@ const listingMsg = document.getElementById('listing-msg')
 const listCount = document.getElementById('list-count')
 const listingsContainer = document.getElementById('listings')
 const searchEl = document.getElementById('search-input')
+const categoryChipsEl = document.getElementById('category-chips')
 let currentListings = []
 let currentUser = null
 let editingId = null
+let activeCategory = ''
 
 // Auth actions
 btnSignup.addEventListener('click', async () => {
@@ -505,6 +507,41 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) {}
 })
 
+// Image preview lightbox
+const lightbox = document.getElementById('image-lightbox')
+const lightboxImg = document.getElementById('lightbox-img')
+const lightboxCloseBtn = document.getElementById('lightbox-close')
+
+function openLightbox(src) {
+  if (!src) return
+  lightboxImg.src = src
+  lightbox.classList.remove('hidden')
+  lightbox.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('lightbox-open')
+}
+
+function closeLightbox() {
+  lightbox.classList.add('hidden')
+  lightbox.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('lightbox-open')
+  lightboxImg.src = ''
+}
+
+lightboxCloseBtn.addEventListener('click', closeLightbox)
+lightbox.addEventListener('click', (ev) => {
+  if (ev.target === lightbox) closeLightbox()
+})
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') closeLightbox()
+})
+
+listingsContainer.addEventListener('click', (ev) => {
+  const wrap = ev.target.closest('.listing-img-wrap')
+  if (!wrap) return
+  const img = wrap.querySelector('img')
+  if (img) openLightbox(img.src)
+})
+
 searchEl?.addEventListener('input', () => renderFilteredListings())
 
 handleAuthChange()
@@ -517,17 +554,50 @@ async function fetchAndRenderListings() {
     const { data, error } = await db.from('listings').select('*')
     if (error) throw error
     currentListings = data || []
+    renderCategoryChips()
     renderFilteredListings()
   } catch (err) {
     listingsContainer.innerHTML = `<div class="muted">${err.message}</div>`
   }
 }
 
+function renderCategoryChips() {
+  if (!categoryChipsEl) return
+  const seen = new Map() // normalized key -> display label (first-seen casing)
+  for (const item of currentListings) {
+    const raw = (item.category || '').trim()
+    if (!raw) continue
+    const key = raw.toLowerCase()
+    if (!seen.has(key)) seen.set(key, raw)
+  }
+  const categories = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  if (!categories.length) {
+    categoryChipsEl.innerHTML = ''
+    activeCategory = ''
+    return
+  }
+  if (activeCategory && !categories.some(([key]) => key === activeCategory)) activeCategory = ''
+  const chips = ['<button type="button" class="category-chip' + (activeCategory === '' ? ' active' : '') + '" data-category="">All</button>']
+  for (const [key, label] of categories) {
+    chips.push(`<button type="button" class="category-chip${activeCategory === key ? ' active' : ''}" data-category="${escapeHtml(key)}">${escapeHtml(label)}</button>`)
+  }
+  categoryChipsEl.innerHTML = chips.join('')
+}
+
+categoryChipsEl?.addEventListener('click', (ev) => {
+  const chip = ev.target.closest('.category-chip')
+  if (!chip) return
+  activeCategory = chip.dataset.category || ''
+  renderCategoryChips()
+  renderFilteredListings()
+})
+
 function renderFilteredListings() {
   const term = searchEl?.value.trim().toLowerCase() || ''
   const filtered = currentListings.filter((item) => {
+    if (activeCategory && (item.category || '').trim().toLowerCase() !== activeCategory) return false
     if (!term) return true
-    const text = [item.title, item.price, item.payment_type, item.delivery_type, item.category, item.description, item.contact_method, item.contact_details, item.url]
+    const text = [item.title, item.price, item.price_currency, item.currency, item.payment_type, item.delivery_type, item.category, item.description, item.contact_method, item.contact_details, item.url]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -546,7 +616,7 @@ function renderListing(l) {
   const d = document.createElement('div')
   d.className = 'listing'
   const parts = []
-  if (l.image_url) parts.push(`<img src="${l.image_url}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:14px">`)
+  if (l.image_url) parts.push(`<div class="listing-img-wrap"><img src="${l.image_url}" alt="" loading="lazy"></div>`)
   parts.push(`<h3>${escapeHtml(l.title)}</h3>`)
   if (l.price) {
     try {
