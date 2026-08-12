@@ -119,15 +119,29 @@ const localDb = {
 }
 
 const SUPABASE_URL = 'https://izdwacnhqrtsgngmsigu.supabase.co'
+
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHdhY25ocXJ0c2duZ21zaWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDk4MjksImV4cCI6MjEwMTUyNTgyOX0.coV2SWeECtgXNeLtHOJ2T6_ekmV7Ynya35Ewl8oH7GI'
-const useSupabase = SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'SUPABASE_URL'
-// AI search Edge Function — deploy this function (see ai-search-function.ts) then leave as-is
-const AI_SEARCH_URL = `${SUPABASE_URL}/functions/v1/rapid-function`
+
+const useSupabase =
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY &&
+  SUPABASE_URL !== 'SUPABASE_URL'
+
+// AI search Edge Function
+const AI_SEARCH_URL =
+  `${SUPABASE_URL}/functions/v1/rapid-function`
 
 const db = useSupabase
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : (console.warn('Supabase is not configured. Using localStorage fallback.'), localDb)
-
+  ? createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    )
+  : (
+      console.warn(
+        'Supabase is not configured. Using localStorage fallback.'
+      ),
+      localDb
+    )
 // Elements
 const authArea = document.getElementById('auth-area')
 const nameEl = document.getElementById('name')
