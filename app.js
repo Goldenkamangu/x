@@ -117,7 +117,6 @@ const localDb = {
     }
   }
 }
-
 const SUPABASE_URL = 'https://izdwacnhqrtsgngmsigu.supabase.co'
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHdhY25ocXJ0c2duZ21zaWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDk4MjksImV4cCI6MjEwMTUyNTgyOX0.coV2SWeECtgXNeLtHOJ2T6_ekmV7Ynya35Ewl8oH7GI'
@@ -142,6 +141,7 @@ const db = useSupabase
       ),
       localDb
     )
+
 // Elements
 const authArea = document.getElementById('auth-area')
 const nameEl = document.getElementById('name')
@@ -725,23 +725,52 @@ categoryChipsEl?.addEventListener('click', (ev) => {
 })
 
 function renderFilteredListings() {
-  const term = searchEl?.value.trim().toLowerCase() || ''
-  const scoped = getScopedListings()
-  const filtered = scoped.filter((item) => {
-    if (!term) return true
-    const text = [item.title, item.price, item.price_currency, item.currency, item.payment_type, item.delivery_type, item.category, item.description, item.contact_method, item.contact_details, item.url]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-    return text.includes(term)
-  })
-  listCount.textContent = `${filtered.length} listing${filtered.length === 1 ? '' : 's'}`
+  const term =
+    searchEl?.value.trim().toLowerCase() || ''
+
+  const scoped =
+    getScopedListings()
+
+  const filtered =
+    scoped.filter((item) => {
+      if (!term) return true
+
+      const text = [
+        item.title,
+        item.price,
+        item.price_currency,
+        item.currency,
+        item.payment_type,
+        item.delivery_type,
+        item.category,
+        item.description,
+        item.contact_method,
+        item.contact_details,
+        item.url
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return text.includes(term)
+    })
+
+  listCount.textContent =
+    `${filtered.length} listing${
+      filtered.length === 1 ? '' : 's'
+    }`
+
   listingsContainer.innerHTML = ''
+
   if (!filtered.length) {
-    listingsContainer.innerHTML = `<div class="muted">${showMineOnly ? "You haven't listed anything yet." : 'No listings match your search.'}</div>`
+    listingsContainer.innerHTML =
+      '<div class="muted">No listings match your search.</div>'
+
     return 0
   }
+
   filtered.forEach(renderListing)
+
   return filtered.length
 }
 
