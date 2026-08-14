@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LinkHub — Buyers & Sellers Marketplace</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="Logo2.png" type="image/png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="Logo2.png">
+  <meta name="theme-color" content="#007bff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <header class="page-header">
+    <div class="brand-left">
+      <img src="logo.svg" alt="LinkHub logo" class="brand-logo" />
+    </div>
+    <div class="brand-center">
+      <p class="hero-text">Turn what you don’t need into cash with fast listings and easy buyer contact.</p>
+    </div>
+    <div class="brand-right" id="auth-area"></div>
+  </header>
+
+  <div id="loading-screen" class="loading-overlay" aria-live="polite">
+    <div class="loading-inner">
+      <img src="logo.svg" alt="LinkHub logo" class="loading-logo" />
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p class="loading-copy">don't need it, sell it</p>
+      <p class="loading-status">Loading marketplace<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></p>
+    </div>
+  </div>
+
+  <main class="container">
+    <section id="auth-section" class="card">
+      <h2>Sign up / Sign in</h2>
+      <form id="auth-form">
+        <input id="name" type="text" placeholder="Full name" autocomplete="name" />
+        <input id="email" type="email" placeholder="Email" required />
+        <div class="password-field">
+          <input id="password" type="password" placeholder="Password" required />
+          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+              <g class="eye">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+              </g>
+              <g class="eye-off">
+                <path d="M2.5 12s3.5-6.5 9.5-6.5c2.2 0 4.2.8 5.8 2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M21.5 12s-3.5 6.5-9.5 6.5c-2.2 0-4.2-.8-5.8-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </g>
+            </svg>
+          </button>
+        </div>
+        <div class="row">
+          <button id="btn-signup" type="button">Sign up</button>
+          <button id="btn-login" type="button">Log in</button>
+        </div>
+        <div id="auth-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="create-listing-section" class="card" style="display:none;">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
+          <h2 id="create-form-heading">Create a Listing</h2>
+        </div>
+        <div id="edit-mode-badge" class="edit-mode-badge" style="display:none">Editing listing</div>
+      </div>
+      <form id="listing-form" class="form-grid">
+        <div class="form-compact-header">
+          <div>
+            <label style="display:block;margin-bottom:6px">Title
+              <input id="title" placeholder="Product name or offer" required />
+            </label>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px">Price
+              <input id="price" placeholder="Enter a price or offer" />
+              <select id="price-currency" style="margin-left:8px;min-width:120px">
+                <option value="ZAR">ZAR - Rand (R)</option>
+                <option value="USD">USD - Dollar ($)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="form-compact-header">
+          <div>
+            <label style="display:block;margin-bottom:6px">Delivery / Pickup
+              <select id="delivery-type">
+                <option value="">Choose delivery option</option>
+                <option value="Delivery">Delivery</option>
+                <option value="Pickup">Pickup</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px">Condition
+              <input id="url" placeholder="Condition example: New, Used, Good" />
+            </label>
+          </div>
+        </div>
+        <div class="form-actions-row">
+          <button id="toggle-more" type="button" class="muted-btn">More options</button>
+        </div>
+
+        <div class="advanced-fields">
+          <label>
+            Payment type
+            <select id="payment-type">
+              <option value="">Choose payment option</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+            </select>
+          </label>
+          <label>
+            Category
+            <input id="category" placeholder="e.g. Phones, Furniture, Gaming" required />
+          </label>
+          <label>
+            Contact method
+            <select id="contact-method">
+              <option value="">Choose how buyers can reach you</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Telegram">Telegram</option>
+              <option value="Email">Email</option>
+              <option value="Phone">Phone</option>
+              <option value="Direct Message">Direct Message</option>
+            </select>
+          </label>
+          <label>
+            Contact details
+            <input id="contact-details" placeholder="Enter phone number, username, or email" />
+          </label>
+          <label>
+            Location / City
+            <input id="location" placeholder="e.g. Johannesburg, Pretoria" autocomplete="address-level2" />
+          </label>
+          <label class="full-width">
+            Description
+            <textarea id="description" placeholder="Describe the item, condition, or benefits"></textarea>
+          </label>
+          <label class="full-width">
+            Photos (optional, up to 3)
+            <input id="image" type="file" accept="image/*" multiple />
+            <small class="field-help">Add up to 3 pictures. Images are automatically compressed before upload.</small>
+          </label>
+        </div>
+        <div class="form-actions-row">
+          <button id="create-listing" type="button">Create Listing</button>
+          <button id="cancel-edit" type="button" style="display:none;background:#444;color:#fff;border:1px solid rgba(255,255,255,0.06);">Cancel</button>
+        </div>
+        <div id="listing-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="feed" class="card">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">Marketplace Listings</span>
+        </div>
+        <div class="feed-controls">
+          <input id="search-input" type="search" placeholder="Search listings..." aria-label="Search listings" />
+          <div id="list-count" class="muted"></div>
+        </div>
+      </div>
+      <div id="category-chips" class="category-chips"></div>
+      <div id="listings" class="listing-grid"></div>
+    </section>
+  </main>
+
+  <div id="image-lightbox" class="lightbox-overlay hidden" aria-hidden="true">
+    <button id="lightbox-close" type="button" class="lightbox-close" aria-label="Close preview">&times;</button>
+    <img id="lightbox-img" class="lightbox-img" src="" alt="Full size preview" />
+  </div>
+
+  <!-- My Listings: a dedicated view of only the signed-in user's own posts -->
+  <div id="my-listings-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Your Posts</span>
+          <h2>My Listings</h2>
+        </div>
+        <button id="my-listings-close" type="button" class="lightbox-close" aria-label="Close My Listings">&times;</button>
+      </div>
+      <div id="my-listings-count" class="muted"></div>
+      <div id="my-listings-grid" class="listing-grid"></div>
+    </div>
+  </div>
+
+  <!-- Carty: AI shopping assistant -->
+  <button id="carty-toggle" class="carty-fab" type="button" aria-label="Open Carty, AI shopping assistant">
+    <span class="carty-fab-icon">🛒</span>
+  </button>
+
+  <div id="carty-panel" class="carty-panel hidden" aria-hidden="true">
+    <div class="carty-header">
+      <span class="carty-avatar">🛒</span>
+      <div class="carty-header-text">
+        <div class="carty-name">Carty</div>
+        <div class="carty-sub">AI shopping assistant</div>
+      </div>
+      <button id="carty-close" type="button" class="carty-close" aria-label="Close Carty">&times;</button>
+    </div>
+    <div class="carty-body">
+      <div id="carty-message" class="carty-bubble">Hey! 👋 I’m Carty 🛒 Here to help! What are you looking for? 😊</div>
+    </div>
+    <form id="carty-form" class="carty-form">
+      <input id="carty-input" type="text" placeholder="e.g. cheap phone under 200, good condition" autocomplete="off" />
+      <button type="submit" class="carty-send" aria-label="Send to Carty">➤</button>
+    </form>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
