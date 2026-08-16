@@ -1631,7 +1631,7 @@ function showInstallBanner() {
   banner.id = 'install-banner'
   banner.className = 'install-banner'
   banner.innerHTML = `
-    <span class="install-banner-text">📲 Install LinkHub for faster access</span>
+    <span class="install-banner-text">Install LinkHub for faster access</span>
     <div class="install-banner-actions">
       <button id="install-banner-yes" type="button">Install</button>
       <button id="install-banner-no" type="button" aria-label="Dismiss">&times;</button>
