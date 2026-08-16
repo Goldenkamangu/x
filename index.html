@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <style>.hidden{display:none!important}</style>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>LinkHub</title>
@@ -211,6 +212,18 @@
           <span>Appearance</span>
           <button id="theme-toggle-btn" type="button" class="theme-toggle-btn">🌙 Dark</button>
         </div>
+
+        <div id="account-admin-section" class="account-admin-section hidden">
+          <div class="account-divider"></div>
+          <div class="theme-toggle-row">
+            <div>
+              <strong>Owner tools</strong>
+              <div class="muted" style="margin-top:4px;">Manage reports submitted by marketplace users.</div>
+            </div>
+            <button id="account-admin-reports" type="button" class="theme-toggle-btn">View Reports</button>
+          </div>
+        </div>
+
         <div class="account-divider"></div>
         <label>Full name
           <input id="account-name" type="text" autocomplete="name" placeholder="Your name" required />
