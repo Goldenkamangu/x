@@ -1449,7 +1449,7 @@ function renderListing(l, container = listingsContainer) {
     meta.push(`<div><strong>Contact:</strong> ${contactHtml}</div>`)
   }
   if (meta.length) parts.push(`<div class="listing-meta">${meta.join('\n')}</div>`)
-  if (l.description) parts.push(`<p class="listing-desc">${escapeHtml(l.description)}</p>`)
+  if (l.description) parts.push(`<p class="listing-desc" data-desc-id="${escapeHtml(l.id)}">${escapeHtml(l.description)}</p><button class="read-more-btn" data-desc-id="${escapeHtml(l.id)}" type="button" style="display:none">Read more</button>`)
   if (l.created_at) {
     try {
       const when = new Date(l.created_at).toLocaleString()
@@ -1478,7 +1478,7 @@ function renderListing(l, container = listingsContainer) {
   }
 
   if (!isOwner) {
-    parts.push(`<div class="listing-views muted" data-view-id="${escapeHtml(l.id)}">${Number(l.view_count) > 0 ? `${Number(l.view_count)} views` : 'Viewed by buyers'}</div>`)
+    parts.push(`<div class="listing-views muted" data-view-id="${escapeHtml(l.id)}">${Number(l.view_count) > 0 ? `${Number(l.view_count)} views` : 'No views yet'}</div>`)
   } else {
     parts.push(`<div class="listing-views muted" data-view-id="${escapeHtml(l.id)}">${Number(l.view_count) || 0} view${Number(l.view_count) === 1 ? '' : 's'} so far</div>`)
     const ageDays = l.created_at ? Math.floor((Date.now() - new Date(l.last_confirmed_at || l.created_at).getTime()) / 86400000) : 0
@@ -1488,9 +1488,24 @@ function renderListing(l, container = listingsContainer) {
   }
   d.innerHTML = parts.join('\n')
   container.appendChild(d)
+
+  const descEl = d.querySelector('.listing-desc')
+  const readMoreBtn = d.querySelector('.read-more-btn')
+  if (descEl && readMoreBtn && descEl.scrollHeight > descEl.clientHeight + 1) {
+    readMoreBtn.style.display = ''
+  }
 }
 
 document.body.addEventListener('click', (ev) => {
+  const readBtn = ev.target.closest('.read-more-btn')
+  if (readBtn) {
+    const id = readBtn.dataset.descId
+    const desc = document.querySelector(`.listing-desc[data-desc-id="${CSS.escape(id)}"]`)
+    if (!desc) return
+    const expanded = desc.classList.toggle('expanded')
+    readBtn.textContent = expanded ? 'Show less' : 'Read more'
+    return
+  }
   const waLink = ev.target.closest('[data-track-view-id]')
   if (waLink) {
     const item = currentListings.find((r) => String(r.id) === String(waLink.dataset.trackViewId))
@@ -1634,7 +1649,7 @@ function showInstallBanner() {
   banner.id = 'install-banner'
   banner.className = 'install-banner'
   banner.innerHTML = `
-    <span class="install-banner-text">📲 Install LinkHub for faster access</span>
+    <span class="install-banner-text">Install LinkHub for faster access</span>
     <div class="install-banner-actions">
       <button id="install-banner-yes" type="button">Install</button>
       <button id="install-banner-no" type="button" aria-label="Dismiss">&times;</button>
