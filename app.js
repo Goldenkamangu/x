@@ -478,6 +478,8 @@ function openAccountSettings() {
   accountPassword.value = ''
   accountPasswordConfirm.value = ''
   accountMsg.textContent = ''
+  const isOwnerAccount = String(currentUser.email || '').toLowerCase() === OWNER_EMAIL
+  document.getElementById('account-admin-section')?.classList.toggle('hidden', !isOwnerAccount)
   accountOverlay.classList.remove('hidden')
   accountOverlay.setAttribute('aria-hidden', 'false')
   document.body.classList.add('lightbox-open')
@@ -554,6 +556,10 @@ accountOverlay?.addEventListener('click', (event) => {
 })
 accountForm?.addEventListener('submit', saveAccountSettings)
 accountDelete?.addEventListener('click', deleteAccount)
+document.getElementById('account-admin-reports')?.addEventListener('click', () => {
+  closeAccountSettings()
+  openAdminReports()
+})
 
 async function handleAuthChange() {
   const { data } = await db.auth.getUser()
@@ -568,9 +574,7 @@ async function handleAuthChange() {
       .filter(Boolean)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ')
-    const isOwnerAccount = String(user.email || '').toLowerCase() === OWNER_EMAIL
-    const adminBtnHtml = isOwnerAccount ? `<button id="btn-admin" class="auth-pill auth-admin" type="button">Reports</button>` : ''
-    authArea.innerHTML = `<div class="auth-pill-group"><span class="auth-pill">Welcome, ${escapeHtml(displayName)}</span><button id="btn-my-listings" class="auth-pill auth-my-listings" type="button">My Listings</button>${adminBtnHtml}<button id="btn-logout" class="auth-pill auth-logout" type="button">Logout</button></div>`
+    authArea.innerHTML = `<div class="auth-pill-group"><span class="auth-pill">Welcome, ${escapeHtml(displayName)}</span><button id="btn-my-listings" class="auth-pill auth-my-listings" type="button">My Listings</button><button id="btn-logout" class="auth-pill auth-logout" type="button">Logout</button></div>`
     authSection.style.display = 'none'
     createListingSection.style.display = ''
     // Keep the form compact by default and allow expanding via More options
@@ -581,7 +585,6 @@ async function handleAuthChange() {
       await handleAuthChange()
     })
     document.getElementById('btn-my-listings').addEventListener('click', openMyListings)
-    document.getElementById('btn-admin')?.addEventListener('click', openAdminReports)
     accountCorner?.classList.remove('hidden')
     if (!document.body.classList.contains('app-ready')) {
       accountCorner?.classList.add('auth-loading-hidden')
@@ -1631,7 +1634,7 @@ function showInstallBanner() {
   banner.id = 'install-banner'
   banner.className = 'install-banner'
   banner.innerHTML = `
-    <span class="install-banner-text">Install LinkHub for faster access</span>
+    <span class="install-banner-text">📲 Install LinkHub for faster access</span>
     <div class="install-banner-actions">
       <button id="install-banner-yes" type="button">Install</button>
       <button id="install-banner-no" type="button" aria-label="Dismiss">&times;</button>
