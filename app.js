@@ -574,17 +574,11 @@ async function handleAuthChange() {
       .filter(Boolean)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ')
-    authArea.innerHTML = `<div class="auth-pill-group"><span class="auth-pill">Welcome, ${escapeHtml(displayName)}</span><button id="btn-my-listings" class="auth-pill auth-my-listings" type="button">My Listings</button><button id="btn-logout" class="auth-pill auth-logout" type="button">Logout</button></div>`
+    authArea.innerHTML = `<span class="auth-pill">Welcome, ${escapeHtml(displayName)}</span>`
     authSection.style.display = 'none'
     createListingSection.style.display = ''
     // Keep the form compact by default and allow expanding via More options
     setFormCompact(true)
-    document.getElementById('btn-logout').addEventListener('click', async () => {
-      await db.auth.signOut()
-      authMsg.textContent = 'Logged out.'
-      await handleAuthChange()
-    })
-    document.getElementById('btn-my-listings').addEventListener('click', openMyListings)
     accountCorner?.classList.remove('hidden')
     if (!document.body.classList.contains('app-ready')) {
       accountCorner?.classList.add('auth-loading-hidden')
@@ -595,12 +589,14 @@ async function handleAuthChange() {
       accountCorner.addEventListener('click', openAccountSettings)
       accountCorner.dataset.bound = '1'
     }
+    updateNavDrawerState(true, displayName)
   } else {
     authArea.innerHTML = ''
     accountCorner?.classList.add('hidden')
     accountCorner?.classList.remove('auth-loading-hidden')
     authSection.style.display = ''
     createListingSection.style.display = 'none'
+    updateNavDrawerState(false)
   }
   // Re-render listings so owner-only actions update visibility
   await fetchAndRenderListings()
@@ -1551,7 +1547,77 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
-// --- Carty: AI shopping assistant popup ---
+// --- Hamburger navigation drawer ---
+const hamburgerBtn = document.getElementById('hamburger-btn')
+const navDrawerOverlay = document.getElementById('nav-drawer-overlay')
+const navDrawerStatus = document.getElementById('nav-drawer-status')
+const navBrowse = document.getElementById('nav-browse')
+const navMyListings = document.getElementById('nav-my-listings')
+const navAccountSettings = document.getElementById('nav-account-settings')
+const navSignIn = document.getElementById('nav-sign-in')
+const navInstall = document.getElementById('nav-install')
+const navLogout = document.getElementById('nav-logout')
+
+function openNavDrawer() {
+  if (!navDrawerOverlay) return
+  navDrawerOverlay.classList.remove('hidden')
+  navDrawerOverlay.setAttribute('aria-hidden', 'false')
+}
+function closeNavDrawer() {
+  if (!navDrawerOverlay) return
+  navDrawerOverlay.classList.add('hidden')
+  navDrawerOverlay.setAttribute('aria-hidden', 'true')
+}
+hamburgerBtn?.addEventListener('click', openNavDrawer)
+document.getElementById('nav-drawer-close')?.addEventListener('click', closeNavDrawer)
+navDrawerOverlay?.addEventListener('click', (ev) => {
+  if (ev.target === navDrawerOverlay) closeNavDrawer()
+})
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') closeNavDrawer()
+})
+
+function updateNavDrawerState(isSignedIn, displayName) {
+  if (navDrawerStatus) {
+    navDrawerStatus.textContent = isSignedIn ? `Signed in as ${displayName}` : 'Not signed in'
+  }
+  navMyListings?.classList.toggle('hidden', !isSignedIn)
+  navAccountSettings?.classList.toggle('hidden', !isSignedIn)
+  navLogout?.classList.toggle('hidden', !isSignedIn)
+  navSignIn?.classList.toggle('hidden', isSignedIn)
+}
+
+navBrowse?.addEventListener('click', () => {
+  closeNavDrawer()
+  document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+})
+navMyListings?.addEventListener('click', () => {
+  closeNavDrawer()
+  openMyListings()
+})
+navAccountSettings?.addEventListener('click', () => {
+  closeNavDrawer()
+  openAccountSettings()
+})
+navSignIn?.addEventListener('click', () => {
+  closeNavDrawer()
+  authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+})
+navLogout?.addEventListener('click', async () => {
+  closeNavDrawer()
+  await db.auth.signOut()
+  authMsg.textContent = 'Logged out.'
+  await handleAuthChange()
+})
+navInstall?.addEventListener('click', () => {
+  closeNavDrawer()
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt()
+    deferredInstallPrompt.userChoice.catch(() => null).then(() => { deferredInstallPrompt = null })
+  } else {
+    alert('To install: open your browser menu and choose "Add to Home screen" or "Install app".')
+  }
+})
 const cartyToggle = document.getElementById('carty-toggle')
 const cartyPanel = document.getElementById('carty-panel')
 const cartyClose = document.getElementById('carty-close')
