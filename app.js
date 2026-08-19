@@ -184,17 +184,101 @@ const accountMsg = document.getElementById('account-msg')
 const accountDelete = document.getElementById('account-delete')
 const accountCorner = document.getElementById('btn-account-corner')
 
-// Keep the account gear anchored to the viewport even on browsers with
-// unusual fixed-position behaviour during scrolling.
-if (accountCorner) {
-  const pinAccountCorner = () => {
-    accountCorner.style.position = 'fixed';
-    accountCorner.style.transform = 'translate3d(0,0,0)';
-  };
-  window.addEventListener('scroll', pinAccountCorner, { passive: true });
-  window.addEventListener('resize', pinAccountCorner);
-  pinAccountCorner();
+// Note: position:fixed!important in CSS now handles keeping the gear/hamburger
+// pinned to the viewport correctly — no JS reinforcement needed (an earlier
+// version tried to force this via JS, but that was fighting against the CSS's
+// own !important rules and was actually a no-op).
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+
+// Gear and hamburger fade out once you start scrolling, and only
+// reappear once you're back near the very top of the page.
+let scrollHideTicking = false
+function updateScrollHideState() {
+  document.body.classList.toggle('is-scrolled', window.scrollY > 24)
+  scrollHideTicking = false
 }
+window.addEventListener('scroll', () => {
+  if (scrollHideTicking) return
+  scrollHideTicking = true
+  requestAnimationFrame(updateScrollHideState)
+}, { passive: true })
+updateScrollHideState()
+
+const hamburgerBtn = document.getElementById('hamburger-btn')
+const navDrawerOverlay = document.getElementById('nav-drawer-overlay')
+const navDrawerStatus = document.getElementById('nav-drawer-status')
+const navBrowse = document.getElementById('nav-browse')
+const navMyListings = document.getElementById('nav-my-listings')
+const navAccountSettings = document.getElementById('nav-account-settings')
+const navSignIn = document.getElementById('nav-sign-in')
+const navInstall = document.getElementById('nav-install')
+const navLogout = document.getElementById('nav-logout')
+
+function openNavDrawer() {
+  if (!navDrawerOverlay) return
+  navDrawerOverlay.classList.remove('hidden')
+  navDrawerOverlay.setAttribute('aria-hidden', 'false')
+}
+function closeNavDrawer() {
+  if (!navDrawerOverlay) return
+  navDrawerOverlay.classList.add('hidden')
+  navDrawerOverlay.setAttribute('aria-hidden', 'true')
+}
+hamburgerBtn?.addEventListener('click', openNavDrawer)
+document.getElementById('nav-drawer-close')?.addEventListener('click', closeNavDrawer)
+navDrawerOverlay?.addEventListener('click', (ev) => {
+  if (ev.target === navDrawerOverlay) closeNavDrawer()
+})
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') closeNavDrawer()
+})
+
+function updateNavDrawerState(isSignedIn, displayName) {
+  if (navDrawerStatus) {
+    navDrawerStatus.textContent = isSignedIn ? `Signed in as ${displayName}` : 'Not signed in'
+  }
+  navMyListings?.classList.toggle('hidden', !isSignedIn)
+  navAccountSettings?.classList.toggle('hidden', !isSignedIn)
+  navLogout?.classList.toggle('hidden', !isSignedIn)
+  navSignIn?.classList.toggle('hidden', isSignedIn)
+}
+
+navBrowse?.addEventListener('click', () => {
+  closeNavDrawer()
+  document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+})
+navMyListings?.addEventListener('click', () => {
+  closeNavDrawer()
+  openMyListings()
+})
+navAccountSettings?.addEventListener('click', () => {
+  closeNavDrawer()
+  openAccountSettings()
+})
+navSignIn?.addEventListener('click', () => {
+  closeNavDrawer()
+  authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+})
+navLogout?.addEventListener('click', async () => {
+  closeNavDrawer()
+  await db.auth.signOut()
+  authMsg.textContent = 'Logged out.'
+  await handleAuthChange()
+})
+navInstall?.addEventListener('click', () => {
+  closeNavDrawer()
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt()
+    deferredInstallPrompt.userChoice.catch(() => null).then(() => { deferredInstallPrompt = null })
+  } else if (isIOS) {
+    alert('To install on iPhone/iPad: tap the Share button (square with an arrow) at the bottom of Safari, then choose "Add to Home Screen".\n\nNote: this only works in Safari, not Chrome, on iOS.')
+  } else if (window.matchMedia('(display-mode: standalone)').matches) {
+    alert('LinkHub is already installed.')
+  } else {
+    alert('To install: open your browser menu and look for "Add to Home screen" or "Install app". If you don\'t see it, your browser may not support installing this site yet.')
+  }
+})
 
 const createListingSection = document.getElementById('create-listing-section')
 const titleEl = document.getElementById('title')
@@ -595,12 +679,16 @@ async function handleAuthChange() {
       accountCorner.addEventListener('click', openAccountSettings)
       accountCorner.dataset.bound = '1'
     }
+    hamburgerBtn?.classList.remove('hidden')
+    updateNavDrawerState(true, displayName)
   } else {
     authArea.innerHTML = ''
     accountCorner?.classList.add('hidden')
     accountCorner?.classList.remove('auth-loading-hidden')
     authSection.style.display = ''
     createListingSection.style.display = 'none'
+    hamburgerBtn?.classList.remove('hidden')
+    updateNavDrawerState(false)
   }
   // Re-render listings so owner-only actions update visibility
   await fetchAndRenderListings()
@@ -979,6 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser && accountCorner) {
       accountCorner.classList.remove('hidden', 'auth-loading-hidden')
     }
+    hamburgerBtn?.classList.remove('hidden', 'auth-loading-hidden')
   }, 1100)
   // Ensure the listing form starts compact and toggle text is correct
   try {
