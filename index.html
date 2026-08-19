@@ -32,6 +32,28 @@
     </svg>
   </button>
 
+  <button id="hamburger-btn" class="hamburger-corner hidden" type="button" aria-label="Open menu" title="Menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div id="nav-drawer-overlay" class="nav-drawer-overlay hidden" aria-hidden="true">
+    <nav id="nav-drawer" class="nav-drawer">
+      <div class="nav-drawer-header">
+        <span class="nav-drawer-title">Menu</span>
+        <button id="nav-drawer-close" type="button" class="lightbox-close" aria-label="Close menu">&times;</button>
+      </div>
+      <div id="nav-drawer-status" class="nav-drawer-status"></div>
+      <div class="nav-drawer-links">
+        <button id="nav-browse" type="button" class="nav-drawer-link">🏷️ Browse Listings</button>
+        <button id="nav-my-listings" type="button" class="nav-drawer-link hidden">📦 My Listings</button>
+        <button id="nav-account-settings" type="button" class="nav-drawer-link hidden">⚙️ Account Settings</button>
+        <button id="nav-sign-in" type="button" class="nav-drawer-link">👋 Sign In / Sign Up</button>
+        <button id="nav-install" type="button" class="nav-drawer-link">📲 Install App</button>
+        <button id="nav-logout" type="button" class="nav-drawer-link nav-drawer-link-danger hidden">🚪 Logout</button>
+      </div>
+    </nav>
+  </div>
+
   <div id="loading-screen" class="loading-overlay" aria-live="polite">
     <div class="loading-glow loading-glow-one" aria-hidden="true"></div>
     <div class="loading-glow loading-glow-two" aria-hidden="true"></div>
