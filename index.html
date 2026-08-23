@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <style>.hidden{display:none!important}</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LinkHub</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="Logo2.png" type="image/png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="Logo2.png">
+  <meta name="theme-color" content="#007bff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <header class="site-nav">
+    <div class="nav-brand">
+      <img src="logo.svg" alt="LinkHub logo" class="brand-logo" />
+    </div>
+  </header>
+
+  <button id="nav-hamburger" class="hamburger-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20">
+      <path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </svg>
+  </button>
+
+  <div id="nav-drawer-backdrop" class="drawer-backdrop hidden" aria-hidden="true"></div>
+  <nav id="nav-drawer" class="nav-drawer" aria-hidden="true" aria-label="Main menu">
+    <div class="nav-drawer-header">
+      <span class="eyebrow">Menu</span>
+      <button id="nav-drawer-close" type="button" class="lightbox-close" aria-label="Close menu">&times;</button>
+    </div>
+    <div id="nav-drawer-user" class="nav-drawer-user"></div>
+    <div id="nav-drawer-menu" class="nav-drawer-menu"></div>
+  </nav>
+
+  <section class="hero" id="hero">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="hero-eyebrow">Local classifieds<span class="hero-eyebrow-count" id="hero-listing-count"></span></span>
+        <h1 class="hero-title">Turn what you don’t need<br>into <em>cash</em>.</h1>
+        <p class="hero-sub">Post it up, chat on WhatsApp or Telegram, get paid by someone nearby. No fees, no middleman.</p>
+        <div class="hero-actions">
+          <button id="hero-cta-sell" type="button" class="hero-btn hero-btn-primary">Post a listing</button>
+          <button id="hero-cta-browse" type="button" class="hero-btn hero-btn-ghost">Browse Listings</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="loading-screen" class="loading-overlay" aria-live="polite">
+    <div class="loading-glow loading-glow-one" aria-hidden="true"></div>
+    <div class="loading-glow loading-glow-two" aria-hidden="true"></div>
+    <div class="loading-inner">
+      <div class="loading-logo-wrap">
+        <span class="loading-ring loading-ring-one" aria-hidden="true"></span>
+        <span class="loading-ring loading-ring-two" aria-hidden="true"></span>
+        <img src="logo.svg" alt="LinkHub" class="loading-logo" />
+      </div>
+      <div class="loading-heading">
+        <p class="loading-copy">Don’t need it? Sell it. Make some money.</p>
+      </div>
+      <div class="loading-progress" aria-hidden="true">
+        <span class="loading-progress-bar"></span>
+      </div>
+      <p class="loading-status">Loading marketplace<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></p>
+    </div>
+  </div>
+
+  <main class="container">
+    <section id="auth-section" class="card">
+      <h2>Sign up / Sign in</h2>
+      <form id="auth-form">
+        <input id="name" type="text" placeholder="Full name" autocomplete="name" />
+        <input id="email" type="email" placeholder="Email" required />
+        <div class="password-field">
+          <input id="password" type="password" placeholder="Password" required />
+          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+              <g class="eye">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+              </g>
+              <g class="eye-off">
+                <path d="M2.5 12s3.5-6.5 9.5-6.5c2.2 0 4.2.8 5.8 2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M21.5 12s-3.5 6.5-9.5 6.5c-2.2 0-4.2-.8-5.8-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </g>
+            </svg>
+          </button>
+        </div>
+        <div class="row">
+          <button id="btn-signup" type="button">Sign up</button>
+          <button id="btn-login" type="button">Log in</button>
+        </div>
+        <div id="auth-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="create-listing-section" class="card" style="display:none;">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
+          <h2 id="create-form-heading">Create a Listing</h2>
+        </div>
+        <div id="edit-mode-badge" class="edit-mode-badge" style="display:none">Editing listing</div>
+      </div>
+      <form id="listing-form" class="form-grid">
+        <div class="form-compact-header">
+          <div>
+            <label style="display:block;margin-bottom:6px">Title
+              <input id="title" placeholder="Product name or offer" required />
+            </label>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px">Price
+              <input id="price" placeholder="Enter a price or offer" />
+              <select id="price-currency" style="margin-left:8px;min-width:120px">
+                <option value="ZAR">ZAR - Rand (R)</option>
+                <option value="USD">USD - Dollar ($)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="form-compact-header">
+          <div>
+            <label style="display:block;margin-bottom:6px">Delivery / Pickup
+              <select id="delivery-type">
+                <option value="">Choose delivery option</option>
+                <option value="Delivery">Delivery</option>
+                <option value="Pickup">Pickup</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px">Condition
+              <input id="url" placeholder="Condition example: New, Used, Good" />
+            </label>
+          </div>
+        </div>
+        <div class="form-actions-row">
+          <button id="toggle-more" type="button" class="muted-btn">More options</button>
+        </div>
+
+        <div class="advanced-fields">
+          <label>
+            Payment type
+            <select id="payment-type">
+              <option value="">Choose payment option</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+            </select>
+          </label>
+          <label>
+            Category
+            <input id="category" placeholder="e.g. Phones, Furniture, Gaming" required />
+          </label>
+          <label>
+            Contact method
+            <select id="contact-method">
+              <option value="">Choose how buyers can reach you</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Telegram">Telegram</option>
+              <option value="Email">Email</option>
+              <option value="Phone">Phone</option>
+              <option value="Direct Message">Direct Message</option>
+            </select>
+          </label>
+          <label>
+            Contact details
+            <input id="contact-details" placeholder="e.g. 06 1234 5678 or +27 6 1234 5678" />
+          </label>
+          <label>
+            Location / City
+            <input id="location" placeholder="e.g. Johannesburg, Pretoria" autocomplete="address-level2" />
+          </label>
+          <label class="full-width">
+            Description
+            <textarea id="description" placeholder="Describe the item, condition, or benefits"></textarea>
+          </label>
+          <label class="full-width">
+            Photos (optional, up to 3)
+            <input id="image" type="file" accept="image/*" multiple />
+            <small class="field-help">Add up to 3 pictures.</small>
+          </label>
+        </div>
+        <div class="form-actions-row">
+          <label class="agree-terms-row">
+            <input id="agree-terms" type="checkbox" />
+            <span>I agree to the <button type="button" id="open-terms-link" class="link-btn">Terms &amp; Conditions</button></span>
+          </label>
+        </div>
+        <div class="form-actions-row">
+          <button id="create-listing" type="button">Create Listing</button>
+          <button id="cancel-edit" type="button" style="display:none;background:#444;color:#fff;border:1px solid rgba(255,255,255,0.06);">Cancel</button>
+        </div>
+        <div id="listing-msg" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="feed" class="card">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">Marketplace Listings</span>
+        </div>
+        <div class="feed-controls">
+          <input id="search-input" type="search" placeholder="Search listings..." aria-label="Search listings" />
+          <select id="sort-select" aria-label="Sort listings">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+          </select>
+          <div id="list-count" class="muted"></div>
+        </div>
+      </div>
+      <div id="category-chips" class="category-chips"></div>
+      <div id="listings" class="listing-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <button type="button" id="footer-terms-link" class="link-btn">Terms &amp; Conditions</button>
+    <span class="footer-dot">·</span>
+    <span>© <span id="footer-year"></span> LinkHub</span>
+  </footer>
+
+  <!-- Account settings -->
+  <div id="account-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel account-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Your Account</span>
+          <h2>Account Settings</h2>
+        </div>
+        <button id="account-close" type="button" class="lightbox-close" aria-label="Close account settings">&times;</button>
+      </div>
+      <form id="account-form" class="account-form">
+        <div class="theme-toggle-row">
+          <span>Appearance</span>
+          <button id="theme-toggle-btn" type="button" class="theme-toggle-btn">
+            <svg class="icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="15" height="15">
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z" fill="currentColor" />
+            </svg>
+            <svg class="icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="15" height="15">
+              <circle cx="12" cy="12" r="4.3" fill="currentColor" />
+              <path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+            <span class="theme-toggle-label">Dark</span>
+          </button>
+        </div>
+
+        <div id="account-admin-section" class="account-admin-section hidden">
+          <div class="account-divider"></div>
+          <div class="theme-toggle-row">
+            <div>
+              <strong>Owner tools</strong>
+              <div class="muted" style="margin-top:4px;">Manage reports submitted by marketplace users.</div>
+            </div>
+            <button id="account-admin-reports" type="button" class="theme-toggle-btn">View Reports</button>
+          </div>
+        </div>
+
+        <div class="account-divider"></div>
+        <label>Full name
+          <input id="account-name" type="text" autocomplete="name" placeholder="Your name" required />
+        </label>
+        <label>Email address
+          <input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+        </label>
+        <div class="account-divider"></div>
+        <h3>Change password</h3>
+        <p class="muted">Leave these fields empty if you do not want to change your password.</p>
+        <label>New password
+          <input id="account-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" />
+        </label>
+        <label>Confirm new password
+          <input id="account-password-confirm" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="6" />
+        </label>
+        <div class="account-actions">
+          <button id="account-save" type="submit">Save Changes</button>
+          <button id="account-cancel" type="button" class="muted-btn">Cancel</button>
+        </div>
+        <div id="account-msg" class="muted"></div>
+      </form>
+      <div class="account-danger">
+        <h3>Delete account</h3>
+        <p>Deleting your account removes your account and your marketplace listings. This cannot be undone.</p>
+        <button id="account-delete" type="button" class="account-delete-btn">Delete My Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Store: a standalone place to open/manage your own marketplace stand,
+       reachable from the "My Store" button — not buried in Account Settings. -->
+  <div id="store-manage-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel account-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Your Marketplace</span>
+          <h2 id="store-manage-heading">My Store</h2>
+        </div>
+        <button id="store-manage-close" type="button" class="lightbox-close" aria-label="Close store manager">&times;</button>
+      </div>
+      <form id="store-manage-form" class="account-form">
+        <p id="store-manage-intro" class="muted">Open your own store inside LinkHub — a page with your name, a short bio, a banner, and all your listings in one place you can share.</p>
+        <label>Store name
+          <input id="store-manage-name" type="text" placeholder="e.g. Golden's Electronics" maxlength="60" required />
+        </label>
+        <label>Bio <span class="muted">(optional)</span>
+          <textarea id="store-manage-bio" maxlength="200" placeholder="A short line about what you sell"></textarea>
+        </label>
+        <label>Banner image <span class="muted">(optional)</span>
+          <input id="store-manage-banner" type="file" accept="image/*" />
+          <img id="store-manage-banner-preview" class="store-banner hidden" alt="Current banner" />
+          <small class="field-help">Shown at the top of your store page.</small>
+        </label>
+        <div class="account-actions">
+          <button id="store-manage-save" type="submit">Save Store</button>
+          <button id="store-manage-view" type="button" class="muted-btn">View My Store</button>
+        </div>
+        <div id="store-manage-msg" class="muted"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Terms & Conditions -->
+  <div id="terms-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Legal</span>
+          <h2>Terms &amp; Conditions</h2>
+        </div>
+        <button id="terms-close" type="button" class="lightbox-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="terms-body">
+        <p>LinkHub is a free platform connecting local buyers and sellers. By posting or browsing here, you agree to the following:</p>
+        <h3>1. You're dealing directly with each other</h3>
+        <p>LinkHub does not buy, sell, inspect, or take ownership of anything listed. Every transaction — payment, delivery, condition, price — is agreed directly between the buyer and seller. We're the platform, not the shop.</p>
+        <h3>2. Be honest</h3>
+        <p>Listings must be accurate: real photos, a fair description, and a price you'll actually honour. Don't list anything illegal, stolen, counterfeit, or unsafe.</p>
+        <h3>3. Meet safely</h3>
+        <p>Prefer public places for handovers, verify items before paying, and trust your judgement. LinkHub can't guarantee the identity or intentions of anyone you contact here.</p>
+        <h3>4. We can remove content</h3>
+        <p>Listings that are reported, inactive past our automatic limits, or break these terms may be removed without notice. Accounts that repeatedly cause problems may be suspended.</p>
+        <h3>5. No warranty</h3>
+        <p>LinkHub is provided as-is. We do our best to keep it running smoothly but can't promise it will always be available or error-free.</p>
+        <p class="muted">Questions? Reach out to the site owner via the contact details on any of their listings.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="image-lightbox" class="lightbox-overlay hidden" aria-hidden="true">
+    <button id="lightbox-close" type="button" class="lightbox-close" aria-label="Close preview">&times;</button>
+    <img id="lightbox-img" class="lightbox-img" src="" alt="Full size preview" />
+  </div>
+
+  <!-- My Listings: a dedicated view of only the signed-in user's own posts -->
+  <div id="my-listings-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Your Posts</span>
+          <h2>My Listings</h2>
+        </div>
+        <button id="my-listings-close" type="button" class="lightbox-close" aria-label="Close My Listings">&times;</button>
+      </div>
+      <div id="my-listings-count" class="muted"></div>
+      <div id="my-listings-grid" class="listing-grid"></div>
+    </div>
+  </div>
+
+  <!-- Store: a public view of one seller's listings, reachable via "Visit Store" or ?store=<id> -->
+  <div id="store-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Seller Marketplace</span>
+          <h2 id="store-name">Store</h2>
+        </div>
+        <button id="store-close" type="button" class="lightbox-close" aria-label="Close store">&times;</button>
+      </div>
+      <img id="store-banner" class="store-banner hidden" alt="" />
+      <p id="store-bio" class="muted store-bio"></p>
+      <div id="store-count" class="muted"></div>
+      <div id="store-grid" class="listing-grid"></div>
+    </div>
+  </div>
+
+  <!-- Admin: reported listings review (only visible to the site owner via RLS) -->
+  <div id="admin-overlay" class="app-overlay hidden" aria-hidden="true">
+    <div class="app-overlay-panel">
+      <div class="overlay-header">
+        <div>
+          <span class="eyebrow">Owner only</span>
+          <h2>Reported Listings</h2>
+        </div>
+        <button id="admin-close" type="button" class="lightbox-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="admin-reports-list" class="muted">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Carty: AI shopping assistant -->
+  <button id="carty-toggle" class="carty-fab" type="button" aria-label="Open Carty, AI shopping assistant">
+    <svg class="icon carty-fab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="26" height="26">
+      <path d="M2.5 3h2l.7 3M4.7 6l1.8 9.3a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.58-1.34L19.5 8H5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="9.5" cy="20.5" r="1.35" fill="currentColor" />
+      <circle cx="17" cy="20.5" r="1.35" fill="currentColor" />
+    </svg>
+  </button>
+
+  <div id="carty-panel" class="carty-panel hidden" aria-hidden="true">
+    <div class="carty-header">
+      <span class="carty-avatar">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20">
+          <path d="M2.5 3h2l.7 3M4.7 6l1.8 9.3a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.58-1.34L19.5 8H5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="9.5" cy="20.5" r="1.35" fill="currentColor" />
+          <circle cx="17" cy="20.5" r="1.35" fill="currentColor" />
+        </svg>
+      </span>
+      <div class="carty-header-text">
+        <div class="carty-name">Carty</div>
+        <div class="carty-sub">AI shopping assistant</div>
+      </div>
+      <button id="carty-voice-toggle" type="button" class="carty-close" aria-label="Toggle spoken replies" title="Toggle spoken replies">
+        <svg class="icon voice-on" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="17" height="17">
+          <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
+          <path d="M16 8.5a5 5 0 0 1 0 7M18.7 5.8a9 9 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+        <svg class="icon voice-off" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="17" height="17">
+          <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
+          <path d="M15.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button id="carty-close" type="button" class="carty-close" aria-label="Close Carty">&times;</button>
+    </div>
+    <div class="carty-body">
+      <div id="carty-message" class="carty-bubble">Hey! 👋 I’m Carty 🛒 Here to help! What are you looking for? 😊</div>
+    </div>
+    <form id="carty-form" class="carty-form">
+      <input id="carty-input" type="text" placeholder="e.g. cheap phone under 200, good condition" autocomplete="off" />
+      <button id="carty-mic" type="button" class="carty-mic hidden" aria-label="Speak to Carty" title="Speak to Carty">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="17" height="17">
+          <rect x="9" y="2.5" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21m-3.5 0h7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <button type="submit" class="carty-send" aria-label="Send to Carty">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+          <path d="M3.5 12L20 4l-6 16-3.2-6.8L3.5 12z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <script type="module" src="app.js?v=20260814-gear-center-fix"></script>
+</body>
+</html>
