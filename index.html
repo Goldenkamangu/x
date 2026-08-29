@@ -88,6 +88,17 @@
     </div>
   </div>
 
+  <section id="business-explore" class="card business-explore-section">
+    <div class="section-header">
+      <div class="business-explore-heading">
+        <span class="eyebrow">Discover</span>
+        <h2><svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20"><path d="M3.5 9 5 4.5h14L20.5 9M3.5 9v10.5h17V9M3.5 9a2.6 2.6 0 0 0 5 1.1A2.6 2.6 0 0 0 13.5 10a2.6 2.6 0 0 0 5 0A2.6 2.6 0 0 0 20.5 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 19.5V14h6v5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Explore businesses</h2>
+        <p class="muted">Discover businesses on LinkHub and browse what they have for sale.</p>
+      </div>
+    </div>
+    <div id="business-explore-grid" class="business-explore-grid"></div>
+  </section>
+
   <main class="container">
     <section id="auth-section" class="card">
       <h2>Sign up / Sign in</h2>
@@ -246,6 +257,27 @@
       </div>
       <div id="category-chips" class="category-chips"></div>
       <div id="listings" class="listing-grid"></div>
+    </section>
+
+    <section id="recently-viewed-section" class="card nice-to-have-section hidden">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">Your activity</span>
+          <h2><svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5v5l3.3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Recently viewed</h2>
+        </div>
+        <button id="clear-recently-viewed" type="button" class="muted-btn">Clear</button>
+      </div>
+      <div id="recently-viewed-list" class="mini-listing-grid"></div>
+    </section>
+
+    <section id="similar-listings-section" class="card nice-to-have-section hidden">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">Keep browsing</span>
+          <h2><svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20"><path d="m12 3 2.3 5.1 5.5.5-4.1 3.6 1.2 5.3-4.9-2.8-4.9 2.8 1.2-5.3-4.1-3.6 5.5-.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> You might also like</h2>
+        </div>
+      </div>
+      <div id="similar-listings-list" class="mini-listing-grid"></div>
     </section>
   </main>
 
