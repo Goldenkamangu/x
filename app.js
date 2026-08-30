@@ -169,6 +169,7 @@ const ICON_STAR_FILLED = '<svg class="icon icon-star" viewBox="0 0 24 24" aria-h
 const ICON_STAR_OUTLINE = '<svg class="icon icon-star" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="15" height="15"><path d="M12 2.5l2.9 6.1 6.6.7-4.9 4.6 1.3 6.6L12 17l-5.9 3.5 1.3-6.6-4.9-4.6 6.6-.7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" /></svg>'
 const ICON_SHIELD = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M12 2.5l7.5 3v5.4c0 5-3.2 8.6-7.5 10.6-4.3-2-7.5-5.6-7.5-10.6V5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>'
 const ICON_STORE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M3.5 9l1.2-4.5h14.6L20.5 9M3.5 9v10.5h17V9M3.5 9a2.6 2.6 0 0 0 5 1.1A2.6 2.6 0 0 0 13.5 10a2.6 2.6 0 0 0 5 0A2.6 2.6 0 0 0 20.5 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M9.5 19.5V14h5v5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>'
+const ICON_CARTY_AI = '<svg class="icon carty-ai-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false" width="26" height="26"><path d="M5 6h3l1.7 11.1a2.5 2.5 0 0 0 2.5 2.1h8.1a2.5 2.5 0 0 0 2.4-1.9L25 11H9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="24.3" r="1.8" fill="currentColor"/><circle cx="22.4" cy="24.3" r="1.8" fill="currentColor"/><path d="M24 3.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9zM29 9.2l.45 1.15 1.15.45-1.15.45-.45 1.15-.45-1.15-1.15-.45 1.15-.45z" fill="currentColor"/></svg>'
 const ICON_CART = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16"><path d="M3 4h2l1.7 10.2a2 2 0 0 0 2 1.8h7.7a2 2 0 0 0 2-1.7L20 7H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.1" fill="currentColor"/><circle cx="18" cy="20" r="1.1" fill="currentColor"/></svg>'
 
 // Elements
@@ -227,8 +228,11 @@ const navDrawerBackdrop = document.getElementById('nav-drawer-backdrop')
 const navDrawerClose = document.getElementById('nav-drawer-close')
 const navDrawerUser = document.getElementById('nav-drawer-user')
 const navDrawerMenu = document.getElementById('nav-drawer-menu')
+let navScrollTimer = null
 
 function openDrawer() {
+  document.querySelector('.mobile-bottom-nav')?.classList.remove('nav-hidden')
+  clearTimeout(navScrollTimer)
   if (!navDrawer) return
   navDrawer.classList.add('open')
   navDrawer.setAttribute('aria-hidden', 'false')
@@ -239,6 +243,7 @@ function openDrawer() {
   document.documentElement.classList.add('lightbox-open')
 }
 function closeDrawer() {
+  document.querySelector('.mobile-bottom-nav')?.classList.remove('nav-hidden')
   if (!navDrawer) return
   navDrawer.classList.remove('open')
   navDrawer.setAttribute('aria-hidden', 'true')
@@ -248,7 +253,10 @@ function closeDrawer() {
   navHamburger?.classList.remove('drawer-is-open')
   document.documentElement.classList.remove('lightbox-open')
 }
-navHamburger?.addEventListener('click', openDrawer)
+navHamburger?.addEventListener('click', () => {
+  if (navDrawer?.classList.contains('open')) closeDrawer()
+  else openDrawer()
+})
 navDrawerClose?.addEventListener('click', closeDrawer)
 navDrawerBackdrop?.addEventListener('click', closeDrawer)
 
@@ -258,10 +266,6 @@ const ICON_DOC = '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" a
 const ICON_LOGOUT = '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M9 4.5H6a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 6 19.5h3M15.5 16l4-4-4-4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>'
 const ICON_SIGNIN = '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M15 19.5h3A1.5 1.5 0 0 0 19.5 18V6A1.5 1.5 0 0 0 18 4.5h-3M8.5 16l-4-4 4-4M5 12h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>'
 const ICON_INSTALL = '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7.5 10.5 12 15l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
-const ICON_PHONE_SMALL = '<svg class="icon business-info-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false"><path d="M7.2 3.5 9.8 3l1.8 4.6-2.1 1.7a14.2 14.2 0 0 0 5.2 5.2l1.7-2.1L21 14.2l-.5 2.6a2 2 0 0 1-2.2 1.5C10.4 17.2 6.8 13.6 5.7 5.7A2 2 0 0 1 7.2 3.5Z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-const ICON_LOCATION_SMALL = '<svg class="icon business-info-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false"><path d="M12 21s6.2-6.2 6.2-11A6.2 6.2 0 0 0 5.8 10c0 4.8 6.2 11 6.2 11Z" fill="none" stroke="currentColor" stroke-width="1.45"/><circle cx="12" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.45"/></svg>'
-const ICON_CLOCK_SMALL = '<svg class="icon business-info-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.45"/><path d="M12 7.5v4.9l3.1 1.9" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-const ICON_DELIVERY_SMALL = '<svg class="icon business-info-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false"><path d="M3.5 6.5h10v9h-10zM13.5 9h3.3l3.7 3.4v3.1h-7z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="7.2" cy="17.3" r="1.8" fill="none" stroke="currentColor" stroke-width="1.45"/><circle cx="17.2" cy="17.3" r="1.8" fill="none" stroke="currentColor" stroke-width="1.45"/></svg>'
 
 function drawerItem({ icon, label, danger }) {
   return `<button type="button" class="drawer-item${danger ? ' danger' : ''}" data-drawer-action="${label}">${icon}<span>${label}</span></button>`
@@ -342,6 +346,87 @@ function buildDrawerMenu() {
 }
 
 const desktopNav = document.getElementById('desktop-nav')
+const mobileBottomNav = document.getElementById('mobile-bottom-nav')
+
+// Mobile bottom navigation: keep it visible while the user is at rest,
+// hide it while scrolling down to give the content more room, and bring it
+// back when scrolling up. It also stays hidden while Carty/overlays are open.
+if (mobileBottomNav) {
+  let lastScrollY = Math.max(0, window.scrollY || 0)
+  let scrollTimer = null
+
+  const isBlockingOverlayOpen = () => {
+    const cartyOpen = !document.getElementById('carty-panel')?.classList.contains('hidden')
+    const lightboxOpen = document.documentElement.classList.contains('lightbox-open')
+    return cartyOpen || lightboxOpen
+  }
+
+  const updateMobileNavVisibility = () => {
+    const y = Math.max(0, window.scrollY || 0)
+    const delta = y - lastScrollY
+
+    if (isBlockingOverlayOpen()) {
+      mobileBottomNav.classList.add('nav-hidden')
+    } else if (delta > 8 && y > 80) {
+      mobileBottomNav.classList.add('nav-hidden')
+    } else if (delta < -8 || y <= 80) {
+      mobileBottomNav.classList.remove('nav-hidden')
+    }
+
+    lastScrollY = y
+    clearTimeout(scrollTimer)
+    scrollTimer = window.setTimeout(() => {
+      if (!isBlockingOverlayOpen()) mobileBottomNav.classList.remove('nav-hidden')
+    }, 900)
+  }
+
+  window.addEventListener('scroll', updateMobileNavVisibility, { passive: true })
+  window.addEventListener('resize', updateMobileNavVisibility, { passive: true })
+}
+
+function setMobileNavActive(name) {
+  mobileBottomNav?.querySelectorAll('.mobile-nav-item').forEach((button) => {
+    const active = button.dataset.mobileNav === name
+    button.classList.toggle('is-active', active)
+    if (active) button.setAttribute('aria-current', 'page')
+    else button.removeAttribute('aria-current')
+  })
+}
+
+mobileBottomNav?.addEventListener('click', (event) => {
+  const button = event.target.closest('.mobile-nav-item')
+  if (!button) return
+  const action = button.dataset.mobileNav
+
+  // The drawer must never remain over the destination the user just selected.
+  // Any bottom-nav action other than Menu closes the drawer first.
+  if (action !== 'menu' && navDrawer?.classList.contains('open')) {
+    closeDrawer()
+  }
+
+  setMobileNavActive(action)
+
+  if (action === 'browse') {
+    requestAnimationFrame(() => {
+      document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  } else if (action === 'sell') {
+    requestAnimationFrame(() => {
+      if (currentUser && createListingSection) {
+        createListingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        setTimeout(() => focusListingField(titleEl), 350)
+      } else {
+        authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  } else if (action === 'cart') {
+    // Let the drawer's closing transition begin before opening the cart overlay.
+    requestAnimationFrame(() => openCart())
+  } else if (action === 'menu') {
+    if (navDrawer?.classList.contains('open')) closeDrawer()
+    else openDrawer()
+  }
+})
 
 function desktopButton(label, action, primary = false, danger = false) {
   const button = document.createElement('button')
@@ -358,32 +443,78 @@ function desktopButtonWithIcon(label, icon, action, primary = false, danger = fa
   return button
 }
 
+function isInAppBrowser() {
+  // WhatsApp/Facebook/Instagram/Messenger/Twitter open links in an embedded
+  // webview with no browser chrome. That lack of chrome can make
+  // `display-mode: standalone` report true even though nothing is installed,
+  // and these webviews can't install PWAs at all — the user has to leave
+  // them and open the page in a real browser first.
+  const ua = navigator.userAgent || ''
+  return /FBAN|FBAV|FB_IAB|Instagram|Messenger|WhatsApp|Line\/|Twitter/i.test(ua)
+}
+
 function promptInstall() {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt()
-    deferredInstallPrompt.userChoice?.catch(() => null).finally(() => { deferredInstallPrompt = null })
+  if (isInAppBrowser()) {
+    showInstallInstructions?.(true)
     return
   }
-  // On iOS and browsers without the install prompt API, keep this user-invoked action quiet.
+
+  // If LinkHub is already running as an installed PWA, don't show an install prompt.
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true
+  if (standalone) {
+    showUxToast?.('LinkHub is already installed.')
+    return
+  }
+
+  if (deferredInstallPrompt) {
+    try {
+      const promptEvent = deferredInstallPrompt
+      deferredInstallPrompt = null
+      Promise.resolve(promptEvent.prompt()).catch(() => {})
+      Promise.resolve(promptEvent.userChoice).catch(() => null)
+        .finally(() => dismissInstallBanner())
+      return
+    } catch (err) {
+      console.warn('Native install prompt failed:', err)
+      deferredInstallPrompt = null
+    }
+  }
+
+  // Some mobile browsers (including iOS Safari) do not expose
+  // beforeinstallprompt. Give the user useful, user-invoked instructions instead
+  // of making the Install button appear to do nothing.
   showInstallInstructions?.()
 }
 
-function showInstallInstructions() {
+function showInstallInstructions(inApp = false) {
   // No automatic popup: only a small, user-triggered notice when installation instructions are actually needed.
   const existing = document.getElementById('install-help')
-  if (existing) return
+  if (existing) existing.remove()
   const box = document.createElement('div')
   box.id = 'install-help'
   box.className = 'install-help'
-  box.innerHTML = '<span>Use your browser menu and choose <strong>Install LinkHub</strong> or <strong>Add to Home Screen</strong>.</span><button type="button" aria-label="Close">&times;</button>'
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isAndroid = /android/i.test(navigator.userAgent)
+  const instruction = inApp
+    ? (isIOS
+        ? 'This link opened inside another app. Tap <strong>···</strong> or the share icon and choose <strong>Open in Safari</strong>, then use Share → <strong>Add to Home Screen</strong>.'
+        : 'This link opened inside another app. Tap <strong>⋮</strong> and choose <strong>Open in Chrome</strong> (or your browser), then use the browser menu to install.')
+    : isIOS
+      ? 'Use Safari’s Share button, then choose <strong>Add to Home Screen</strong>.'
+      : isAndroid
+        ? 'Use your browser menu, then choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.'
+        : 'Use your browser menu and choose <strong>Install LinkHub</strong> or <strong>Add to Home Screen</strong>.'
+  box.innerHTML = `<span>${instruction}</span><button type="button" aria-label="Close">&times;</button>`
   document.body.appendChild(box)
   box.querySelector('button')?.addEventListener('click', () => box.remove())
-  setTimeout(() => box.remove(), 6500)
+  setTimeout(() => box.remove(), inApp ? 9000 : 6500)
 }
 
 function updateCartCounts() {
   const count = cartIds.size
   document.querySelectorAll('[data-cart-count]').forEach(el => { el.textContent = count ? `(${count})` : '' })
+  document.querySelectorAll('[data-mobile-cart-count]').forEach(el => { el.textContent = count ? String(count) : '' })
 }
 
 function buildDesktopNav() {
@@ -466,26 +597,15 @@ const cancelEditBtn = document.getElementById('cancel-edit')
 const listingMsg = document.getElementById('listing-msg')
 const listCount = document.getElementById('list-count')
 const listingsContainer = document.getElementById('listings')
-const businessExploreSection = document.getElementById('business-explore')
-const businessExploreGrid = document.getElementById('business-explore-grid')
-const recentlyViewedSection = document.getElementById('recently-viewed-section')
-const recentlyViewedList = document.getElementById('recently-viewed-list')
-const clearRecentlyViewedBtn = document.getElementById('clear-recently-viewed')
-const similarListingsSection = document.getElementById('similar-listings-section')
-const similarListingsList = document.getElementById('similar-listings-list')
-const RECENTLY_VIEWED_KEY = 'linkhub-recently-viewed-v1'
-const RECENTLY_VIEWED_LIMIT = 8
-const CART_STORAGE_KEY = 'linkhub-cart-v1'
-const PERSONAL_SYNC = { cart: false, recent: false }
-let recentlyViewedIds = loadStoredJSON(RECENTLY_VIEWED_KEY, []).map(String).slice(0, RECENTLY_VIEWED_LIMIT)
-let cartIds = new Set(loadStoredJSON(CART_STORAGE_KEY, []).map(String))
 const searchEl = document.getElementById('search-input')
 const categoryChipsEl = document.getElementById('category-chips')
 let currentListings = []
 let currentUser = null
 let editingId = null
 let activeCategory = ''
-let sortMode = 'all'
+let sortMode = 'newest'
+const CART_STORAGE_KEY = 'linkhub-cart-v1'
+let cartIds = new Set(loadStoredJSON(CART_STORAGE_KEY, []).map(String))
 const cartOverlay = document.getElementById('cart-overlay')
 const cartClose = document.getElementById('cart-close')
 const cartItemsEl = document.getElementById('cart-items')
@@ -495,83 +615,8 @@ const cartClear = document.getElementById('cart-clear')
 const uxToast = document.getElementById('ux-toast')
 let uxToastTimer = null
 
-function getUserScopedKey(baseKey) {
-  return currentUser?.id ? `${baseKey}:user:${currentUser.id}` : baseKey
-}
-
 function persistCart() {
-  const ids = [...cartIds].map(String)
-  // Keep a local cache as an offline/guest fallback, and a user-scoped cache
-  // so signing out does not mix one account's cart with another's.
-  saveStoredJSON(getUserScopedKey(CART_STORAGE_KEY), ids)
-  void syncCartToAccount()
-}
-
-async function syncCartToAccount() {
-  if (!useSupabase || !currentUser || PERSONAL_SYNC.cart) return
-  const ids = [...cartIds].map(Number).filter(Number.isSafeInteger)
-  try {
-    const { data: existing, error: readErr } = await db
-      .from('user_cart')
-      .select('listing_id')
-      .eq('user_id', currentUser.id)
-    if (readErr) throw readErr
-
-    const accountIds = (existing || []).map(r => String(r.listing_id))
-    const merged = [...new Set([...accountIds, ...ids.map(String)])]
-    if (ids.length) {
-      const rows = ids.map(listing_id => ({ user_id: currentUser.id, listing_id }))
-      const { error: upsertErr } = await db.from('user_cart').upsert(rows, { onConflict: 'user_id,listing_id' })
-      if (upsertErr) throw upsertErr
-    }
-    cartIds = new Set(merged)
-    saveStoredJSON(getUserScopedKey(CART_STORAGE_KEY), [...cartIds])
-    PERSONAL_SYNC.cart = true
-  } catch (e) {
-    console.warn('Account cart sync unavailable; keeping local cart.', e)
-  }
-}
-
-async function loadAccountCart() {
-  if (!useSupabase || !currentUser) return
-  try {
-    const { data, error } = await db
-      .from('user_cart')
-      .select('listing_id')
-      .eq('user_id', currentUser.id)
-    if (error) throw error
-    const serverIds = (data || []).map(r => String(r.listing_id))
-    const localIds = loadStoredJSON(getUserScopedKey(CART_STORAGE_KEY), []).map(String)
-    const guestIds = loadStoredJSON(CART_STORAGE_KEY, []).map(String)
-    const merged = [...new Set([...serverIds, ...localIds, ...guestIds])]
-    cartIds = new Set(merged)
-    saveStoredJSON(getUserScopedKey(CART_STORAGE_KEY), merged)
-    if (merged.length) {
-      const rows = merged.map(id => Number(id)).filter(Number.isSafeInteger).map(listing_id => ({ user_id: currentUser.id, listing_id }))
-      if (rows.length) await db.from('user_cart').upsert(rows, { onConflict: 'user_id,listing_id' })
-    }
-    PERSONAL_SYNC.cart = true
-    updateCartCounts()
-  } catch (e) {
-    console.warn('Could not load account cart; using local cache.', e)
-  }
-}
-
-async function deleteCartItemFromAccount(id) {
-  if (!useSupabase || !currentUser) return
-  const numericId = Number(id)
-  if (!Number.isSafeInteger(numericId)) return
-  try {
-    await db.from('user_cart').delete().eq('user_id', currentUser.id).eq('listing_id', numericId)
-  } catch (e) {
-    console.warn('Could not remove cart item from account.', e)
-  }
-}
-
-async function clearAccountCart() {
-  if (!useSupabase || !currentUser) return
-  try { await db.from('user_cart').delete().eq('user_id', currentUser.id) }
-  catch (e) { console.warn('Could not clear account cart.', e) }
+  saveStoredJSON(CART_STORAGE_KEY, [...cartIds])
 }
 function showUxToast(message, tone = 'default') {
   if (!uxToast) return
@@ -598,7 +643,6 @@ function addToCart(id) {
 function removeFromCart(id, rerender = true) {
   cartIds.delete(String(id))
   persistCart()
-  void deleteCartItemFromAccount(id)
   if (rerender) { renderCart(); updateCartCounts(); renderFilteredListings() }
 }
 function openCart() {
@@ -643,14 +687,7 @@ function renderCart() {
 }
 cartClose?.addEventListener('click', closeCart)
 cartOverlay?.addEventListener('click', ev => { if (ev.target === cartOverlay) closeCart() })
-cartClear?.addEventListener('click', () => {
-  cartIds.clear();
-  persistCart();
-  void clearAccountCart();
-  renderCart();
-  renderFilteredListings();
-  showUxToast('Cart cleared.')
-})
+cartClear?.addEventListener('click', () => { cartIds.clear(); persistCart(); renderCart(); renderFilteredListings(); showUxToast('Cart cleared.') })
 cartItemsEl?.addEventListener('click', ev => {
   const browse = ev.target.closest('.cart-browse-btn')
   if (browse) { closeCart(); document.getElementById('feed')?.scrollIntoView({behavior:'smooth', block:'start'}); return }
@@ -672,9 +709,7 @@ searchEl?.addEventListener('input', () => { visibleCount = PAGE_SIZE })
 function sortListings(items) {
   const withNum = (item) => { const n = Number(item.price); return Number.isFinite(n) ? n : null }
   const arr = [...items]
-  if (sortMode === 'all') {
-    return arr
-  } else if (sortMode === 'price-low') {
+  if (sortMode === 'price-low') {
     arr.sort((a, b) => { const pa = withNum(a), pb = withNum(b); if (pa == null) return 1; if (pb == null) return -1; return pa - pb })
   } else if (sortMode === 'price-high') {
     arr.sort((a, b) => { const pa = withNum(a), pb = withNum(b); if (pa == null) return 1; if (pb == null) return -1; return pb - pa })
@@ -996,10 +1031,6 @@ async function deleteAccount() {
       if (result.error) throw result.error
     }
 
-    try { localStorage.removeItem(getUserScopedKey(CART_STORAGE_KEY)) } catch {}
-    try { localStorage.removeItem(getUserScopedKey(RECENTLY_VIEWED_KEY)) } catch {}
-    cartIds.clear()
-    recentlyViewedIds = []
     await db.auth.signOut()
     closeAccountSettings()
     authMsg.textContent = 'Your account has been deleted.'
@@ -1026,16 +1057,6 @@ async function handleAuthChange() {
   const { data } = await db.auth.getUser()
   const user = data.user
   currentUser = user
-  PERSONAL_SYNC.cart = false
-  PERSONAL_SYNC.recent = false
-  if (user) {
-    cartIds = new Set(loadStoredJSON(getUserScopedKey(CART_STORAGE_KEY), []).map(String))
-    recentlyViewedIds = loadStoredJSON(getRecentStorageKey(), []).map(String).slice(0, RECENTLY_VIEWED_LIMIT)
-    await Promise.all([loadAccountCart(), loadAccountRecentlyViewed()])
-  } else {
-    cartIds = new Set(loadStoredJSON(CART_STORAGE_KEY, []).map(String))
-    recentlyViewedIds = loadStoredJSON(RECENTLY_VIEWED_KEY, []).map(String).slice(0, RECENTLY_VIEWED_LIMIT)
-  }
   loadCartyConversationForCurrentUser()
   loadFavoritesForCurrentUser()
   if (user) {
@@ -1667,10 +1688,11 @@ function openStore(userId) {
   }
   if (storeContactMeta) {
     const bits = []
-    if (s?.phone) bits.push(`<a class="store-meta-item" href="${escapeHtml(buildPhoneUrl(s.phone) || '#')}" aria-label="Call ${escapeHtml(s.name || 'store')}">${ICON_PHONE_SMALL}<span>${escapeHtml(s.phone)}</span></a>`)
-    if (s?.location || s?.address) bits.push(`<span class="store-meta-item">${ICON_LOCATION_SMALL}<span>${escapeHtml(s.location || s.address)}</span></span>`)
-    if (s?.opening_hours) bits.push(`<span class="store-meta-item">${ICON_CLOCK_SMALL}<span>${escapeHtml(s.opening_hours)}</span></span>`)
-    if (s?.fulfilment || s?.delivery_collection) bits.push(`<span class="store-meta-item">${ICON_DELIVERY_SMALL}<span>${escapeHtml(s.fulfilment || s.delivery_collection)}</span></span>`)
+    if (s?.phone) bits.push(`<span>📞 ${escapeHtml(s.phone)}</span>`)
+    if (s?.location) bits.push(`<span>📍 ${escapeHtml(s.location)}</span>`)
+    if (s?.address) bits.push(`<span>⌖ ${escapeHtml(s.address)}</span>`)
+    if (s?.opening_hours) bits.push(`<span>🕒 ${escapeHtml(s.opening_hours)}</span>`)
+    if (s?.fulfilment) bits.push(`<span>🚚 ${escapeHtml(s.fulfilment)}</span>`)
     storeContactMeta.innerHTML = bits.join('')
   }
   if (storeEditBtn) {
@@ -2190,13 +2212,11 @@ async function fetchAndRenderListings() {
     currentListings = data || []
     try {
       const { data: storeRows, error: storeErr } = await db.from('stores').select('*')
-      if (!storeErr) { storesById = indexStoreRows(storeRows); renderBusinessExplore() }
+      if (!storeErr) storesById = indexStoreRows(storeRows)
     } catch (e) {
       console.warn('Loading stores failed (has the stores table been created?)', e)
     }
     renderCategoryChips()
-    renderBusinessExplore()
-    renderRecentlyViewed()
     window.linkhubApplyStoreDefaults?.()
     try {
       const { data: ratingRows, error: ratingErr } = await db.from('ratings').select('listing_id, rating, rater_id')
@@ -2290,8 +2310,6 @@ function renderFilteredListings() {
   }
   const page = filtered.slice(0, visibleCount)
   page.forEach((item) => renderListing(item, listingsContainer))
-  renderRecentlyViewed()
-  renderSimilarListings(filtered[0] || null)
   if (filtered.length > page.length) {
     const more = document.createElement('button')
     more.type = 'button'
@@ -2738,11 +2756,19 @@ async function runAiSearch(queryText) {
 
   if (!results.length) {
     listCount.textContent = '0 listings'
+    listingsContainer.innerHTML = `
+      <div class="market-empty-state carty-no-match-state">
+        <div class="market-empty-icon">⌕</div>
+        <h3>Product not found</h3>
+        <p class="muted">I couldn’t find that on LinkHub right now. Try another product or browse the listings below.</p>
+        <button type="button" class="muted-btn empty-clear-btn">Clear search</button>
+      </div>`
     return {
       type: 'search',
       count: 0,
       displayTerm,
-      reply: data.reply || `I couldn’t find a current LinkHub listing that matches “${displayTerm}”.`
+      firstResultId: null,
+      reply: data.reply || `I couldn’t find that on LinkHub right now. Try another product or browse the listings below.`
     }
   }
 
@@ -2753,6 +2779,7 @@ async function runAiSearch(queryText) {
     type: 'search',
     count: results.length,
     displayTerm,
+    firstResultId: results[0]?.id != null ? String(results[0].id) : null,
     reply: data.reply || `I found ${results.length} listing${results.length === 1 ? '' : 's'} that match what you described.`
   }
 }
@@ -2855,207 +2882,41 @@ cartyForm?.addEventListener('submit', async ev => {
   cartyInput.focus()
   setCartyTyping(false)
 
-  const reply = result.reply || (result.type === 'search'
-    ? `Found ${result.count} listing${result.count === 1 ? '' : 's'} for “${result.displayTerm}”.`
-    : 'I’m here to help.')
+  const reply = result.type === 'search' && result.count === 0
+    ? `I couldn’t find “${result.displayTerm}” on LinkHub right now. Try another product or browse the live listings.`
+    : (result.reply || (result.type === 'search'
+      ? `Found ${result.count} listing${result.count === 1 ? '' : 's'} for “${result.displayTerm}”.`
+      : 'I’m here to help.'))
   addCartyHistory('assistant', reply)
   appendCartyBubble('assistant', reply)
   speakCarty(reply)
 
-  if (result.type === 'search' && result.count > 0) {
-    document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  if (result.type === 'search') {
+    // Move the conversation out of the way and put the marketplace result
+    // into focus. No result gets the same treatment so the empty state is
+    // visible instead of leaving Carty covering the marketplace.
+    closeCarty()
+
+    if (result.count > 0) {
+      const targetId = result.firstResultId || listingsContainer?.querySelector('[data-listing-id]')?.dataset.listingId
+      const card = targetId
+        ? listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(String(targetId))}"]`)
+        : null
+
+      if (card) {
+        card.classList.add('listing-highlight')
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        window.setTimeout(() => card.classList.remove('listing-highlight'), 2600)
+      } else {
+        document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    } else {
+      listingsContainer?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
   }
 })
 
 // Carty intentionally opens only when the user taps the button.
-
-function getRecentStorageKey() {
-  return getUserScopedKey(RECENTLY_VIEWED_KEY)
-}
-
-function persistRecentlyViewed() {
-  saveStoredJSON(getRecentStorageKey(), recentlyViewedIds.slice(0, RECENTLY_VIEWED_LIMIT))
-  void syncRecentlyViewedToAccount()
-}
-
-async function syncRecentlyViewedToAccount() {
-  if (!useSupabase || !currentUser || PERSONAL_SYNC.recent) return
-  const ids = recentlyViewedIds.map(Number).filter(Number.isSafeInteger)
-  try {
-    const { data: existing, error } = await db.from('recently_viewed').select('listing_id, viewed_at').eq('user_id', currentUser.id)
-    if (error) throw error
-    const accountIds = (existing || []).sort((a,b) => new Date(b.viewed_at || 0) - new Date(a.viewed_at || 0)).map(r => String(r.listing_id))
-    const merged = [...new Set([...ids.map(String), ...accountIds])].slice(0, RECENTLY_VIEWED_LIMIT)
-    const now = new Date().toISOString()
-    const rows = merged.map((id, idx) => ({ user_id: currentUser.id, listing_id: Number(id), viewed_at: new Date(Date.now() - idx * 1000).toISOString() })).filter(r => Number.isSafeInteger(r.listing_id))
-    if (rows.length) {
-      const { error: upsertErr } = await db.from('recently_viewed').upsert(rows, { onConflict: 'user_id,listing_id' })
-      if (upsertErr) throw upsertErr
-    }
-    recentlyViewedIds = merged
-    saveStoredJSON(getRecentStorageKey(), recentlyViewedIds)
-    PERSONAL_SYNC.recent = true
-  } catch (e) {
-    console.warn('Account recently viewed sync unavailable; keeping local history.', e)
-  }
-}
-
-async function loadAccountRecentlyViewed() {
-  if (!useSupabase || !currentUser) return
-  try {
-    const { data, error } = await db.from('recently_viewed').select('listing_id, viewed_at').eq('user_id', currentUser.id).order('viewed_at', { ascending: false }).limit(RECENTLY_VIEWED_LIMIT)
-    if (error) throw error
-    const serverIds = (data || []).map(r => String(r.listing_id))
-    const localIds = loadStoredJSON(getRecentStorageKey(), []).map(String)
-    const guestIds = loadStoredJSON(RECENTLY_VIEWED_KEY, []).map(String)
-    recentlyViewedIds = [...new Set([...localIds, ...guestIds, ...serverIds])].slice(0, RECENTLY_VIEWED_LIMIT)
-    saveStoredJSON(getRecentStorageKey(), recentlyViewedIds)
-    if (recentlyViewedIds.length) {
-      const rows = recentlyViewedIds.map((id, idx) => ({ user_id: currentUser.id, listing_id: Number(id), viewed_at: new Date(Date.now() - idx * 1000).toISOString() })).filter(r => Number.isSafeInteger(r.listing_id))
-      if (rows.length) await db.from('recently_viewed').upsert(rows, { onConflict: 'user_id,listing_id' })
-    }
-    PERSONAL_SYNC.recent = true
-  } catch (e) {
-    console.warn('Could not load account recently viewed; using local cache.', e)
-  }
-}
-
-async function clearAccountRecentlyViewed() {
-  if (!useSupabase || !currentUser) return
-  try { await db.from('recently_viewed').delete().eq('user_id', currentUser.id) }
-  catch (e) { console.warn('Could not clear account recently viewed.', e) }
-}
-
-function recordRecentlyViewed(item) {
-  if (!item?.id) return
-  const id = String(item.id)
-  recentlyViewedIds = [id, ...recentlyViewedIds.filter(x => String(x) !== id)].slice(0, RECENTLY_VIEWED_LIMIT)
-  persistRecentlyViewed()
-  renderRecentlyViewed()
-}
-
-function makeMiniListingCard(item) {
-  const card = document.createElement('button')
-  card.type = 'button'
-  card.className = 'mini-listing-card'
-  card.dataset.listingId = String(item.id)
-  const images = getListingImages(item).filter(isValidImageUrl)
-  const imgHtml = images.length
-    ? `<div class="mini-listing-img"><img src="${escapeHtml(images[0])}" alt="" loading="lazy"></div>`
-    : `<div class="mini-listing-placeholder">${ICON_CART}</div>`
-  const location = item.location || item.city || item.category || 'LinkHub listing'
-  card.innerHTML = `${imgHtml}<div class="mini-listing-title">${escapeHtml(item.title || 'Listing')}</div><div class="mini-listing-price">${escapeHtml(formatListingPrice(item))}</div><div class="mini-listing-meta">${escapeHtml(location)}</div>`
-  card.addEventListener('click', () => focusListingFromDiscovery(item.id))
-  return card
-}
-
-function focusListingFromDiscovery(id) {
-  const targetId = String(id)
-  searchEl.value = ''
-  activeCategory = ''
-  visibleCount = Math.max(PAGE_SIZE, currentListings.length)
-  renderCategoryChips()
-  renderFilteredListings()
-  setTimeout(() => {
-    const card = listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(targetId)}"]`)
-    if (!card) return
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    card.classList.add('listing-highlight')
-    setTimeout(() => card.classList.remove('listing-highlight'), 2200)
-    recordRecentlyViewed(currentListings.find(x => String(x.id) === targetId))
-  }, 40)
-}
-
-function renderRecentlyViewed() {
-  if (!recentlyViewedSection || !recentlyViewedList) return
-  const items = recentlyViewedIds
-    .map(id => currentListings.find(item => String(item.id) === String(id)))
-    .filter(Boolean)
-    .filter(item => !item.sold)
-  recentlyViewedList.innerHTML = ''
-  if (!items.length) {
-    recentlyViewedSection.classList.add('hidden')
-    return
-  }
-  recentlyViewedSection.classList.remove('hidden')
-  items.slice(0, 6).forEach(item => recentlyViewedList.appendChild(makeMiniListingCard(item)))
-}
-
-function renderSimilarListings(anchor) {
-  if (!similarListingsSection || !similarListingsList) return
-  const source = anchor || sortListings(getScopedListings())[0]
-  if (!source) {
-    similarListingsSection.classList.add('hidden')
-    return
-  }
-  const category = String(source.category || '').trim().toLowerCase()
-  const sourceWords = meaningfulWords([source.title, source.description].filter(Boolean).join(' '))
-  let candidates = currentListings.filter(item => !item.sold && String(item.id) !== String(source.id))
-  candidates.sort((a, b) => {
-    const score = (item) => {
-      let s = 0
-      if (category && String(item.category || '').trim().toLowerCase() === category) s += 8
-      const hay = [item.title, item.description, item.category].filter(Boolean).join(' ').toLowerCase()
-      s += sourceWords.filter(w => hay.includes(w)).length * 2
-      if (item.user_id && source.user_id && String(item.user_id) === String(source.user_id)) s += 1
-      return s
-    }
-    return score(b) - score(a)
-  })
-  const chosen = candidates.slice(0, 4)
-  similarListingsList.innerHTML = ''
-  if (!chosen.length) {
-    similarListingsSection.classList.add('hidden')
-    return
-  }
-  similarListingsSection.classList.remove('hidden')
-  chosen.forEach(item => similarListingsList.appendChild(makeMiniListingCard(item)))
-}
-
-function renderBusinessExplore() {
-  if (!businessExploreGrid || !businessExploreSection) return
-  const stores = Object.values(storesById || {}).filter(store => store?.name)
-  const listingCount = (store) => currentListings.filter(item => !item.sold && String(item.user_id || item.seller_id || '') === String(store.user_id || store.id || '')).length
-  const ranked = stores
-    .map(store => ({ store, count: listingCount(store) }))
-    .sort((a, b) => b.count - a.count || String(a.store.name).localeCompare(String(b.store.name)))
-    .slice(0, 6)
-  businessExploreGrid.innerHTML = ''
-  if (!ranked.length) {
-    businessExploreGrid.innerHTML = `<div class="muted business-explore-empty">Business storefronts will appear here as businesses join LinkHub.</div>`
-    return
-  }
-  ranked.forEach(({ store, count }) => {
-    const card = document.createElement('article')
-    card.className = 'business-explore-card'
-    const logo = store.logo_url
-      ? `<div class="business-explore-logo"><img src="${escapeHtml(store.logo_url)}" alt="" loading="lazy"></div>`
-      : `<div class="business-explore-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3.5 9 5 4.5h14L20.5 9M3.5 9v10.5h17V9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 21v-7h8v7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>`
-    const meta = [store.category, store.location].filter(Boolean).join(' · ') || `${count} active listing${count === 1 ? '' : 's'}`
-    const info = []
-    if (store.phone) info.push(`<a class="business-info-item" href="${escapeHtml(buildPhoneUrl(store.phone) || '#')}" aria-label="Call ${escapeHtml(store.name)}">${ICON_PHONE_SMALL}<span><strong>Call</strong><em>${escapeHtml(store.phone)}</em></span></a>`)
-    if (store.location || store.address) info.push(`<span class="business-info-item">${ICON_LOCATION_SMALL}<span><strong>Location</strong><em>${escapeHtml(store.location || store.address)}</em></span></span>`)
-    if (store.opening_hours) info.push(`<span class="business-info-item">${ICON_CLOCK_SMALL}<span><strong>Hours</strong><em>${escapeHtml(store.opening_hours)}</em></span></span>`)
-    const fulfilment = store.fulfilment || store.delivery_collection
-    if (fulfilment) info.push(`<span class="business-info-item">${ICON_DELIVERY_SMALL}<span><strong>Delivery</strong><em>${escapeHtml(fulfilment)}</em></span></span>`)
-    card.innerHTML = `<div class="business-explore-card-top">${logo}<div class="business-explore-heading-copy"><div class="business-explore-name">${escapeHtml(store.name)}</div><div class="business-explore-meta">${escapeHtml(meta)}</div></div></div><div class="business-explore-bio">${escapeHtml(store.bio || 'Browse this business storefront on LinkHub.')}</div>${info.length ? `<div class="business-info-grid">${info.join('')}</div>` : ''}<div class="business-explore-footer"><span class="business-listing-count">${count} active listing${count === 1 ? '' : 's'}</span><div class="business-explore-actions"><button type="button" class="muted-btn business-explore-view">View Store</button><button type="button" class="muted-btn business-explore-share" aria-label="Share ${escapeHtml(store.name)}"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="18" cy="5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="12" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="19" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m8.1 11 7.7-4.5M8.1 13l7.7 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div></div>`
-    card.querySelector('.business-explore-view')?.addEventListener('click', () => openStore(store.user_id || store.id))
-    card.querySelector('.business-explore-share')?.addEventListener('click', async () => {
-      const url = new URL(window.location.href); url.search=''; url.hash=''; url.searchParams.set('store', String(store.user_id || store.id))
-      try { if (navigator.share) { await navigator.share({ title: store.name, text: `${store.name} on LinkHub`, url: url.toString() }); return } } catch(e) { if (e?.name === 'AbortError') return }
-      try { await navigator.clipboard.writeText(url.toString()); showUxToast('Store link copied.') } catch(e) { window.prompt('Copy this store link:', url.toString()) }
-    })
-    businessExploreGrid.appendChild(card)
-  })
-}
-
-clearRecentlyViewedBtn?.addEventListener('click', () => {
-  recentlyViewedIds = []
-  persistRecentlyViewed()
-  void clearAccountRecentlyViewed()
-  renderRecentlyViewed()
-  showUxToast('Recently viewed cleared.')
-})
 
 function renderListing(l, container = listingsContainer) {
   if (!(container instanceof Element)) container = listingsContainer
@@ -3249,7 +3110,7 @@ document.body.addEventListener('click', (ev) => {
   }
   if (mainBtn) {
     openLightbox(images[index] || images[0])
-    if (item) { recordRecentlyViewed(item); trackListingView(item) }
+    if (item) trackListingView(item)
   }
 })
 
@@ -3289,15 +3150,45 @@ themeToggleBtn?.addEventListener('click', () => {
   applyTheme(next)
 })
 
+
+// Smooth, unified navigation transitions for section jumps.
+if (!document.getElementById('linkhub-navigation-smooth-runtime')) {
+  const style = document.createElement('style')
+  style.id = 'linkhub-navigation-smooth-runtime'
+  style.textContent = `
+    html { scroll-behavior: smooth; }
+    .mobile-bottom-nav, .nav-drawer, .nav-drawer-backdrop {
+      transition-timing-function: cubic-bezier(.22,.61,.36,1);
+    }
+    .mobile-bottom-nav {
+      transition: transform 220ms ease, opacity 180ms ease;
+    }
+    .mobile-bottom-nav.nav-hidden {
+      transform: translateY(110%);
+      opacity: 0;
+      pointer-events: none;
+    }
+  `
+  document.head.appendChild(style)
+}
+
 // initial load
 fetchAndRenderListings().then(openLinkedListingFromUrl)
 
-// Register service worker for PWA install support + app-shell caching
+// Register service worker for PWA install support + app-shell caching.
+// Keep the registration on page load so the manifest + service worker are present
+// for browsers that use beforeinstallprompt.
+// updateViaCache:'none' stops the browser's HTTP cache from serving a stale
+// copy of sw.js itself (GitHub Pages doesn't send strong no-cache headers, so
+// without this a phone can keep running an old worker for a long time,
+// which can make Chrome/Safari decide the site isn't installable at all).
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      console.warn('Service worker registration failed:', err)
-    })
+    navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' })
+      .then((reg) => reg.update().catch(() => {}))
+      .catch((err) => {
+        console.warn('Service worker registration failed:', err)
+      })
   })
 }
 

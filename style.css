@@ -293,7 +293,7 @@ a,input,textarea,select,.listing-img-wrap,.password-toggle{-webkit-tap-highlight
 .carty-fab{position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:linear-gradient(145deg,#007bff,#0056b3);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,123,255,0.45);z-index:9998;padding:0;margin:0;border:none;cursor:pointer;transition:transform 0.2s ease,box-shadow 0.2s ease}
 .carty-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 16px 36px rgba(0,123,255,0.55)}
 .icon{display:block;flex-shrink:0}
-.carty-fab-icon{color:#fff;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))}
+.carty-fab-icon,.carty-ai-svg{color:#fff;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))}
 .carty-fab::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(0,123,255,0.55);animation:carty-pulse 2.2s ease-out infinite;pointer-events:none}
 @keyframes carty-pulse{0%{transform:scale(0.9);opacity:0.9}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
 
@@ -696,29 +696,15 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 .section-inline-icon{flex:0 0 auto;color:var(--highlight)}
 .business-explore-heading p{margin:0;max-width:640px}
 .business-explore-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.business-explore-card{min-width:0;border:1px solid rgba(0,123,255,.14);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.018));border-radius:17px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 28px rgba(0,0,0,.08)}
-.business-explore-card-top{display:flex;align-items:center;gap:11px;min-width:0}
-.business-explore-logo,.business-explore-icon{width:46px;height:46px;border-radius:14px;flex:0 0 auto;display:grid;place-items:center;overflow:hidden;background:rgba(0,123,255,.10);border:1px solid rgba(0,123,255,.16);color:var(--highlight)}
-.business-explore-logo img{width:100%;height:100%;object-fit:cover;display:block}
-.business-explore-heading-copy{min-width:0;flex:1}
-.business-explore-name{font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
-.business-explore-meta{font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
-.business-explore-bio{font-size:.79rem;line-height:1.46;color:rgba(230,238,248,.86);min-height:2.3em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-.business-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 10px;padding:10px;border-radius:13px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)}
-.business-info-item{min-width:0;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.7rem;line-height:1.25;text-decoration:none;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.045)}
-.business-info-item .business-info-icon{flex:0 0 auto;color:var(--highlight)}
-.business-info-item span{min-width:0;display:flex;flex-direction:column;gap:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.business-info-item strong{font-size:.63rem;letter-spacing:.02em;color:var(--text);font-weight:800}
-.business-info-item em{font-style:normal;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
-.business-info-item:hover{border-color:rgba(0,123,255,.24);background:rgba(0,123,255,.05)}
-.store-meta-item{display:inline-flex;align-items:center;gap:5px;color:inherit;text-decoration:none}
-.store-meta-item .business-info-icon{flex:0 0 auto;color:var(--highlight)}
-.business-explore-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
-.business-listing-count{font-size:.7rem;color:var(--muted);white-space:nowrap}
-.business-explore-actions{display:flex;gap:7px;margin-top:0}
-.business-explore-actions button{width:auto;flex:0 0 auto;margin:0;padding:8px 10px;font-size:.76rem;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.business-explore-actions .business-explore-share{width:36px;padding:8px}
-@media(max-width:600px){.business-info-grid{grid-template-columns:1fr;gap:7px}.business-explore-footer{align-items:center}.business-listing-count{font-size:.67rem}}
+.business-explore-card{min-width:0;border:1px solid rgba(0,123,255,.14);background:rgba(255,255,255,.025);border-radius:17px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.business-explore-card-top{display:flex;align-items:center;gap:10px;min-width:0}
+.business-explore-logo,.business-explore-icon{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;overflow:hidden;background:rgba(0,123,255,.10);border:1px solid rgba(0,123,255,.16);color:var(--highlight)}
+.business-explore-logo img{width:100%;height:100%;object-fit:cover}
+.business-explore-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.business-explore-meta{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.business-explore-bio{font-size:.8rem;line-height:1.45;color:rgba(230,238,248,.86);min-height:2.3em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.business-explore-actions{display:flex;gap:7px;margin-top:auto}
+.business-explore-actions button{width:auto;flex:1;margin:0;padding:8px 10px;font-size:.76rem}
 .nice-to-have-section{margin-top:18px}
 .mini-listing-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .mini-listing-card{min-width:0;border:1px solid rgba(0,123,255,.12);background:rgba(255,255,255,.02);border-radius:15px;padding:10px;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}
@@ -731,3 +717,80 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 .nice-to-have-section > .section-header{margin-bottom:10px}
 @media(max-width:900px){.business-explore-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mini-listing-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.business-explore-grid{grid-template-columns:1fr}.mini-listing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.business-explore-section{margin-bottom:18px}.business-explore-card{padding:12px}.business-explore-actions button{font-size:.72rem}}
+
+/* Mobile bottom navigation — primary actions only, short labels, large tap targets. */
+.mobile-bottom-nav{display:none}
+
+@media (max-width:900px){
+  .mobile-bottom-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:9997;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:2px;
+    padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+    border-top:1px solid rgba(0,123,255,.18);
+    background:rgba(3,13,29,.94);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    box-shadow:0 -12px 32px rgba(0,0,0,.28);
+  }
+  .mobile-nav-item{
+    min-width:0;
+    min-height:48px;
+    margin:0;
+    padding:6px 4px;
+    border:0;
+    border-radius:12px;
+    background:transparent;
+    color:rgba(230,238,248,.68);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    position:relative;
+    font-size:.68rem;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    transition:transform .14s ease,color .14s ease,background .14s ease;
+  }
+  .mobile-nav-item:active{transform:scale(.96)}
+  .mobile-nav-item.is-active{color:var(--highlight);background:rgba(0,123,255,.10)}
+  .mobile-nav-item:focus-visible{outline:2px solid rgba(102,199,255,.9);outline-offset:1px}
+  .mobile-nav-icon{width:23px;height:23px;flex:0 0 auto}
+  .mobile-nav-badge{position:absolute;top:5px;right:calc(50% - 20px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e83f55;color:#fff;font-size:.58rem;line-height:16px;font-weight:800;text-align:center;display:none}
+  .mobile-nav-badge:not(:empty){display:block}
+
+  /* The bottom bar replaces the top-right hamburger on mobile. Secondary
+     actions remain available through the Menu tab/drawer. */
+  .hamburger-btn{display:none!important}
+
+  /* Keep Carty floating above the navigation so it never blocks a tab. */
+  .carty-fab{bottom:84px!important;right:16px}
+  .carty-panel{bottom:150px!important}
+
+  /* Give page content enough room above the fixed navigation. */
+  body{padding-bottom:84px}
+}
+
+@media (max-width:480px){
+  .mobile-bottom-nav{padding-left:6px;padding-right:6px}
+  .mobile-nav-item{min-height:48px}
+  .carty-panel{bottom:148px!important;right:12px;left:12px;width:auto}
+}
+
+/* Mobile bottom-nav auto-hide while scrolling; desktop navigation is untouched. */
+@media (max-width: 767px) {
+  .mobile-bottom-nav.nav-hidden {
+    transform: translateY(calc(100% + env(safe-area-inset-bottom)));
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.carty-ai-svg{display:block;}

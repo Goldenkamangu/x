@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v4'; // bumped to add the new PWA icons
+const CACHE_NAME = 'linkhub-shell-v5'; // bumped: force stale/old registrations to update
 const APP_SHELL = [
   './',
   './index.html',
