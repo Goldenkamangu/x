@@ -492,7 +492,10 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 @media (max-width:900px){
   .desktop-nav{display:none}
   .hamburger-btn{display:grid}
+  .mobile-nav-user:not(:empty){display:flex}
 }
+.mobile-nav-user{display:none;align-items:center;gap:7px;padding:0 8px;color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;flex-shrink:0}
+.mobile-nav-user .nav-user-dot{width:7px;height:7px;border-radius:50%;background:#48d597;box-shadow:0 0 10px rgba(72,213,151,.7);flex-shrink:0}
 @media (min-width:901px){
   .nav-drawer,.drawer-backdrop{display:none!important}
   .hamburger-btn{display:none!important}

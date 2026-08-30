@@ -228,6 +228,7 @@ const navDrawerBackdrop = document.getElementById('nav-drawer-backdrop')
 const navDrawerClose = document.getElementById('nav-drawer-close')
 const navDrawerUser = document.getElementById('nav-drawer-user')
 const navDrawerMenu = document.getElementById('nav-drawer-menu')
+const mobileNavUser = document.getElementById('mobile-nav-user')
 let navScrollTimer = null
 
 function openDrawer() {
@@ -517,7 +518,19 @@ function updateCartCounts() {
   document.querySelectorAll('[data-mobile-cart-count]').forEach(el => { el.textContent = count ? String(count) : '' })
 }
 
+function updateMobileNavUser() {
+  if (!mobileNavUser) return
+  if (!currentUser) {
+    mobileNavUser.innerHTML = ''
+    return
+  }
+  const rawDisplayName = currentUser.user_metadata?.full_name || getDisplayNameFromEmail(currentUser.email)
+  const displayName = rawDisplayName.trim().split(/\s+/).filter(Boolean)[0] || 'Account'
+  mobileNavUser.innerHTML = `<span class="nav-user-dot" aria-hidden="true"></span>${escapeHtml(displayName)}`
+}
+
 function buildDesktopNav() {
+  updateMobileNavUser()
   if (!desktopNav) return
   desktopNav.innerHTML = ''
   if (!currentUser) {
