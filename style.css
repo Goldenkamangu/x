@@ -797,3 +797,5 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 }
 
 .carty-ai-svg{display:block;}
+
+.store-meta-item{display:inline-flex;align-items:center;gap:6px} .store-meta-item>.icon{flex:none}

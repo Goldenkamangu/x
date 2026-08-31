@@ -170,6 +170,11 @@ const ICON_STAR_OUTLINE = '<svg class="icon icon-star" viewBox="0 0 24 24" aria-
 const ICON_SHIELD = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M12 2.5l7.5 3v5.4c0 5-3.2 8.6-7.5 10.6-4.3-2-7.5-5.6-7.5-10.6V5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>'
 const ICON_STORE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M3.5 9l1.2-4.5h14.6L20.5 9M3.5 9v10.5h17V9M3.5 9a2.6 2.6 0 0 0 5 1.1A2.6 2.6 0 0 0 13.5 10a2.6 2.6 0 0 0 5 0A2.6 2.6 0 0 0 20.5 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M9.5 19.5V14h5v5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>'
 const ICON_CARTY_AI = '<svg class="icon carty-ai-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false" width="26" height="26"><path d="M5 6h3l1.7 11.1a2.5 2.5 0 0 0 2.5 2.1h8.1a2.5 2.5 0 0 0 2.4-1.9L25 11H9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="24.3" r="1.8" fill="currentColor"/><circle cx="22.4" cy="24.3" r="1.8" fill="currentColor"/><path d="M24 3.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9zM29 9.2l.45 1.15 1.15.45-1.15.45-.45 1.15-.45-1.15-1.15-.45 1.15-.45z" fill="currentColor"/></svg>'
+const ICON_PHONE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M7.2 4.2 9.5 3l2 4-2.1 1.4c.9 2 2.3 3.4 4.3 4.3l1.4-2.1 4 2-1.2 2.3c-.5 1-1.5 1.6-2.6 1.5-5.5-.8-9.8-5.1-10.6-10.6-.1-1.1.5-2.1 1.5-2.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const ICON_LOCATION = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
+const ICON_ADDRESS = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M4 6.5 12 3l8 3.5v11L12 21l-8-3.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 8.5h8M8 12h8M8 15.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+const ICON_CLOCK = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+const ICON_TRUCK = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M3.5 6.5h10v9h-10zM13.5 9.5h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
 const ICON_CART = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16"><path d="M3 4h2l1.7 10.2a2 2 0 0 0 2 1.8h7.7a2 2 0 0 0 2-1.7L20 7H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.1" fill="currentColor"/><circle cx="18" cy="20" r="1.1" fill="currentColor"/></svg>'
 
 // Elements
@@ -1701,11 +1706,11 @@ function openStore(userId) {
   }
   if (storeContactMeta) {
     const bits = []
-    if (s?.phone) bits.push(`<span>📞 ${escapeHtml(s.phone)}</span>`)
-    if (s?.location) bits.push(`<span>📍 ${escapeHtml(s.location)}</span>`)
-    if (s?.address) bits.push(`<span>⌖ ${escapeHtml(s.address)}</span>`)
-    if (s?.opening_hours) bits.push(`<span>🕒 ${escapeHtml(s.opening_hours)}</span>`)
-    if (s?.fulfilment) bits.push(`<span>🚚 ${escapeHtml(s.fulfilment)}</span>`)
+    if (s?.phone) bits.push(`<span class="store-meta-item">${ICON_PHONE}<span>${escapeHtml(s.phone)}</span></span>`)
+    if (s?.location) bits.push(`<span class="store-meta-item">${ICON_LOCATION}<span>${escapeHtml(s.location)}</span></span>`)
+    if (s?.address) bits.push(`<span class="store-meta-item">${ICON_ADDRESS}<span>${escapeHtml(s.address)}</span></span>`)
+    if (s?.opening_hours) bits.push(`<span class="store-meta-item">${ICON_CLOCK}<span>${escapeHtml(s.opening_hours)}</span></span>`)
+    if (s?.fulfilment) bits.push(`<span class="store-meta-item">${ICON_TRUCK}<span>${escapeHtml(s.fulfilment)}</span></span>`)
     storeContactMeta.innerHTML = bits.join('')
   }
   if (storeEditBtn) {
