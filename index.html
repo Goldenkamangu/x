@@ -241,12 +241,12 @@
               <textarea id="description" class="inline-grow-field" wrap="soft" placeholder="Describe the item, condition, or benefits"></textarea>
             </label>
             <label class="full-width">
-              Photos (optional, up to 3)
-              <input id="image" type="file" accept="image/*" multiple />
-              <small class="field-help">Add up to 3 pictures.</small>
+              Photos (required, up to 3)
+              <input id="image" type="file" accept="image/*" multiple required />
+              <small class="field-help">Add at least 1 picture, up to 3.</small>
             </label>
           </div>
-          <div class="form-actions-row">
+          <div class="form-actions-row terms-actions-row">
             <label class="agree-terms-row">
               <input id="agree-terms" type="checkbox" />
               <span>I agree to the <button type="button" id="open-terms-link" class="link-btn">Terms &amp; Conditions</button></span>
@@ -280,10 +280,19 @@
           <div id="list-count" class="muted"></div>
         </div>
       </div>
-      <div id="category-chips" class="category-chips"></div>
+      <div class="category-scroll-wrap">
+        <button id="category-scroll-left" class="category-scroll-btn" type="button" aria-label="Scroll categories left" disabled>
+          <span aria-hidden="true">‹</span>
+        </button>
+        <div id="category-chips" class="category-chips"></div>
+        <button id="category-scroll-right" class="category-scroll-btn" type="button" aria-label="Scroll categories right" disabled>
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
       <div id="listings" class="listing-grid"></div>
     </section>
 
+    <div class="discovery-sections" aria-label="Browsing history and recommendations">
     <section id="recently-viewed-section" class="card nice-to-have-section hidden">
       <div class="section-header">
         <div>
@@ -292,7 +301,11 @@
         </div>
         <button id="clear-recently-viewed" type="button" class="muted-btn">Clear</button>
       </div>
-      <div id="recently-viewed-list" class="mini-listing-grid"></div>
+      <div class="mini-scroll-wrap">
+        <button id="recently-viewed-scroll-left" class="category-scroll-btn" type="button" aria-label="Scroll recently viewed left" disabled><span aria-hidden="true">‹</span></button>
+        <div id="recently-viewed-list" class="mini-listing-grid"></div>
+        <button id="recently-viewed-scroll-right" class="category-scroll-btn" type="button" aria-label="Scroll recently viewed right" disabled><span aria-hidden="true">›</span></button>
+      </div>
     </section>
 
     <section id="similar-listings-section" class="card nice-to-have-section hidden">
@@ -302,8 +315,13 @@
           <h2><svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20"><path d="m12 3 2.3 5.1 5.5.5-4.1 3.6 1.2 5.3-4.9-2.8-4.9 2.8 1.2-5.3-4.1-3.6 5.5-.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> You might also like</h2>
         </div>
       </div>
-      <div id="similar-listings-list" class="mini-listing-grid"></div>
+      <div class="mini-scroll-wrap">
+        <button id="similar-listings-scroll-left" class="category-scroll-btn" type="button" aria-label="Scroll recommendations left" disabled><span aria-hidden="true">‹</span></button>
+        <div id="similar-listings-list" class="mini-listing-grid"></div>
+        <button id="similar-listings-scroll-right" class="category-scroll-btn" type="button" aria-label="Scroll recommendations right" disabled><span aria-hidden="true">›</span></button>
+      </div>
     </section>
+    </div>
   </main>
 
   <footer class="site-footer">

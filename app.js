@@ -468,6 +468,11 @@ function promptInstall() {
     return
   }
 
+  if (!window.isSecureContext) {
+    showInstallInstructions?.(false, 'secure')
+    return
+  }
+
   if (deferredInstallPrompt) {
     try {
       const promptEvent = deferredInstallPrompt
@@ -488,7 +493,7 @@ function promptInstall() {
   showInstallInstructions?.()
 }
 
-function showInstallInstructions(inApp = false) {
+function showInstallInstructions(inApp = false, reason = '') {
   // No automatic popup: only a small, user-triggered notice when installation instructions are actually needed.
   const existing = document.getElementById('install-help')
   if (existing) existing.remove()
@@ -497,7 +502,9 @@ function showInstallInstructions(inApp = false) {
   box.className = 'install-help'
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
   const isAndroid = /android/i.test(navigator.userAgent)
-  const instruction = inApp
+  const instruction = reason === 'secure'
+    ? 'Install is available when LinkHub is opened over HTTPS. Open the secure site address, then use your browser menu to install it.'
+    : inApp
     ? (isIOS
         ? 'This link opened inside another app. Tap <strong>···</strong> or the share icon and choose <strong>Open in Safari</strong>, then use Share → <strong>Add to Home Screen</strong>.'
         : 'This link opened inside another app. Tap <strong>⋮</strong> and choose <strong>Open in Chrome</strong> (or your browser), then use the browser menu to install.')
@@ -572,29 +579,52 @@ const desktopSplitter = document.getElementById('desktop-splitter')
 const formColumn = document.getElementById('desktop-form-column')
 const titleEl = document.getElementById('title')
 const titleEditor = document.getElementById('title-editor')
-if (titleEditor && titleEl) {
-  const syncTitleEditor = () => { titleEl.value = titleEditor.value }
-  titleEditor.addEventListener('input', syncTitleEditor)
-  titleEditor.addEventListener('change', syncTitleEditor)
-  syncTitleEditor()
-}
 const priceEl = document.getElementById('price')
 const priceCurrencyEl = document.getElementById('price-currency')
 const paymentTypeEl = document.getElementById('payment-type')
 const deliveryTypeEl = document.getElementById('delivery-type')
 const urlEl = document.getElementById('url')
+const urlEditor = document.getElementById('url-editor')
 const categoryEl = document.getElementById('category')
+const categoryEditor = document.getElementById('category-editor')
 const contactMethodEl = document.getElementById('contact-method')
 const contactDetailsEl = document.getElementById('contact-details')
+const contactDetailsEditor = document.getElementById('contact-details-editor')
+const locationEl = document.getElementById('location')
+const locationEditor = document.getElementById('location-editor')
 const descEl = document.getElementById('description')
 const imageEl = document.getElementById('image')
+
+function syncVisibleToHiddenField(visibleEl, hiddenEl) {
+  if (!visibleEl || !hiddenEl) return
+  const sync = () => {
+    hiddenEl.value = visibleEl.value || ''
+  }
+  visibleEl.addEventListener('input', sync)
+  visibleEl.addEventListener('change', sync)
+  sync()
+}
+
+if (titleEditor && titleEl) syncVisibleToHiddenField(titleEditor, titleEl)
+if (urlEditor && urlEl) syncVisibleToHiddenField(urlEditor, urlEl)
+if (categoryEditor && categoryEl) syncVisibleToHiddenField(categoryEditor, categoryEl)
+if (contactDetailsEditor && contactDetailsEl) syncVisibleToHiddenField(contactDetailsEditor, contactDetailsEl)
+if (locationEditor && locationEl) syncVisibleToHiddenField(locationEditor, locationEl)
+
+function syncFormHiddenFields() {
+  if (titleEditor && titleEl) titleEl.value = titleEditor.value.trim()
+  if (urlEditor && urlEl) urlEl.value = urlEditor.value.trim()
+  if (categoryEditor && categoryEl) categoryEl.value = categoryEditor.value.trim()
+  if (contactDetailsEditor && contactDetailsEl) contactDetailsEl.value = contactDetailsEditor.value.trim()
+  if (locationEditor && locationEl) locationEl.value = locationEditor.value.trim()
+}
+
 imageEl?.addEventListener('change', () => {
   if (imageEl.files && imageEl.files.length > 3) {
     imageEl.value = ''
     showFormError('Please choose no more than 3 pictures.', imageEl)
   }
 })
-const locationEl = document.getElementById('location')
 
 // Keep the visible multiline editor and its hidden form value in sync.
 function setListingField(el, value) {
@@ -622,6 +652,8 @@ const listCount = document.getElementById('list-count')
 const listingsContainer = document.getElementById('listings')
 const searchEl = document.getElementById('search-input')
 const categoryChipsEl = document.getElementById('category-chips')
+const categoryScrollLeftBtn = document.getElementById('category-scroll-left')
+const categoryScrollRightBtn = document.getElementById('category-scroll-right')
 let currentListings = []
 let currentUser = null
 let editingId = null
@@ -1217,6 +1249,9 @@ createListingBtn.addEventListener('click', async () => {
     if (selectedFiles.length > 3) {
       return showFormError('Please choose no more than 3 pictures.', imageEl)
     }
+    if (!selectedFiles.length && !image_urls.length) {
+      return showFormError('Please upload at least one picture before posting.', imageEl)
+    }
 
     // When editing, choosing new pictures replaces the old gallery.
     // This keeps every listing capped at a maximum of 3 pictures.
@@ -1254,7 +1289,8 @@ createListingBtn.addEventListener('click', async () => {
     if (!image_urls.length && existingListing) image_urls = getListingImages(existingListing)
     image_url = image_urls[0] || null
 
-    if (titleEditor && titleEl) titleEl.value = titleEditor.value
+    syncFormHiddenFields()
+
     const obj = {
       title: titleEl.value.trim(),
       price: priceEl.value.trim(),
@@ -1281,9 +1317,14 @@ createListingBtn.addEventListener('click', async () => {
 
     if (!obj.title) { await cleanupUploadedStorage(); return showFormError('Please enter a title for your listing.', titleEl) }
     if (!obj.price) { await cleanupUploadedStorage(); return showFormError('Please enter a price for your listing.', priceEl) }
+    if (!obj.url) { await cleanupUploadedStorage(); return showFormError('Please tell buyers the item condition.', urlEl || urlEditor) }
     if (!obj.category) { await cleanupUploadedStorage(); return showFormError('Please choose a category for your listing.', categoryEl) }
-    if (obj.contact_method && !obj.contact_details) { await cleanupUploadedStorage(); return showFormError('Please enter your contact details so buyers can reach you.', contactDetailsEl) }
-    if (obj.contact_details && !obj.contact_method) { await cleanupUploadedStorage(); return showFormError('Please choose how buyers can contact you.', contactMethodEl) }
+    if (!obj.delivery_type) { await cleanupUploadedStorage(); return showFormError('Please choose a delivery or pickup option.', deliveryTypeEl) }
+    if (!obj.location) { await cleanupUploadedStorage(); return showFormError('Please add your location or city.', locationEl || locationEditor) }
+    if (!obj.description) { await cleanupUploadedStorage(); return showFormError('Please add a short description for the product.', descEl) }
+    if (!obj.contact_method) { await cleanupUploadedStorage(); return showFormError('Please choose a contact method for buyers.', contactMethodEl) }
+    if (!obj.contact_details) { await cleanupUploadedStorage(); return showFormError('Please enter your contact details so buyers can reach you.', contactDetailsEl || contactDetailsEditor) }
+    if (!obj.payment_type) { await cleanupUploadedStorage(); return showFormError('Please choose a payment method.', paymentTypeEl) }
 
     // If contact fields are empty, omit them so inserts against differing schemas don't fail.
     if (!obj.payment_type) delete obj.payment_type
@@ -2351,6 +2392,7 @@ function renderCategoryChips() {
   if (!categories.length) {
     categoryChipsEl.innerHTML = ''
     activeCategory = ''
+    updateCategoryScrollControls()
     return
   }
   if (activeCategory && !categories.some(([key]) => key === activeCategory)) activeCategory = ''
@@ -2359,7 +2401,27 @@ function renderCategoryChips() {
     chips.push(`<button type="button" class="category-chip${activeCategory === key ? ' active' : ''}" data-category="${escapeHtml(key)}">${escapeHtml(label)}</button>`)
   }
   categoryChipsEl.innerHTML = chips.join('')
+  updateCategoryScrollControls()
 }
+
+function updateCategoryScrollControls() {
+  if (!categoryChipsEl) return
+  const maxScroll = categoryChipsEl.scrollWidth - categoryChipsEl.clientWidth
+  const hasOverflow = maxScroll > 2
+  if (categoryScrollLeftBtn) categoryScrollLeftBtn.disabled = !hasOverflow || categoryChipsEl.scrollLeft <= 2
+  if (categoryScrollRightBtn) categoryScrollRightBtn.disabled = !hasOverflow || categoryChipsEl.scrollLeft >= maxScroll - 2
+}
+
+categoryScrollLeftBtn?.addEventListener('click', () => {
+  categoryChipsEl?.scrollBy({ left: -Math.max(180, categoryChipsEl.clientWidth * 0.75), behavior: 'smooth' })
+})
+
+categoryScrollRightBtn?.addEventListener('click', () => {
+  categoryChipsEl?.scrollBy({ left: Math.max(180, categoryChipsEl.clientWidth * 0.75), behavior: 'smooth' })
+})
+
+categoryChipsEl?.addEventListener('scroll', updateCategoryScrollControls, { passive: true })
+window.addEventListener('resize', updateCategoryScrollControls)
 
 categoryChipsEl?.addEventListener('click', (ev) => {
   const chip = ev.target.closest('.category-chip')
@@ -3048,6 +3110,33 @@ const recentlyViewedList = document.getElementById('recently-viewed-list')
 const clearRecentlyViewedBtn = document.getElementById('clear-recently-viewed')
 const similarListingsSection = document.getElementById('similar-listings-section')
 const similarListingsList = document.getElementById('similar-listings-list')
+const recentlyViewedScrollLeftBtn = document.getElementById('recently-viewed-scroll-left')
+const recentlyViewedScrollRightBtn = document.getElementById('recently-viewed-scroll-right')
+const similarListingsScrollLeftBtn = document.getElementById('similar-listings-scroll-left')
+const similarListingsScrollRightBtn = document.getElementById('similar-listings-scroll-right')
+
+function updateMiniScrollControls(list, leftButton, rightButton) {
+  if (!list) return
+  const maxScroll = list.scrollWidth - list.clientWidth
+  const hasOverflow = maxScroll > 2
+  if (leftButton) leftButton.disabled = !hasOverflow || list.scrollLeft <= 2
+  if (rightButton) rightButton.disabled = !hasOverflow || list.scrollLeft >= maxScroll - 2
+}
+
+function setupMiniScrollControls(list, leftButton, rightButton) {
+  if (!list) return
+  leftButton?.addEventListener('click', () => list.scrollBy({ left: -Math.max(220, list.clientWidth * 0.75), behavior: 'smooth' }))
+  rightButton?.addEventListener('click', () => list.scrollBy({ left: Math.max(220, list.clientWidth * 0.75), behavior: 'smooth' }))
+  list.addEventListener('scroll', () => updateMiniScrollControls(list, leftButton, rightButton), { passive: true })
+  updateMiniScrollControls(list, leftButton, rightButton)
+}
+
+setupMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
+setupMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
+window.addEventListener('resize', () => {
+  updateMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
+  updateMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
+})
 
 function getRecentlyViewedIds() {
   try {
@@ -3082,24 +3171,7 @@ function miniListingCard(item) {
     ? `<div class="mini-listing-price">${escapeHtml(formatListingPrice(item))}</div>` : ''
   card.innerHTML = `${imageHtml}<div class="mini-listing-title">${escapeHtml(item.title || 'Untitled listing')}</div>${price}<div class="mini-listing-meta">${escapeHtml(item.location || item.city || item.category || '')}</div>`
   card.addEventListener('click', () => {
-    const id = String(item.id)
-    const target = listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(id)}"]`)
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      target.classList.add('listing-highlight')
-      setTimeout(() => target.classList.remove('listing-highlight'), 2200)
-      return
-    }
-    searchEl.value = ''
-    activeCategory = ''
-    visibleCount = PAGE_SIZE
-    renderFilteredListings()
-    setTimeout(() => {
-      const loaded = listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(id)}"]`)
-      loaded?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      loaded?.classList.add('listing-highlight')
-      setTimeout(() => loaded?.classList.remove('listing-highlight'), 2200)
-    }, 50)
+    openListingOverlay(item)
   })
   return card
 }
@@ -3115,6 +3187,7 @@ function renderRecentlyViewed() {
   }
   items.forEach(item => recentlyViewedList.appendChild(miniListingCard(item)))
   recentlyViewedSection.classList.remove('hidden')
+  updateMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
 }
 
 function renderSimilarListings(baseItem) {
@@ -3144,6 +3217,7 @@ function renderSimilarListings(baseItem) {
   }
   scored.forEach(item => similarListingsList.appendChild(miniListingCard(item)))
   similarListingsSection.classList.remove('hidden')
+  updateMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
 }
 
 clearRecentlyViewedBtn?.addEventListener('click', () => {
@@ -3153,6 +3227,77 @@ clearRecentlyViewedBtn?.addEventListener('click', () => {
 
 renderRecentlyViewed()
 
+const listingOverlay = document.createElement('div')
+listingOverlay.id = 'listing-overlay'
+listingOverlay.className = 'lightbox-overlay hidden'
+listingOverlay.setAttribute('aria-hidden', 'true')
+listingOverlay.innerHTML = `
+  <div class="listing-overlay-panel">
+    <button type="button" class="lightbox-close" data-close-listing-overlay aria-label="Close listing">&times;</button>
+    <div id="listing-overlay-content" class="listing-overlay-content"></div>
+  </div>
+`
+document.body.appendChild(listingOverlay)
+
+function openListingOverlay(item) {
+  if (!item || !listingOverlay) return
+  const content = document.getElementById('listing-overlay-content')
+  if (!content) return
+
+  const images = getListingImages(item).filter(isValidImageUrl)
+  const imageHtml = images.length
+    ? `<div class="listing-overlay-gallery">${images.map((src, index) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-image${index === 0 ? ' active' : ''}" loading="lazy" />`).join('')}</div>`
+    : `<div class="listing-overlay-gallery empty"><div class="listing-overlay-empty">${ICON_STORE}</div></div>`
+
+  const price = item.price != null && String(item.price).trim() !== '' ? `<div class="listing-overlay-price">${escapeHtml(formatListingPrice(item))}</div>` : ''
+  
+  const metaParts = []
+  if (item.category) metaParts.push(`<div><strong>Category</strong><span>${escapeHtml(item.category)}</span></div>`)
+  if (item.delivery_type) metaParts.push(`<div><strong>Delivery</strong><span>${escapeHtml(item.delivery_type)}</span></div>`)
+  if (item.payment_type) metaParts.push(`<div><strong>Payment</strong><span>${escapeHtml(item.payment_type)}</span></div>`)
+  if (item.location || item.city) metaParts.push(`<div><strong>Location</strong><span>${escapeHtml(item.location || item.city)}</span></div>`)
+  if (item.contact_method) metaParts.push(`<div><strong>Contact method</strong><span>${escapeHtml(item.contact_method)}</span></div>`)
+  const meta = metaParts.length ? `<div class="listing-overlay-meta">${metaParts.join('')}</div>` : ''
+
+  content.innerHTML = `
+    ${imageHtml}
+    <div class="listing-overlay-body">
+      <div class="listing-overlay-header">
+        <span class="eyebrow">New listing</span>
+        <h2>${escapeHtml(item.title || 'Untitled listing')}</h2>
+      </div>
+      ${price}
+      ${meta}
+      ${item.description ? `<p class="listing-overlay-description">${escapeHtml(item.description)}</p>` : ''}
+      <div class="listing-overlay-actions">
+        <button type="button" class="hero-btn hero-btn-primary" data-overlay-contact-id="${escapeHtml(item.id)}">Contact seller</button>
+        <button type="button" class="muted-btn" data-close-listing-overlay>Close</button>
+      </div>
+    </div>
+  `
+
+  listingOverlay.classList.remove('hidden')
+  listingOverlay.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('lightbox-open')
+  rememberRecentlyViewed(item.id)
+  renderSimilarListings(item)
+}
+
+function closeListingOverlay() {
+  listingOverlay.classList.add('hidden')
+  listingOverlay.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('lightbox-open')
+}
+
+listingOverlay?.addEventListener('click', (event) => {
+  if (event.target === listingOverlay) closeListingOverlay()
+  if (event.target.closest('[data-close-listing-overlay]')) closeListingOverlay()
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !listingOverlay.classList.contains('hidden')) closeListingOverlay()
+})
+
 function renderListing(l, container = listingsContainer) {
   if (!(container instanceof Element)) container = listingsContainer
   if (!container) return
@@ -3160,6 +3305,10 @@ function renderListing(l, container = listingsContainer) {
   const d = document.createElement('div')
   d.className = 'listing' + (l.sold ? ' listing-sold' : '')
   d.dataset.listingId = l.id
+  d.addEventListener('click', (event) => {
+    if (event.target.closest('button, a, input, select, textarea')) return
+    openListingOverlay(l)
+  })
   const parts = []
   if (l.sold) parts.push('<div class="sold-badge">SOLD</div>')
 
@@ -3321,6 +3470,20 @@ document.body.addEventListener('click', (ev) => {
     if (!desc) return
     const expanded = desc.classList.toggle('expanded')
     readBtn.textContent = expanded ? 'Show less' : 'Read more'
+    return
+  }
+  const overlayContact = ev.target.closest('[data-overlay-contact-id]')
+  if (overlayContact) {
+    const item = currentListings.find((r) => String(r.id) === String(overlayContact.dataset.overlayContactId)) || localState.listings.find((r) => String(r.id) === String(overlayContact.dataset.overlayContactId))
+    if (item) {
+      const link = buildContactLink(item.contact_method, item.contact_details)
+      if (link?.url) {
+        closeListingOverlay()
+        window.open(link.url, '_blank', 'noopener,noreferrer')
+      } else {
+        alert('Seller contact details are not available for this listing.')
+      }
+    }
     return
   }
   const waLink = ev.target.closest('[data-track-view-id]')
@@ -3486,7 +3649,7 @@ window.addEventListener('appinstalled', () => {
   dismissInstallBanner()
   buildDrawerMenu()
   buildDesktopNav()
-})
+});
 
 // Carty opens only when the user taps the Carty button.
 
@@ -3519,7 +3682,7 @@ window.addEventListener('appinstalled', () => {
     if (hidden && hidden.value && !editor.value) editor.value = hidden.value
     growTextarea(editor)
   })
-})()
+})();
 
 
 
