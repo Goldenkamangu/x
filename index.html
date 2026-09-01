@@ -121,143 +121,147 @@
   </section>
 
   <main class="container">
-    <section id="auth-section" class="card">
-      <h2>Sign up / Sign in</h2>
-      <form id="auth-form">
-        <input id="name" type="text" placeholder="Full name" autocomplete="name" />
-        <input id="email" type="email" placeholder="Email" required />
-        <div class="password-field">
-          <input id="password" type="password" placeholder="Password" required />
-          <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
-              <g class="eye">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="12" cy="12" r="3" fill="currentColor" />
-              </g>
-              <g class="eye-off">
-                <path d="M2.5 12s3.5-6.5 9.5-6.5c2.2 0 4.2.8 5.8 2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M21.5 12s-3.5 6.5-9.5 6.5c-2.2 0-4.2-.8-5.8-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-              </g>
-            </svg>
-          </button>
-        </div>
-        <div class="row">
-          <button id="btn-signup" type="button">Sign up</button>
-          <button id="btn-login" type="button">Log in</button>
-        </div>
-        <div id="auth-msg" class="muted"></div>
-      </form>
-    </section>
-
-    <section id="create-listing-section" class="card" style="display:none;">
-      <div class="section-header">
-        <div>
-          <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
-          <h2 id="create-form-heading">Create a Listing</h2>
-        </div>
-        <div id="edit-mode-badge" class="edit-mode-badge" style="display:none">Editing listing</div>
-      </div>
-      <div id="listing-progress" class="ux-progress" aria-label="Listing creation progress">
-        <div class="ux-progress-top"><strong id="listing-progress-label">Start with the basics</strong><span id="listing-progress-count">Step 1 of 4</span></div>
-        <div class="ux-progress-track"><span id="listing-progress-fill"></span></div>
-        <div class="ux-progress-steps" aria-hidden="true">
-          <span class="active">Basics</span><span>Details</span><span>Photos</span><span>Publish</span>
-        </div>
-      </div>
-      <form id="listing-form" class="form-grid">
-        <div class="form-compact-header">
-          <div>
-            <label class="form-field-card">Title
-              <textarea id="title-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Title" placeholder="Product name or offer"></textarea><input id="title" type="hidden" value="">
-            </label>
+    <div class="desktop-form-column" id="desktop-form-column">
+      <section id="auth-section" class="card">
+        <h2>Sign up / Sign in</h2>
+        <form id="auth-form">
+          <input id="name" type="text" placeholder="Full name" autocomplete="name" />
+          <input id="email" type="email" placeholder="Email" required />
+          <div class="password-field">
+            <input id="password" type="password" placeholder="Password" required />
+            <button id="toggle-password" type="button" class="password-toggle" aria-label="Toggle password visibility">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+                <g class="eye">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <circle cx="12" cy="12" r="3" fill="currentColor" />
+                </g>
+                <g class="eye-off">
+                  <path d="M2.5 12s3.5-6.5 9.5-6.5c2.2 0 4.2.8 5.8 2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M21.5 12s-3.5 6.5-9.5 6.5c-2.2 0-4.2-.8-5.8-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </g>
+              </svg>
+            </button>
           </div>
+          <div class="row">
+            <button id="btn-signup" type="button">Sign up</button>
+            <button id="btn-login" type="button">Log in</button>
+          </div>
+          <div id="auth-msg" class="muted"></div>
+        </form>
+      </section>
+
+      <section id="create-listing-section" class="card" style="display:none;">
+        <div class="section-header">
           <div>
-            <label class="form-field-card">Price
-              <input id="price" placeholder="Enter a price or offer" />
-              <select id="price-currency" style="margin-left:8px;min-width:120px">
-                <option value="ZAR">ZAR - Rand (R)</option>
-                <option value="USD">USD - Dollar ($)</option>
+            <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
+            <h2 id="create-form-heading">Create a Listing</h2>
+          </div>
+          <div id="edit-mode-badge" class="edit-mode-badge" style="display:none">Editing listing</div>
+        </div>
+        <div id="listing-progress" class="ux-progress" aria-label="Listing creation progress">
+          <div class="ux-progress-top"><strong id="listing-progress-label">Start with the basics</strong><span id="listing-progress-count">Step 1 of 4</span></div>
+          <div class="ux-progress-track"><span id="listing-progress-fill"></span></div>
+          <div class="ux-progress-steps" aria-hidden="true">
+            <span class="active">Basics</span><span>Details</span><span>Photos</span><span>Publish</span>
+          </div>
+        </div>
+        <form id="listing-form" class="form-grid">
+          <div class="form-compact-header">
+            <div>
+              <label class="form-field-card">Title
+                <textarea id="title-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Title" placeholder="Product name or offer"></textarea><input id="title" type="hidden" value="">
+              </label>
+            </div>
+            <div>
+              <label class="form-field-card">Price
+                <input id="price" placeholder="Enter a price or offer" />
+                <select id="price-currency" style="margin-left:8px;min-width:120px">
+                  <option value="ZAR">ZAR - Rand (R)</option>
+                  <option value="USD">USD - Dollar ($)</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="form-compact-header">
+            <div>
+              <label class="form-field-card">Delivery / Pickup
+                <select id="delivery-type">
+                  <option value="">Choose delivery option</option>
+                  <option value="Delivery">Delivery</option>
+                  <option value="Pickup">Pickup</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label class="form-field-card">Condition
+                <textarea id="url-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Condition" placeholder="Condition example: New, Used, Good"></textarea><input id="url" type="hidden" value="">
+              </label>
+            </div>
+          </div>
+          <div class="form-actions-row">
+            <button id="toggle-more" type="button" class="muted-btn">More options</button>
+          </div>
+
+          <div class="advanced-fields">
+            <label>
+              Payment type
+              <select id="payment-type">
+                <option value="">Choose payment option</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
               </select>
             </label>
-          </div>
-        </div>
-        <div class="form-compact-header">
-          <div>
-            <label class="form-field-card">Delivery / Pickup
-              <select id="delivery-type">
-                <option value="">Choose delivery option</option>
-                <option value="Delivery">Delivery</option>
-                <option value="Pickup">Pickup</option>
+            <label>
+              Category
+              <textarea id="category-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Category" placeholder="e.g. Phones, Furniture, Gaming"></textarea><input id="category" type="hidden" value="">
+              <div id="category-suggestions" class="category-suggestions" aria-label="Suggested categories"></div>
+            </label>
+            <label>
+              Contact method
+              <select id="contact-method">
+                <option value="">Choose how buyers can reach you</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Telegram">Telegram</option>
+                <option value="Email">Email</option>
+                <option value="Phone">Phone</option>
+                <option value="Direct Message">Direct Message</option>
               </select>
             </label>
-          </div>
-          <div>
-            <label class="form-field-card">Condition
-              <textarea id="url-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Condition" placeholder="Condition example: New, Used, Good"></textarea><input id="url" type="hidden" value="">
+            <label>
+              Contact details
+              <textarea id="contact-details-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Contact details" placeholder="e.g. 06 1234 5678 or +27 6 1234 5678"></textarea><input id="contact-details" type="hidden" value="">
+            </label>
+            <label>
+              Location / City
+              <textarea id="location-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Location / City" placeholder="e.g. Johannesburg, Pretoria"></textarea><input id="location" type="hidden" value="">
+            </label>
+            <label class="full-width">
+              Description
+              <textarea id="description" class="inline-grow-field" wrap="soft" placeholder="Describe the item, condition, or benefits"></textarea>
+            </label>
+            <label class="full-width">
+              Photos (optional, up to 3)
+              <input id="image" type="file" accept="image/*" multiple />
+              <small class="field-help">Add up to 3 pictures.</small>
             </label>
           </div>
-        </div>
-        <div class="form-actions-row">
-          <button id="toggle-more" type="button" class="muted-btn">More options</button>
-        </div>
+          <div class="form-actions-row">
+            <label class="agree-terms-row">
+              <input id="agree-terms" type="checkbox" />
+              <span>I agree to the <button type="button" id="open-terms-link" class="link-btn">Terms &amp; Conditions</button></span>
+            </label>
+          </div>
+          <div class="form-actions-row">
+            <button id="create-listing" type="button">Create Listing</button>
+            <button id="cancel-edit" type="button" style="display:none;background:#444;color:#fff;border:1px solid rgba(255,255,255,0.06);">Cancel</button>
+          </div>
+          <div id="listing-msg" class="muted"></div>
+        </form>
+      </section>
+    </div>
 
-        <div class="advanced-fields">
-          <label>
-            Payment type
-            <select id="payment-type">
-              <option value="">Choose payment option</option>
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-            </select>
-          </label>
-          <label>
-            Category
-            <textarea id="category-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Category" placeholder="e.g. Phones, Furniture, Gaming"></textarea><input id="category" type="hidden" value="">
-            <div id="category-suggestions" class="category-suggestions" aria-label="Suggested categories"></div>
-          </label>
-          <label>
-            Contact method
-            <select id="contact-method">
-              <option value="">Choose how buyers can reach you</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Telegram">Telegram</option>
-              <option value="Email">Email</option>
-              <option value="Phone">Phone</option>
-              <option value="Direct Message">Direct Message</option>
-            </select>
-          </label>
-          <label>
-            Contact details
-            <textarea id="contact-details-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Contact details" placeholder="e.g. 06 1234 5678 or +27 6 1234 5678"></textarea><input id="contact-details" type="hidden" value="">
-          </label>
-          <label>
-            Location / City
-            <textarea id="location-editor" class="inline-grow-field direct-grow-editor" wrap="soft" rows="1" aria-label="Location / City" placeholder="e.g. Johannesburg, Pretoria"></textarea><input id="location" type="hidden" value="">
-          </label>
-          <label class="full-width">
-            Description
-            <textarea id="description" class="inline-grow-field" wrap="soft" placeholder="Describe the item, condition, or benefits"></textarea>
-          </label>
-          <label class="full-width">
-            Photos (optional, up to 3)
-            <input id="image" type="file" accept="image/*" multiple />
-            <small class="field-help">Add up to 3 pictures.</small>
-          </label>
-        </div>
-        <div class="form-actions-row">
-          <label class="agree-terms-row">
-            <input id="agree-terms" type="checkbox" />
-            <span>I agree to the <button type="button" id="open-terms-link" class="link-btn">Terms &amp; Conditions</button></span>
-          </label>
-        </div>
-        <div class="form-actions-row">
-          <button id="create-listing" type="button">Create Listing</button>
-          <button id="cancel-edit" type="button" style="display:none;background:#444;color:#fff;border:1px solid rgba(255,255,255,0.06);">Cancel</button>
-        </div>
-        <div id="listing-msg" class="muted"></div>
-      </form>
-    </section>
+    <div id="desktop-splitter" class="desktop-splitter" aria-label="Resize left panel" role="separator" aria-orientation="vertical" tabindex="0"></div>
 
     <section id="feed" class="card">
       <div class="section-header">

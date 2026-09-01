@@ -170,11 +170,6 @@ const ICON_STAR_OUTLINE = '<svg class="icon icon-star" viewBox="0 0 24 24" aria-
 const ICON_SHIELD = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M12 2.5l7.5 3v5.4c0 5-3.2 8.6-7.5 10.6-4.3-2-7.5-5.6-7.5-10.6V5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>'
 const ICON_STORE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14"><path d="M3.5 9l1.2-4.5h14.6L20.5 9M3.5 9v10.5h17V9M3.5 9a2.6 2.6 0 0 0 5 1.1A2.6 2.6 0 0 0 13.5 10a2.6 2.6 0 0 0 5 0A2.6 2.6 0 0 0 20.5 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M9.5 19.5V14h5v5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>'
 const ICON_CARTY_AI = '<svg class="icon carty-ai-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false" width="26" height="26"><path d="M5 6h3l1.7 11.1a2.5 2.5 0 0 0 2.5 2.1h8.1a2.5 2.5 0 0 0 2.4-1.9L25 11H9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="24.3" r="1.8" fill="currentColor"/><circle cx="22.4" cy="24.3" r="1.8" fill="currentColor"/><path d="M24 3.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9zM29 9.2l.45 1.15 1.15.45-1.15.45-.45 1.15-.45-1.15-1.15-.45 1.15-.45z" fill="currentColor"/></svg>'
-const ICON_PHONE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M7.2 4.2 9.5 3l2 4-2.1 1.4c.9 2 2.3 3.4 4.3 4.3l1.4-2.1 4 2-1.2 2.3c-.5 1-1.5 1.6-2.6 1.5-5.5-.8-9.8-5.1-10.6-10.6-.1-1.1.5-2.1 1.5-2.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-const ICON_LOCATION = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
-const ICON_ADDRESS = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M4 6.5 12 3l8 3.5v11L12 21l-8-3.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 8.5h8M8 12h8M8 15.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
-const ICON_CLOCK = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
-const ICON_TRUCK = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width=14 height=14><path d="M3.5 6.5h10v9h-10zM13.5 9.5h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
 const ICON_CART = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16"><path d="M3 4h2l1.7 10.2a2 2 0 0 0 2 1.8h7.7a2 2 0 0 0 2-1.7L20 7H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.1" fill="currentColor"/><circle cx="18" cy="20" r="1.1" fill="currentColor"/></svg>'
 
 // Elements
@@ -572,7 +567,17 @@ function buildDesktopNav() {
 }
 
 const createListingSection = document.getElementById('create-listing-section')
+const containerEl = document.querySelector('.container')
+const desktopSplitter = document.getElementById('desktop-splitter')
+const formColumn = document.getElementById('desktop-form-column')
 const titleEl = document.getElementById('title')
+const titleEditor = document.getElementById('title-editor')
+if (titleEditor && titleEl) {
+  const syncTitleEditor = () => { titleEl.value = titleEditor.value }
+  titleEditor.addEventListener('input', syncTitleEditor)
+  titleEditor.addEventListener('change', syncTitleEditor)
+  syncTitleEditor()
+}
 const priceEl = document.getElementById('price')
 const priceCurrencyEl = document.getElementById('price-currency')
 const paymentTypeEl = document.getElementById('payment-type')
@@ -939,6 +944,60 @@ function setFormCompact(compact = true) {
   if (toggleMoreBtn) toggleMoreBtn.textContent = compact ? 'More options' : 'Less options'
 }
 
+function clampPanelWidth(value) {
+  const min = window.innerWidth > 1200 ? 400 : 360
+  const max = Math.min(window.innerWidth - 360, 620)
+  return Math.min(Math.max(value, min), max)
+}
+
+function updateDesktopPanelWidth(width) {
+  if (!containerEl) return
+  const next = clampPanelWidth(width)
+  containerEl.style.setProperty('--left-panel-width', `${next}px`)
+}
+
+if (desktopSplitter && containerEl) {
+  let dragging = false
+  const beginResize = (event) => {
+    if (window.innerWidth <= 900) return
+    dragging = true
+    desktopSplitter.setPointerCapture?.(event.pointerId)
+    desktopSplitter.classList.add('is-dragging')
+    event.preventDefault()
+  }
+
+  const finishResize = () => {
+    dragging = false
+    desktopSplitter.classList.remove('is-dragging')
+  }
+
+  desktopSplitter.addEventListener('pointerdown', beginResize)
+  desktopSplitter.addEventListener('pointerup', finishResize)
+  desktopSplitter.addEventListener('pointerleave', finishResize)
+  desktopSplitter.addEventListener('keydown', (event) => {
+    if (!containerEl) return
+    const current = parseFloat(getComputedStyle(containerEl).getPropertyValue('--left-panel-width')) || 440
+    const step = event.shiftKey ? 40 : 20
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      updateDesktopPanelWidth(current + step)
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      updateDesktopPanelWidth(current - step)
+    }
+  })
+
+  document.addEventListener('pointermove', (event) => {
+    if (!dragging || !containerEl) return
+    const bounds = containerEl.getBoundingClientRect()
+    const next = event.clientX - bounds.left
+    updateDesktopPanelWidth(next)
+  })
+  document.addEventListener('pointerup', finishResize)
+  document.addEventListener('pointercancel', finishResize)
+}
+
 // Toggle advanced fields
 toggleMoreBtn?.addEventListener('click', () => {
   if (!createListingSection) return
@@ -1195,6 +1254,7 @@ createListingBtn.addEventListener('click', async () => {
     if (!image_urls.length && existingListing) image_urls = getListingImages(existingListing)
     image_url = image_urls[0] || null
 
+    if (titleEditor && titleEl) titleEl.value = titleEditor.value
     const obj = {
       title: titleEl.value.trim(),
       price: priceEl.value.trim(),
@@ -1529,21 +1589,28 @@ function hideLoadingScreen() {
   document.body.classList.add('app-ready')
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Keep the branded loading screen visible for five seconds.
-  setTimeout(hideLoadingScreen, 5000)
+function armLoadingScreenHide() {
+  if (window.__linkhubLoadingHidden) return
+  window.__linkhubLoadingHidden = true
+  hideLoadingScreen()
+}
 
-  // Ensure the listing form starts compact and toggle text is correct
+document.addEventListener('DOMContentLoaded', () => {
+  // Ensure the listing form starts compact and toggle text is correct.
   try {
     setFormCompact(true)
   } catch (e) {}
+
+  // Hide the branded loading screen once the app has booted.
+  setTimeout(armLoadingScreenHide, 1200)
 })
 
-// Keep the same five-second display even if the page load event fires early.
-// A one-second safety margin prevents the loader from remaining forever if
-// the normal DOM callback is interrupted.
-window.addEventListener('load', () => setTimeout(hideLoadingScreen, 5000))
-setTimeout(hideLoadingScreen, 6000)
+window.addEventListener('load', () => {
+  setTimeout(armLoadingScreenHide, 250)
+}, { once: true })
+
+// Safety fallback: if the app boot process is interrupted, the loader still clears.
+setTimeout(armLoadingScreenHide, 5000)
 
 // My Listings: dedicated overlay showing only the signed-in user's own posts
 const myListingsOverlay = document.getElementById('my-listings-overlay')
@@ -1706,11 +1773,11 @@ function openStore(userId) {
   }
   if (storeContactMeta) {
     const bits = []
-    if (s?.phone) bits.push(`<span class="store-meta-item">${ICON_PHONE}<span>${escapeHtml(s.phone)}</span></span>`)
-    if (s?.location) bits.push(`<span class="store-meta-item">${ICON_LOCATION}<span>${escapeHtml(s.location)}</span></span>`)
-    if (s?.address) bits.push(`<span class="store-meta-item">${ICON_ADDRESS}<span>${escapeHtml(s.address)}</span></span>`)
-    if (s?.opening_hours) bits.push(`<span class="store-meta-item">${ICON_CLOCK}<span>${escapeHtml(s.opening_hours)}</span></span>`)
-    if (s?.fulfilment) bits.push(`<span class="store-meta-item">${ICON_TRUCK}<span>${escapeHtml(s.fulfilment)}</span></span>`)
+    if (s?.phone) bits.push(`<span>📞 ${escapeHtml(s.phone)}</span>`)
+    if (s?.location) bits.push(`<span>📍 ${escapeHtml(s.location)}</span>`)
+    if (s?.address) bits.push(`<span>⌖ ${escapeHtml(s.address)}</span>`)
+    if (s?.opening_hours) bits.push(`<span>🕒 ${escapeHtml(s.opening_hours)}</span>`)
+    if (s?.fulfilment) bits.push(`<span>🚚 ${escapeHtml(s.fulfilment)}</span>`)
     storeContactMeta.innerHTML = bits.join('')
   }
   if (storeEditBtn) {
@@ -2349,6 +2416,8 @@ function openLinkedListingFromUrl() {
   const card = listingsContainer.querySelector(`[data-listing-id="${CSS.escape(targetId)}"]`)
   if (!card) return
   card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const linkedItem = currentListings.find((item) => String(item.id) === String(targetId))
+  if (linkedItem) { rememberRecentlyViewed(linkedItem.id); renderSimilarListings(linkedItem) }
   card.classList.add('listing-highlight')
   setTimeout(() => card.classList.remove('listing-highlight'), 2600)
 }
@@ -2449,6 +2518,38 @@ function pickDisplayTerm(rawTerm, filters) {
   const words = meaningfulWords(rawTerm)
   if (words.length) return words.slice(0, 3).join(' ')
   return rawTerm
+}
+
+// Choose the listing Carty should take the user to without changing the
+// marketplace result order. Exact title matches win over partial title, then
+// keyword/category matches.
+function pickBestCartyResult(results, rawTerm, filters) {
+  if (!Array.isArray(results) || !results.length) return null
+  const keywords = (Array.isArray(filters?.keywords) ? filters.keywords : meaningfulWords(rawTerm))
+    .map(v => String(v).trim().toLowerCase())
+    .filter(Boolean)
+  const query = String(rawTerm || '').trim().toLowerCase()
+
+  let best = results[0]
+  let bestScore = -1
+  for (const item of results) {
+    const title = String(item.title || '').toLowerCase()
+    const category = String(item.category || '').toLowerCase()
+    const description = String(item.description || '').toLowerCase()
+    let score = 0
+    if (query && title === query) score += 1000
+    if (query && title.includes(query)) score += 500
+    for (const keyword of keywords) {
+      if (title.includes(keyword)) score += 120
+      else if (category.includes(keyword)) score += 60
+      else if (description.includes(keyword)) score += 20
+    }
+    if (score > bestScore) {
+      best = item
+      bestScore = score
+    }
+  }
+  return best
 }
 
 // --- Carty: conversational marketplace assistant ---
@@ -2797,7 +2898,10 @@ async function runAiSearch(queryText) {
     type: 'search',
     count: results.length,
     displayTerm,
-    firstResultId: results[0]?.id != null ? String(results[0].id) : null,
+    firstResultId: (() => {
+      const best = pickBestCartyResult(results, term, filters)
+      return best?.id != null ? String(best.id) : null
+    })(),
     reply: data.reply || `I found ${results.length} listing${results.length === 1 ? '' : 's'} that match what you described.`
   }
 }
@@ -2935,6 +3039,119 @@ cartyForm?.addEventListener('submit', async ev => {
 })
 
 // Carty intentionally opens only when the user taps the button.
+
+// Recently viewed + "You might also like"
+const RECENT_VIEWED_KEY = 'linkhub-recently-viewed-v1'
+const RECENT_VIEWED_LIMIT = 8
+const recentlyViewedSection = document.getElementById('recently-viewed-section')
+const recentlyViewedList = document.getElementById('recently-viewed-list')
+const clearRecentlyViewedBtn = document.getElementById('clear-recently-viewed')
+const similarListingsSection = document.getElementById('similar-listings-section')
+const similarListingsList = document.getElementById('similar-listings-list')
+
+function getRecentlyViewedIds() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_VIEWED_KEY) || '[]')
+    return Array.isArray(raw) ? raw.map(String).slice(0, RECENT_VIEWED_LIMIT) : []
+  } catch { return [] }
+}
+
+function saveRecentlyViewedIds(ids) {
+  localStorage.setItem(RECENT_VIEWED_KEY, JSON.stringify(ids.map(String).slice(0, RECENT_VIEWED_LIMIT)))
+}
+
+function rememberRecentlyViewed(listingId) {
+  const id = String(listingId || '')
+  if (!id) return
+  const next = [id, ...getRecentlyViewedIds().filter(x => x !== id)]
+  saveRecentlyViewedIds(next)
+  renderRecentlyViewed()
+}
+
+function miniListingCard(item) {
+  const card = document.createElement('button')
+  card.type = 'button'
+  card.className = 'mini-listing-card'
+  card.dataset.listingId = String(item.id)
+  card.setAttribute('aria-label', `Open ${item.title || 'listing'}`)
+  const images = getListingImages(item).filter(isValidImageUrl)
+  const imageHtml = images.length
+    ? `<div class="mini-listing-img"><img src="${escapeHtml(images[0])}" alt="" loading="lazy"></div>`
+    : `<div class="mini-listing-placeholder">${ICON_STORE}</div>`
+  const price = item.price != null && String(item.price).trim() !== ''
+    ? `<div class="mini-listing-price">${escapeHtml(formatListingPrice(item))}</div>` : ''
+  card.innerHTML = `${imageHtml}<div class="mini-listing-title">${escapeHtml(item.title || 'Untitled listing')}</div>${price}<div class="mini-listing-meta">${escapeHtml(item.location || item.city || item.category || '')}</div>`
+  card.addEventListener('click', () => {
+    const id = String(item.id)
+    const target = listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(id)}"]`)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      target.classList.add('listing-highlight')
+      setTimeout(() => target.classList.remove('listing-highlight'), 2200)
+      return
+    }
+    searchEl.value = ''
+    activeCategory = ''
+    visibleCount = PAGE_SIZE
+    renderFilteredListings()
+    setTimeout(() => {
+      const loaded = listingsContainer?.querySelector(`[data-listing-id="${CSS.escape(id)}"]`)
+      loaded?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      loaded?.classList.add('listing-highlight')
+      setTimeout(() => loaded?.classList.remove('listing-highlight'), 2200)
+    }, 50)
+  })
+  return card
+}
+
+function renderRecentlyViewed() {
+  if (!recentlyViewedSection || !recentlyViewedList) return
+  const ids = getRecentlyViewedIds()
+  const items = ids.map(id => currentListings.find(item => String(item.id) === id)).filter(Boolean)
+  recentlyViewedList.innerHTML = ''
+  if (!items.length) {
+    recentlyViewedSection.classList.add('hidden')
+    return
+  }
+  items.forEach(item => recentlyViewedList.appendChild(miniListingCard(item)))
+  recentlyViewedSection.classList.remove('hidden')
+}
+
+function renderSimilarListings(baseItem) {
+  if (!similarListingsSection || !similarListingsList) return
+  if (!baseItem) {
+    similarListingsSection.classList.add('hidden')
+    return
+  }
+  const category = String(baseItem.category || '').toLowerCase()
+  const titleWords = new Set(String(baseItem.title || '').toLowerCase().split(/\\s+/).filter(w => w.length > 2))
+  const scored = currentListings
+    .filter(item => String(item.id) !== String(baseItem.id) && !item.sold)
+    .map(item => {
+      const itemWords = String(item.title || '').toLowerCase().split(/\\s+/)
+      let score = 0
+      if (category && String(item.category || '').toLowerCase() === category) score += 5
+      if (titleWords.size) score += itemWords.filter(w => titleWords.has(w)).length * 2
+      return { item, score }
+    })
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 4)
+    .map(x => x.item)
+  similarListingsList.innerHTML = ''
+  if (!scored.length) {
+    similarListingsSection.classList.add('hidden')
+    return
+  }
+  scored.forEach(item => similarListingsList.appendChild(miniListingCard(item)))
+  similarListingsSection.classList.remove('hidden')
+}
+
+clearRecentlyViewedBtn?.addEventListener('click', () => {
+  saveRecentlyViewedIds([])
+  renderRecentlyViewed()
+})
+
+renderRecentlyViewed()
 
 function renderListing(l, container = listingsContainer) {
   if (!(container instanceof Element)) container = listingsContainer
@@ -3133,7 +3350,10 @@ document.body.addEventListener('click', (ev) => {
 })
 
 async function trackListingView(item) {
-  if (!item?.id || !useSupabase) return
+  if (!item?.id) return
+  rememberRecentlyViewed(item.id)
+  renderSimilarListings(item)
+  if (!useSupabase) return
   if (currentUser?.id && item.user_id && String(currentUser.id) === String(item.user_id)) return
   const key = `viewed-listing-${item.id}-${currentUser?.id || 'anon'}`
   if (localStorage.getItem(key)) return
