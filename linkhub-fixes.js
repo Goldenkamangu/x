@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 (() => {
   const SUPABASE_URL = 'https://izdwacnhqrtsgngmsigu.supabase.co'
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFub24iLCJpYXQiOjE3ODU5NDk4MjksImV4cCI6MjEwMTUyNTgyOX0.coV2SWeECtgXNeLtHOJ2T6_ekmV7Ynya35Ewl8oH7GI'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHdhY25ocXJ0c2duZ21zaWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDk4MjksImV4cCI6MjEwMTUyNTgyOX0.coV2SWeECtgXNeLtHOJ2T6_ekmV7Ynya35Ewl8oH7GI'
 
   // 1. Broken/deleted images: replace dead URLs with a clean state.
   const style = document.createElement('style')
@@ -28,7 +28,6 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     placeholder.setAttribute('role', 'img')
     placeholder.setAttribute('aria-label', 'Image unavailable')
     img.replaceWith(placeholder)
-
     const button = placeholder.closest('button.gallery-main-btn, button.gallery-thumb')
     if (button) {
       button.disabled = true
@@ -56,9 +55,9 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     }))
   }).observe(document.documentElement, { childList: true, subtree: true })
 
-  // 2. Store compatibility: recognise older stores rows that use another
-  // owner column. This fixes stores that exist in Supabase but do not get a
-  // Visit Store button beside their listings.
+  // 2. Store compatibility: recognise older store rows that use another
+  // owner column. The existing app indexes user_id/id only, so those stores
+  // can exist in Supabase but never get a Visit Store button.
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   async function repairStoreIndex() {
@@ -79,7 +78,6 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         const listing = listings.find(row => String(row.id) === String(card.dataset.listingId))
         const owner = listing?.user_id ?? listing?.seller_id ?? listing?.owner_id ?? listing?.profile_id
         if (owner == null || !storesByOwner[String(owner)] || card.querySelector('.visit-store-btn')) continue
-
         const store = storesByOwner[String(owner)]
         const name = store?.name ?? store?.store_name ?? store?.business_name ?? store?.title ?? 'Visit Store'
         const button = document.createElement('button')
@@ -87,7 +85,6 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         button.className = 'visit-store-btn'
         button.dataset.storeId = String(owner)
         button.textContent = `Visit Store: ${name}`
-        // Do not stop propagation. app.js already handles .visit-store-btn.
         card.appendChild(button)
       }
     } catch (error) {
