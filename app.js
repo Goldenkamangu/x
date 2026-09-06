@@ -14,6 +14,16 @@ function saveStoredJSON(key, value) {
 }
 
 const localImageStore = {}
+
+// Storage bucket names. Listing photos and store banners/logos live in
+// separate Supabase Storage buckets so store branding doesn't count against
+// (or get mixed into) the listing-photos bucket's storage. Update these two
+// values if you rename or re-create either bucket in Supabase — every
+// upload/delete/cleanup call in this file reads from here rather than
+// hardcoding the bucket name.
+const LISTING_IMAGES_BUCKET = 'listing-images'
+const STORE_ASSETS_BUCKET = 'store-assets'
+
 const localState = {
   users: loadStoredJSON('marketmeet-users', []),
   listings: loadStoredJSON('marketmeet-listings', []),
@@ -1109,10 +1119,12 @@ async function deleteAccount() {
     if (useSupabase) {
       // The SQL delete_my_account() function removes the database rows and
       // auth account, but it cannot safely remove Storage objects by itself.
-      // Collect every listing image + store banner while the user is still
-      // authenticated, then remove them through the Storage API before the
-      // account is finally deleted. If any Storage deletion fails, stop here
-      // so we do not leave an account behind with files we can no longer reach.
+      // Collect every listing image + store banner/logo while the user is
+      // still authenticated, then remove them through the Storage API before
+      // the account is finally deleted. If any Storage deletion fails, stop
+      // here so we do not leave an account behind with files we can no
+      // longer reach. Listing photos and store branding live in separate
+      // buckets, so they're removed with two separate calls.
       const uid = currentUser.id
       const [{ data: userListings, error: listingsErr }, { data: userStore, error: storeErr }] = await Promise.all([
         db.from('listings').select('*').eq('user_id', uid),
@@ -1121,15 +1133,26 @@ async function deleteAccount() {
       if (listingsErr) throw listingsErr
       if (storeErr && storeErr.code !== 'PGRST116') throw storeErr
 
-      const storagePaths = []
-      for (const listing of userListings || []) storagePaths.push(...extractStoragePaths(listing))
-      if (userStore?.banner_url) storagePaths.push(...extractStoragePaths({ image_url: userStore.banner_url }))
+      const listingPaths = []
+      for (const listing of userListings || []) listingPaths.push(...extractStoragePaths(listing))
+      const uniqueListingPaths = [...new Set(listingPaths)]
 
-      const uniquePaths = [...new Set(storagePaths)]
-      if (uniquePaths.length && db.storage) {
-        accountMsg.textContent = `Removing ${uniquePaths.length} stored image${uniquePaths.length === 1 ? '' : 's'}…`
-        const { error: storageErr } = await db.storage.from('listing-images').remove(uniquePaths)
-        if (storageErr) throw storageErr
+      const storePaths = []
+      if (userStore?.banner_url) storePaths.push(...extractStoreStoragePaths({ image_url: userStore.banner_url }))
+      if (userStore?.logo_url) storePaths.push(...extractStoreStoragePaths({ image_url: userStore.logo_url }))
+      const uniqueStorePaths = [...new Set(storePaths)]
+
+      const totalCount = uniqueListingPaths.length + uniqueStorePaths.length
+      if (totalCount && db.storage) {
+        accountMsg.textContent = `Removing ${totalCount} stored image${totalCount === 1 ? '' : 's'}…`
+        if (uniqueListingPaths.length) {
+          const { error: storageErr } = await db.storage.from(LISTING_IMAGES_BUCKET).remove(uniqueListingPaths)
+          if (storageErr) throw storageErr
+        }
+        if (uniqueStorePaths.length) {
+          const { error: storeStorageErr } = await db.storage.from(STORE_ASSETS_BUCKET).remove(uniqueStorePaths)
+          if (storeStorageErr) throw storeStorageErr
+        }
       }
 
       accountMsg.textContent = 'Deleting your account…'
@@ -1265,7 +1288,7 @@ createListingBtn.addEventListener('click', async () => {
         let uploadedUrl = null
         try {
           if (useSupabase && db.storage) {
-            const storage = db.storage.from('listing-images')
+            const storage = db.storage.from(LISTING_IMAGES_BUCKET)
             const { data: upData, error: upErr } = await storage.upload(path, compressed, { upsert: false })
             if (!upErr) {
               const storedPath = upData?.path || upData?.Key || path
@@ -1311,7 +1334,7 @@ createListingBtn.addEventListener('click', async () => {
 
     const cleanupUploadedStorage = async () => {
       if (!uploadedStoragePaths.length || !useSupabase || !db.storage) return
-      try { await db.storage.from('listing-images').remove([...new Set(uploadedStoragePaths)]) }
+      try { await db.storage.from(LISTING_IMAGES_BUCKET).remove([...new Set(uploadedStoragePaths)]) }
       catch (cleanupErr) { console.warn('Could not clean up newly uploaded listing images', cleanupErr) }
     }
 
@@ -1381,7 +1404,7 @@ createListingBtn.addEventListener('click', async () => {
           const oldPaths = extractStoragePaths(existingListing).filter((path) => !uploadedStoragePaths.includes(path))
           if (oldPaths.length) {
             try {
-              const { error: cleanupErr } = await db.storage.from('listing-images').remove(oldPaths)
+              const { error: cleanupErr } = await db.storage.from(LISTING_IMAGES_BUCKET).remove(oldPaths)
               if (cleanupErr) console.warn('Could not remove replaced listing images', cleanupErr)
             } catch (cleanupErr) {
               console.warn('Could not remove replaced listing images', cleanupErr)
@@ -1431,7 +1454,7 @@ createListingBtn.addEventListener('click', async () => {
     }
   } catch (err) {
     if (typeof uploadedStoragePaths !== 'undefined' && uploadedStoragePaths.length && useSupabase && db.storage) {
-      try { await db.storage.from('listing-images').remove([...new Set(uploadedStoragePaths)]) }
+      try { await db.storage.from(LISTING_IMAGES_BUCKET).remove([...new Set(uploadedStoragePaths)]) }
       catch (cleanupErr) { console.warn('Could not clean up listing images after save failure', cleanupErr) }
     }
     listingMsg.textContent = err.message
@@ -1872,6 +1895,75 @@ function openStoreFromUrlIfPresent() {
   openStore(targetId)
 }
 
+// --- "Explore businesses" home-page grid: a lightweight directory of every
+// seller who has set up a store, so shoppers can browse businesses (not just
+// listings) without searching. Reads the same storesById/currentListings
+// state the seller-store overlay uses — this was previously never wired up,
+// so the section rendered with an empty grid.
+const businessExploreSection = document.getElementById('business-explore')
+const businessExploreGrid = document.getElementById('business-explore-grid')
+
+function renderBusinessExploreGrid() {
+  if (!businessExploreGrid) return
+
+  const stores = Object.values(storesById || {})
+    .filter((store) => store && store.name)
+    .map((store) => {
+      const ownerId = String(store.user_id || store.id || '')
+      const listingCount = currentListings.filter((item) =>
+        String(item.user_id || item.seller_id || '') === ownerId && !item.sold
+      ).length
+      return { ...store, ownerId, listingCount }
+    })
+    .sort((a, b) => b.listingCount - a.listingCount)
+    .slice(0, 12)
+
+  if (businessExploreSection) businessExploreSection.style.display = stores.length ? '' : 'none'
+  if (!stores.length) { businessExploreGrid.innerHTML = ''; return }
+
+  businessExploreGrid.innerHTML = stores.map((store) => {
+    const countLabel = `${store.listingCount} listing${store.listingCount === 1 ? '' : 's'}`
+    const meta = [store.category, store.location || store.city].filter(Boolean).join(' • ')
+    const logo = store.logo_url
+      ? `<div class="business-explore-logo"><img src="${escapeHtml(store.logo_url)}" alt="" loading="lazy"></div>`
+      : `<div class="business-explore-icon">${ICON_STORE}</div>`
+    const hasWhatsApp = !!buildWhatsAppUrl(store.phone)
+    return `
+      <div class="business-explore-card" data-owner-id="${escapeHtml(store.ownerId)}" role="button" tabindex="0">
+        <div class="business-explore-card-top">
+          ${logo}
+          <div style="min-width:0">
+            <div class="business-explore-name">${escapeHtml(store.name)}</div>
+            <div class="business-explore-meta">${escapeHtml(meta ? `${meta} • ${countLabel}` : countLabel)}</div>
+          </div>
+        </div>
+        ${store.bio ? `<div class="business-explore-bio">${escapeHtml(store.bio)}</div>` : ''}
+        <div class="business-explore-actions">
+          <button type="button" class="hero-btn hero-btn-primary business-explore-view-btn">View Store</button>
+          ${hasWhatsApp ? `<button type="button" class="muted-btn business-explore-contact-btn">WhatsApp</button>` : ''}
+        </div>
+      </div>
+    `
+  }).join('')
+
+  businessExploreGrid.querySelectorAll('.business-explore-card').forEach((card) => {
+    const ownerId = card.dataset.ownerId
+    const store = stores.find((s) => s.ownerId === ownerId)
+    const openThisStore = () => openStore(ownerId)
+    card.addEventListener('click', (ev) => { if (!ev.target.closest('button')) openThisStore() })
+    card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openThisStore() } })
+    card.querySelector('.business-explore-view-btn')?.addEventListener('click', openThisStore)
+    const contactBtn = card.querySelector('.business-explore-contact-btn')
+    if (contactBtn && store) {
+      const url = buildWhatsAppUrl(store.phone)
+      contactBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation()
+        if (url) window.open(url, '_blank', 'noopener')
+      })
+    }
+  })
+}
+
 // --- My Store manager: standalone overlay to create/edit your store,
 // separate from Account Settings, reachable via the "My Store" nav pill.
 function getStoreForUser(userId) {
@@ -1993,7 +2085,7 @@ async function saveStoreManage(event) {
   let logo_url = existingStore?.logo_url || null
   let uploadedBannerPath = null
   let uploadedLogoPath = null
-  const storage = db.storage.from('listing-images')
+  const storage = db.storage.from(STORE_ASSETS_BUCKET)
 
   async function uploadStoreImage(file, prefix, maxSize = 1200, quality = 0.82) {
     if (!file) return null
@@ -2041,10 +2133,10 @@ async function saveStoreManage(event) {
     storesById[String(currentUser.id)] = { ...payload, id: currentUser.id, user_id: currentUser.id }
     const replacedPaths = []
     if (uploadedBannerPath && existingStore?.banner_url && existingStore.banner_url !== banner_url) {
-      replacedPaths.push(...extractStoragePaths({ image_url: existingStore.banner_url }))
+      replacedPaths.push(...extractStoreStoragePaths({ image_url: existingStore.banner_url }))
     }
     if (uploadedLogoPath && existingStore?.logo_url && existingStore.logo_url !== logo_url) {
-      replacedPaths.push(...extractStoragePaths({ image_url: existingStore.logo_url }))
+      replacedPaths.push(...extractStoreStoragePaths({ image_url: existingStore.logo_url }))
     }
     if (replacedPaths.length) {
       try { await storage.remove([...new Set(replacedPaths)]) }
@@ -2055,6 +2147,7 @@ async function saveStoreManage(event) {
     storeManageHeading.textContent = 'My Store'
     await handleAuthChange()
     renderFilteredListings()
+    renderBusinessExploreGrid()
   } catch (e) {
     const failedUploads = [uploadedBannerPath, uploadedLogoPath].filter(Boolean)
     if (failedUploads.length) {
@@ -2090,16 +2183,16 @@ async function deleteMyStore() {
   storeManageDeleteBtn.disabled = true
   storeManageSave?.setAttribute('disabled', 'disabled')
 
-  const storage = db.storage.from('listing-images')
+  const storage = db.storage.from(STORE_ASSETS_BUCKET)
   const restoreFiles = []
   let storePaths = []
   try {
     const media = [existingStore.banner_url, existingStore.logo_url].filter(Boolean)
-    storePaths = [...new Set(media.flatMap((url) => extractStoragePaths({ image_url: url })))]
+    storePaths = [...new Set(media.flatMap((url) => extractStoreStoragePaths({ image_url: url })))]
 
     // Snapshot the files before deletion so we can restore them if the DB delete fails.
     for (const url of media) {
-      const path = extractStoragePaths({ image_url: url })[0]
+      const path = extractStoreStoragePaths({ image_url: url })[0]
       if (!path) continue
       try {
         const response = await fetch(url, { cache: 'no-store' })
@@ -2126,6 +2219,7 @@ async function deleteMyStore() {
     if (activeStoreUserId === currentUser.id) closeStore()
     await handleAuthChange()
     renderFilteredListings()
+    renderBusinessExploreGrid()
     showUxToast('Your store has been deleted. Your listings were kept.')
   } catch (e) {
     console.warn('Deleting store failed', e)
@@ -2262,13 +2356,13 @@ let myRatingsByListing = {}
 // renderListing, so nothing disappears with no warning). Runs for whichever
 // listings the signed-in visitor has delete rights on: their own, or — for
 // the site owner — everyone's.
-function extractStoragePaths(listing) {
+function extractStoragePathsForBucket(listing, bucket) {
   const urls = getListingImages(listing)
   const paths = []
   for (const value of urls) {
     try {
       const url = new URL(value, window.location.href)
-      const marker = '/storage/v1/object/public/listing-images/'
+      const marker = `/storage/v1/object/public/${bucket}/`
       const idx = url.pathname.indexOf(marker)
       if (idx !== -1) {
         const path = decodeURIComponent(url.pathname.slice(idx + marker.length)).replace(/^\/+/, '')
@@ -2286,12 +2380,25 @@ function extractStoragePaths(listing) {
   return [...new Set(paths)]
 }
 
+// Listing photos live in LISTING_IMAGES_BUCKET.
+function extractStoragePaths(listing) {
+  return extractStoragePathsForBucket(listing, LISTING_IMAGES_BUCKET)
+}
+
+// Store banners/logos live in STORE_ASSETS_BUCKET — a separate bucket, so the
+// URL's bucket segment (and therefore the marker we match against) differs
+// from listing photos. Accepts the same { image_url } / { image_urls } shape
+// as extractStoragePaths so it can be called the same way.
+function extractStoreStoragePaths(store) {
+  return extractStoragePathsForBucket(store, STORE_ASSETS_BUCKET)
+}
+
 async function deleteListingStorageFiles(listing) {
   if (!useSupabase || !db.storage) return
   const paths = extractStoragePaths(listing)
   if (!paths.length) return
   try {
-    const { error } = await db.storage.from('listing-images').remove(paths)
+    const { error } = await db.storage.from(LISTING_IMAGES_BUCKET).remove(paths)
     if (error) throw error
   } catch (e) {
     // Do not block deletion of the database row. The listing is already gone;
@@ -2362,6 +2469,7 @@ async function fetchAndRenderListings() {
     }
     await runListingCleanup()
     renderFilteredListings()
+    renderBusinessExploreGrid()
     if (myListingsOverlay && !myListingsOverlay.classList.contains('hidden')) renderMyListings()
     if (storeOverlay && !storeOverlay.classList.contains('hidden')) renderStoreListings()
     else openStoreFromUrlIfPresent()
@@ -2371,6 +2479,7 @@ async function fetchAndRenderListings() {
       currentListings = cached
       renderCategoryChips()
       renderFilteredListings()
+      renderBusinessExploreGrid()
       listingsContainer.insertAdjacentHTML('afterbegin', '<div class="offline-note">Showing your latest saved listings. Reconnect to refresh.</div>')
     } else {
       listingsContainer.innerHTML = '<div class="muted">We couldn’t load the listings right now. Please check your connection and try again.</div>'
