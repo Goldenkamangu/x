@@ -1,9 +1,0 @@
-{
-  "appId": "com.linkhub.marketplace",
-  "appName": "LinkHub",
-  "webDir": ".",
-  "bundledWebRuntime": false,
-  "server": {
-    "androidScheme": "https"
-  }
-}
