@@ -3355,11 +3355,21 @@ function openListingOverlay(item) {
 
   const images = getListingImages(item).filter(isValidImageUrl)
   const imageHtml = images.length
-    ? `<div class="listing-overlay-gallery">${images.map((src, index) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-image${index === 0 ? ' active' : ''}" loading="lazy" />`).join('')}</div>`
-    : `<div class="listing-overlay-gallery empty"><div class="listing-overlay-empty">${ICON_STORE}</div></div>`
+    ? `<div class="listing-overlay-media">
+        <div class="listing-overlay-gallery">
+          <button type="button" class="listing-overlay-main-btn" aria-label="Zoom image"><img src="${escapeHtml(images[0])}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-main-image" loading="lazy" /></button>
+          ${images.length > 1 ? `
+            <button type="button" class="listing-overlay-nav-btn prev" aria-label="Previous image">‹</button>
+            <button type="button" class="listing-overlay-nav-btn next" aria-label="Next image">›</button>
+            <span class="image-count-badge listing-overlay-count">1 / ${images.length}</span>
+          ` : ''}
+        </div>
+        ${images.length > 1 ? `<div class="listing-gallery-thumbs listing-overlay-thumbs">${images.map((src, i) => `<button type="button" class="overlay-gallery-thumb${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="View image ${i + 1}"><img src="${escapeHtml(src)}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
+      </div>`
+    : `<div class="listing-overlay-media"><div class="listing-overlay-gallery empty"><div class="listing-overlay-empty">${ICON_STORE}</div></div></div>`
 
   const price = item.price != null && String(item.price).trim() !== '' ? `<div class="listing-overlay-price">${escapeHtml(formatListingPrice(item))}</div>` : ''
-  
+
   const metaParts = []
   if (item.category) metaParts.push(`<div><strong>Category</strong><span>${escapeHtml(item.category)}</span></div>`)
   if (item.delivery_type) metaParts.push(`<div><strong>Delivery</strong><span>${escapeHtml(item.delivery_type)}</span></div>`)
@@ -3368,22 +3378,68 @@ function openListingOverlay(item) {
   if (item.contact_method) metaParts.push(`<div><strong>Contact method</strong><span>${escapeHtml(item.contact_method)}</span></div>`)
   const meta = metaParts.length ? `<div class="listing-overlay-meta">${metaParts.join('')}</div>` : ''
 
+  const ratingInfo = ratingsByListing[String(item.id)]
+  const ratingHtml = ratingInfo && ratingInfo.count > 0
+    ? (() => {
+        const avg = ratingInfo.sum / ratingInfo.count
+        const full = Math.round(avg)
+        const stars = ICON_STAR_FILLED.repeat(full) + ICON_STAR_OUTLINE.repeat(5 - full)
+        return `<div class="listing-rating listing-overlay-rating"><span class="listing-rating-stars">${stars}</span><span class="listing-rating-count">${avg.toFixed(1)} (${ratingInfo.count})</span></div>`
+      })()
+    : ''
+
+  let postedHtml = ''
+  if (item.created_at) {
+    try {
+      postedHtml = `<div class="muted listing-posted">Posted: ${escapeHtml(new Date(item.created_at).toLocaleString())}</div>`
+    } catch (e) {
+      postedHtml = `<div class="muted listing-posted">Posted: ${escapeHtml(item.created_at)}</div>`
+    }
+  }
+
+  const eyebrowLabel = item.sold ? 'Sold' : (item.category || 'Listing')
+
   content.innerHTML = `
     ${imageHtml}
     <div class="listing-overlay-body">
       <div class="listing-overlay-header">
-        <span class="eyebrow">New listing</span>
+        <span class="eyebrow">${escapeHtml(eyebrowLabel)}</span>
         <h2>${escapeHtml(item.title || 'Untitled listing')}</h2>
       </div>
+      ${ratingHtml}
       ${price}
       ${meta}
       ${item.description ? `<p class="listing-overlay-description">${escapeHtml(item.description)}</p>` : ''}
+      ${postedHtml}
       <div class="listing-overlay-actions">
         <button type="button" class="hero-btn hero-btn-primary" data-overlay-contact-id="${escapeHtml(item.id)}">Contact seller</button>
         <button type="button" class="muted-btn" data-close-listing-overlay>Close</button>
       </div>
     </div>
   `
+
+  // Wire up the photo gallery: thumbnails + prev/next both switch the main
+  // image and update the counter; clicking the main image opens the
+  // existing full-screen zoom lightbox on whichever photo is showing.
+  if (images.length) {
+    let activeIndex = 0
+    const galleryEl = content.querySelector('.listing-overlay-gallery')
+    const mainImg = content.querySelector('.listing-overlay-main-image')
+    const counter = content.querySelector('.listing-overlay-count')
+    const thumbBtns = Array.from(content.querySelectorAll('.listing-overlay-thumbs .overlay-gallery-thumb'))
+
+    function showImage(index) {
+      activeIndex = ((index % images.length) + images.length) % images.length
+      mainImg.src = images[activeIndex]
+      if (counter) counter.textContent = `${activeIndex + 1} / ${images.length}`
+      thumbBtns.forEach((btn, i) => btn.classList.toggle('active', i === activeIndex))
+    }
+
+    galleryEl?.querySelector('.listing-overlay-main-btn')?.addEventListener('click', () => openLightbox(images[activeIndex]))
+    galleryEl?.querySelector('.listing-overlay-nav-btn.prev')?.addEventListener('click', () => showImage(activeIndex - 1))
+    galleryEl?.querySelector('.listing-overlay-nav-btn.next')?.addEventListener('click', () => showImage(activeIndex + 1))
+    thumbBtns.forEach((btn) => btn.addEventListener('click', () => showImage(Number(btn.dataset.index || 0))))
+  }
 
   listingOverlay.classList.remove('hidden')
   listingOverlay.setAttribute('aria-hidden', 'false')
@@ -3590,7 +3646,7 @@ document.body.addEventListener('click', (ev) => {
         closeListingOverlay()
         window.open(link.url, '_blank', 'noopener,noreferrer')
       } else {
-        alert('Seller contact details are not available for this listing.')
+        showUxToast('Seller contact details are not available for this listing.')
       }
     }
     return
