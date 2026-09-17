@@ -17,7 +17,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -25,8 +24,8 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Install Capacitor
-        run: npm install
+      - name: Install Capacitor dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Create Android project and copy web app
         run: npx cap add android && npx cap copy android
