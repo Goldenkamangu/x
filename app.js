@@ -2301,9 +2301,11 @@ document.addEventListener('keydown', (ev) => {
 const lightbox = document.getElementById('image-lightbox')
 const lightboxImg = document.getElementById('lightbox-img')
 const lightboxCloseBtn = document.getElementById('lightbox-close')
+let lightboxReturnToListingOverlay = false
 
-function openLightbox(src) {
+function openLightbox(src, returnToListingOverlay = false) {
   if (!src) return
+  lightboxReturnToListingOverlay = Boolean(returnToListingOverlay)
   lightboxImg.src = src
   lightbox.classList.remove('hidden')
   lightbox.setAttribute('aria-hidden', 'false')
@@ -2311,10 +2313,12 @@ function openLightbox(src) {
 }
 
 function closeLightbox() {
+  const shouldCloseListingOverlay = lightboxReturnToListingOverlay
+  lightboxReturnToListingOverlay = false
   lightbox.classList.add('hidden')
   lightbox.setAttribute('aria-hidden', 'true')
-  document.documentElement.classList.remove('lightbox-open')
   lightboxImg.src = ''
+  if (shouldCloseListingOverlay) closeListingOverlay()
 }
 
 lightboxCloseBtn.addEventListener('click', closeLightbox)
@@ -3357,6 +3361,7 @@ function openListingOverlay(item) {
   const imageHtml = images.length
     ? `<div class="listing-overlay-media">
         <div class="listing-overlay-gallery">
+          <img src="${escapeHtml(images[0])}" alt="" aria-hidden="true" class="listing-overlay-backdrop" />
           <button type="button" class="listing-overlay-main-btn" aria-label="Zoom image"><img src="${escapeHtml(images[0])}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-main-image" loading="lazy" /></button>
           ${images.length > 1 ? `
             <button type="button" class="listing-overlay-nav-btn prev" aria-label="Previous image">‹</button>
@@ -3425,17 +3430,19 @@ function openListingOverlay(item) {
     let activeIndex = 0
     const galleryEl = content.querySelector('.listing-overlay-gallery')
     const mainImg = content.querySelector('.listing-overlay-main-image')
+    const backdropImg = content.querySelector('.listing-overlay-backdrop')
     const counter = content.querySelector('.listing-overlay-count')
     const thumbBtns = Array.from(content.querySelectorAll('.listing-overlay-thumbs .overlay-gallery-thumb'))
 
     function showImage(index) {
       activeIndex = ((index % images.length) + images.length) % images.length
       mainImg.src = images[activeIndex]
+      if (backdropImg) backdropImg.src = images[activeIndex]
       if (counter) counter.textContent = `${activeIndex + 1} / ${images.length}`
       thumbBtns.forEach((btn, i) => btn.classList.toggle('active', i === activeIndex))
     }
 
-    galleryEl?.querySelector('.listing-overlay-main-btn')?.addEventListener('click', () => openLightbox(images[activeIndex]))
+    galleryEl?.querySelector('.listing-overlay-main-btn')?.addEventListener('click', () => openLightbox(images[activeIndex], true))
     galleryEl?.querySelector('.listing-overlay-nav-btn.prev')?.addEventListener('click', () => showImage(activeIndex - 1))
     galleryEl?.querySelector('.listing-overlay-nav-btn.next')?.addEventListener('click', () => showImage(activeIndex + 1))
     thumbBtns.forEach((btn) => btn.addEventListener('click', () => showImage(Number(btn.dataset.index || 0))))
