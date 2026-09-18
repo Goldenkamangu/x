@@ -3362,7 +3362,7 @@ function openListingOverlay(item) {
     ? `<div class="listing-overlay-media">
         <div class="listing-overlay-gallery">
           <img src="${escapeHtml(images[0])}" alt="" aria-hidden="true" class="listing-overlay-backdrop" />
-          <button type="button" class="listing-overlay-main-btn" aria-label="Zoom image"><img src="${escapeHtml(images[0])}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-main-image" loading="lazy" /></button>
+          <div class="listing-overlay-main-btn" aria-label="Product image"><img src="${escapeHtml(images[0])}" alt="${escapeHtml(item.title || 'Listing image')}" class="listing-overlay-main-image" loading="lazy" /></div>
           ${images.length > 1 ? `
             <button type="button" class="listing-overlay-nav-btn prev" aria-label="Previous image">‹</button>
             <button type="button" class="listing-overlay-nav-btn next" aria-label="Next image">›</button>
@@ -3423,9 +3423,10 @@ function openListingOverlay(item) {
     </div>
   `
 
-  // Wire up the photo gallery: thumbnails + prev/next both switch the main
-  // image and update the counter; clicking the main image opens the
-  // existing full-screen zoom lightbox on whichever photo is showing.
+  // Wire up the photo gallery: thumbnails + prev/next switch the main
+  // image and update the counter. The main image itself is intentionally
+  // not clickable here, so the product preview cannot open a second
+  // image-preview/lightbox on top of the listing preview.
   if (images.length) {
     let activeIndex = 0
     const galleryEl = content.querySelector('.listing-overlay-gallery')
@@ -3442,7 +3443,6 @@ function openListingOverlay(item) {
       thumbBtns.forEach((btn, i) => btn.classList.toggle('active', i === activeIndex))
     }
 
-    galleryEl?.querySelector('.listing-overlay-main-btn')?.addEventListener('click', () => openLightbox(images[activeIndex], true))
     galleryEl?.querySelector('.listing-overlay-nav-btn.prev')?.addEventListener('click', () => showImage(activeIndex - 1))
     galleryEl?.querySelector('.listing-overlay-nav-btn.next')?.addEventListener('click', () => showImage(activeIndex + 1))
     thumbBtns.forEach((btn) => btn.addEventListener('click', () => showImage(Number(btn.dataset.index || 0))))
