@@ -43,9 +43,7 @@ html{scroll-behavior:smooth}
 .drawer-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-size:.88rem;color:var(--muted);font-weight:600}
 .brand-logo{height:40px;width:auto;display:block}
 
-/* Hero: the thesis of the page — full-screen intro, not a slice of the
-   page. What LinkHub is for, in one line, centered and unmissable before
-   the marketplace itself begins below. */
+/* Hero */
 .hero{position:relative;margin:0 -24px 56px;min-height:100vh;min-height:100dvh;display:flex;align-items:center;padding:24px;overflow:hidden;background:
   linear-gradient(rgba(0,7,16,0.4),rgba(0,7,16,0.75)),
   repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(255,255,255,0.05) 28px),
@@ -510,9 +508,7 @@ input[aria-invalid="true"],select[aria-invalid="true"]{border-color:#ff6565;box-
 .offer-btn{background:transparent;border:1px solid rgba(255,255,255,0.11);color:var(--muted)}
 .offer-btn:hover{background:rgba(255,255,255,0.06)}
 
-/* Light mode — inverts the whole dark palette rather than repainting every
-   hardcoded rgba() value individually; images/icons are re-inverted so
-   photos display normally instead of as negatives. */
+/* Light mode */
 html.light-theme{filter:invert(1) hue-rotate(180deg)}
 html.light-theme body{background:#fff}
 html.light-theme img,
@@ -569,14 +565,14 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .category-chips{margin-right:-4px;margin-left:-4px}
 }
 
-/* Install action: shown only from the user-invoked menu action. */
+/* Install action */
 .desktop-nav .nav-action .icon{width:16px;height:16px;flex:0 0 auto}
 .desktop-nav .nav-action{display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .install-help{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000002;display:flex;align-items:center;gap:14px;max-width:min(520px,calc(100vw - 28px));padding:13px 15px;border:1px solid rgba(255,255,255,0.11);border-radius:14px;background:rgba(8,8,8,.98);box-shadow:0 18px 45px rgba(0,0,0,.42);color:#eef7ff;font-size:.86rem;line-height:1.4}
 .install-help button{width:30px;min-height:30px;margin:0;padding:0;border:none;background:rgba(255,255,255,.08);border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 .install-help button:hover{background:rgba(255,255,255,.16);transform:none}
 
-/* Spacious text editor: normal text wraps downward instead of running off to the right. */
+/* Spacious text editor */
 .field-editor-control textarea{width:100%;min-height:240px;resize:none;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;overflow-x:hidden;overflow-y:hidden;line-height:1.55;box-sizing:border-box}
 .field-editor-control input{width:100%;box-sizing:border-box;min-width:0}
 @media (max-width:760px){
@@ -584,12 +580,12 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .install-help{bottom:14px}
 }
 
-/* Listing editor: wrap text and grow downward without horizontal movement. */
+/* Listing editor */
 #listing-field-editor textarea.field-editor-autogrow, #listing-field-editor .field-editor-control textarea{white-space:pre-wrap!important;overflow-wrap:anywhere!important;word-break:break-all!important;overflow-x:hidden!important;overflow-y:hidden!important;resize:none!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
 #listing-field-editor .field-editor-panel{max-width:720px;width:min(720px,calc(100vw - 24px));}
 
 
-/* Create Listing: direct typing wraps while the user is typing and the field grows downward. */
+/* Create Listing */
 #create-listing-section textarea.inline-grow-field,
 #create-listing-section #description {
   display: block !important;
@@ -670,7 +666,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   white-space: nowrap;
 }
 
-/* LinkHub cart / interested-list UX */
+/* LinkHub cart */
 .cart-panel{max-width:820px}
 .cart-intro{margin:6px 0 18px;max-width:650px}
 .cart-items{display:flex;flex-direction:column;gap:10px}
@@ -709,7 +705,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .ux-toast{bottom:14px}
 }
 
-/* Business store profile / Idea 1 */
+/* Business store profile */
 .store-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:4px 0 6px}
 .store-form-grid label{min-width:0}
 .store-form-wide{grid-column:1/-1}
@@ -727,7 +723,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .store-form-wide{grid-column:auto}
 }
 
-/* UX psychology pass — focused on reducing choices, visible progress, trust and ownership. */
+/* UX psychology pass */
 .ux-progress{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(255,255,255,.025)}
 .ux-progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
 .ux-progress-top strong{font-size:.9rem;color:#fff}
@@ -789,7 +785,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 @media(max-width:900px){.mini-listing-card{grid-template-columns:68px minmax(0,1fr)}.mini-listing-img,.mini-listing-placeholder{width:68px;height:68px}}
 @media(max-width:600px){.business-explore-grid{grid-template-columns:1fr}.discovery-sections{gap:10px;margin-top:14px}.nice-to-have-section{padding:15px 14px 16px}.category-scroll-wrap,.mini-scroll-wrap{display:block}.category-scroll-wrap .category-scroll-btn,.mini-scroll-wrap .category-scroll-btn{display:none}.mini-listing-grid{display:flex;overflow-x:auto;gap:9px;padding:1px 1px 4px;scroll-snap-type:x proximity;scrollbar-width:none;touch-action:pan-x}.mini-listing-card{flex:0 0 min(78vw,245px);scroll-snap-align:start}.business-explore-section{margin-bottom:18px}.business-explore-card{padding:12px}.business-explore-actions button{font-size:.72rem}}
 
-/* Mobile bottom navigation — primary actions only, short labels, large tap targets. */
+/* Mobile bottom navigation */
 .mobile-bottom-nav{display:none}
 
 @media (max-width:900px){
@@ -837,15 +833,11 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .mobile-nav-badge{position:absolute;top:5px;right:calc(50% - 20px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e83f55;color:#fff;font-size:.58rem;line-height:16px;font-weight:800;text-align:center;display:none}
   .mobile-nav-badge:not(:empty){display:block}
 
-  /* The bottom bar replaces the top-right hamburger on mobile. Secondary
-     actions remain available through the Menu tab/drawer. */
   .hamburger-btn{display:none!important}
 
-  /* Keep Carty floating above the navigation so it never blocks a tab. */
   .carty-fab{bottom:84px!important;right:16px}
   .carty-panel{bottom:150px!important}
 
-  /* Give page content enough room above the fixed navigation. */
   body{padding-bottom:84px}
 }
 
@@ -855,7 +847,6 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
   .carty-panel{bottom:148px!important;right:12px;left:12px;width:auto}
 }
 
-/* Mobile bottom-nav auto-hide while scrolling; desktop navigation is untouched. */
 @media (max-width: 767px) {
   .mobile-bottom-nav.nav-hidden {
     transform: translateY(calc(100% + env(safe-area-inset-bottom)));
@@ -868,7 +859,6 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 
 /* LinkHub visual balance pass: true black + white with a punchier LH blue */
 
-/* Remove remaining blue-tinted surfaces. Blue is reserved for actions/active states. */
 .nav-drawer,
 .listing-overlay-panel,
 .carty-panel,
@@ -900,7 +890,6 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 .carty-panel{background:#080808 !important}
 .carty-bubble{color:#f7f7f7 !important}
 
-/* Blue only where it helps users understand interaction */
 .desktop-nav .nav-action.primary,
 .hero-btn-primary,
 button,
@@ -914,7 +903,6 @@ button:hover{
   background:#0d5cc4;
 }
 
-/* Keep neutral controls truly neutral */
 input,textarea,select,
 .form-grid label,
 input[type=file],
@@ -924,7 +912,6 @@ input[type=file],
   background:#0d0d0d;
 }
 
-/* LH blue accents, not blue surfaces */
 .eyebrow,
 .category-scroll-btn,
 .hamburger-btn,
@@ -934,7 +921,6 @@ input[type=file],
 
 .price,.listing-price,.listing-overlay-price{color:var(--accent) !important}
 
-/* Reduce blue-ish text inherited from earlier pass */
 .site-nav .nav-action,
 .listing-title,
 .listing-desc,
@@ -943,7 +929,310 @@ input[type=file],
   text-shadow:none !important;
 }
 
-/* Product-gallery controls stay neutral; do not turn blue on hover/focus. */
 .listing-overlay-main-btn,.listing-overlay-main-btn:hover,.listing-overlay-main-btn:focus,.listing-overlay-main-btn:active{background:transparent !important;color:inherit !important;transform:none !important;box-shadow:none !important;border-color:transparent !important;cursor:default !important;}
 .listing-overlay-main-btn img,.listing-overlay-main-btn:hover img,.listing-overlay-main-btn:focus img,.listing-overlay-main-btn:active img{transform:none !important;}
 .listing-overlay-gallery{background:#050505 !important;}
+
+/* ============================================================
+   SMALL-SCREEN OVERFLOW FIX (added)
+   Prevents content going out of bounds on ~5-inch phones
+   (≈360–420px CSS width) and below.
+   ============================================================ */
+
+/* 1. Long words in card text and meta rows must wrap instead of
+      pushing past the card edge (city names, WhatsApp numbers, URLs). */
+.listing,
+.listing-meta,
+.listing-meta > div,
+.listing-meta a,
+.listing-meta strong,
+.listing-meta span,
+.contact-link,
+.listing-title,
+.listing-desc,
+.listing p,
+.listing-price,
+.listing small,
+.offer-row,
+.offer-row a,
+.cart-item-main,
+.cart-item-main h3,
+.cart-item-main strong,
+.cart-item-main .muted,
+.store-contact-meta,
+.store-contact-meta span,
+.store-bio,
+.store-live-summary-main strong,
+.store-live-summary-main .muted,
+.business-explore-name,
+.business-explore-meta,
+.business-explore-bio,
+.report-row-title,
+.report-row-reason,
+.report-row-meta {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 2. Contact link must be allowed to break mid-string when needed. */
+.contact-link {
+  display: inline;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 3. Images never exceed their container. */
+.listing img,
+.listing-img-wrap img,
+.gallery-main-image,
+.gallery-thumb img,
+.cart-item img,
+.store-logo,
+.store-banner,
+.store-logo-preview,
+.mini-listing-img img {
+  max-width: 100%;
+}
+
+@media (max-width: 420px) {
+  /* Tighter outer + card padding to gain usable width. */
+  body {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 13px;
+    border-radius: 20px;
+  }
+
+  /* Nav: shrink the logo and truncate the user name so nothing
+     crowds the hamburger / user indicator. */
+  .site-nav {
+    padding: 9px 12px;
+    margin: -12px -12px 0;
+    gap: 8px;
+  }
+
+  .brand-logo {
+    height: 32px;
+  }
+
+  .mobile-nav-user {
+    font-size: 0.72rem;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Hero: full-bleed margins must match the new body padding. */
+  .hero {
+    margin: 0 -12px 28px;
+    padding: 12px;
+  }
+
+  .hero-title {
+    font-size: clamp(1.7rem, 8vw, 2.2rem);
+  }
+
+  .hero-sub {
+    font-size: 0.94rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-btn {
+    width: 100%;
+  }
+
+  /* Section header + feed controls: search / sort go full width. */
+  .section-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .feed-controls {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .feed-controls input,
+  .feed-controls select,
+  #sort-select {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Listing grid: keep 2 columns but tighten gap + padding. */
+  .listing-grid {
+    gap: 8px;
+  }
+
+  .listing {
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  .listing-img-wrap {
+    border-radius: 12px;
+    margin-bottom: 7px;
+  }
+
+  .listing-title {
+    font-size: 0.82rem;
+  }
+
+  .listing-price {
+    font-size: 0.86rem;
+  }
+
+  .listing-meta {
+    font-size: 0.68rem;
+  }
+
+  .listing-desc {
+    font-size: 0.7rem;
+  }
+
+  .listing-actions {
+    gap: 4px;
+  }
+
+  .listing-actions button {
+    font-size: 0.64rem;
+    padding: 6px 3px;
+    min-height: 28px;
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  /* Category chips. */
+  .category-chip {
+    font-size: 0.7rem;
+    padding: 6px 10px;
+  }
+
+  /* Overlays. */
+  .app-overlay {
+    padding: 8px;
+  }
+
+  .app-overlay-panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .overlay-header {
+    flex-wrap: wrap;
+  }
+
+  /* Cart rows. */
+  .cart-item {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .cart-item img,
+  .cart-item-placeholder {
+    width: 52px;
+    height: 52px;
+  }
+
+  .cart-item-actions {
+    grid-column: 1 / -1;
+  }
+
+  .cart-item-actions button {
+    flex: 1;
+  }
+
+  /* Store contact meta stacks vertically. */
+  .store-contact-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Business explore: single column. */
+  .business-explore-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Carty floating panel. */
+  .carty-panel {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  /* Forms. */
+  .form-compact-header {
+    grid-template-columns: 1fr;
+  }
+
+  /* Listing overlay body. */
+  .listing-overlay-body {
+    padding: 14px;
+  }
+
+  .listing-overlay-header h2 {
+    font-size: 1.15rem;
+  }
+
+  /* Store form grid. */
+  .store-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .store-form-wide {
+    grid-column: auto;
+  }
+
+  /* UX progress + live summary. */
+  .ux-progress-steps span {
+    font-size: 0.6rem;
+  }
+
+  .store-live-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .store-live-summary-status {
+    align-items: flex-start;
+  }
+}
+
+/* Below ~340px (very small phones) single column is the only safe layout. */
+@media (max-width: 340px) {
+  .listing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-img-wrap {
+    aspect-ratio: 4 / 3;
+  }
+
+  .listing-title {
+    font-size: 0.95rem;
+  }
+
+  .listing-price {
+    font-size: 1rem;
+  }
+
+  .listing-meta {
+    font-size: 0.78rem;
+  }
+
+  .listing-desc {
+    font-size: 0.82rem;
+  }
+}
