@@ -529,6 +529,40 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 
 
 
+
+/* ===== Live message notifications ===== */
+.site-nav-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.nav-notifications-btn{position:relative;width:38px;height:38px;min-height:0;margin:0;padding:0;border-radius:50%;display:grid;place-items:center;background:transparent;border:1px solid rgba(255,255,255,.08);color:var(--text);flex-shrink:0}
+.nav-notifications-btn:hover{background:rgba(255,255,255,.06);transform:none}
+.nav-notifications-btn:active{transform:scale(.96)}
+.nav-notifications-badge{position:absolute;top:-2px;right:-1px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;border:2px solid var(--bg,#08090a);font-size:.62rem;font-weight:800;line-height:1}
+.nav-notifications-badge.hidden{display:none}
+.notifications-panel{width:min(560px,calc(100vw - 32px));max-height:min(720px,calc(100vh - 48px));overflow:hidden;display:flex;flex-direction:column}
+.notifications-header{flex-shrink:0}
+.notifications-actions{display:flex;align-items:center;gap:8px}
+.notifications-actions .muted-btn{min-height:34px;padding:7px 10px;white-space:nowrap}
+.notifications-list{overflow:auto;padding:8px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.notification-empty{padding:28px 14px;text-align:center;color:var(--muted);font-size:.9rem}
+.notification-item{display:flex;align-items:flex-start;gap:10px;width:100%;padding:12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);color:var(--text);text-align:left}
+.notification-item:hover{background:rgba(255,255,255,.075);transform:none}
+.notification-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:7px;flex:0 0 auto}
+.notification-copy{min-width:0;flex:1;display:block;overflow:hidden}
+.notification-copy strong{display:block;font-size:.88rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-preview{display:block;margin-top:3px;color:var(--muted);font-size:.78rem;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.notification-time{display:block;margin-top:6px;color:var(--muted);font-size:.68rem;line-height:1.3;white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-width:100%}
+.notification-dot-hidden{visibility:hidden}
+.notification-unread{box-shadow:inset 2px 0 0 var(--accent)}
+@media (max-width:640px){
+  .site-nav-actions{gap:6px}
+  .nav-notifications-btn{width:36px;height:36px}
+  .notifications-panel{width:calc(100vw - 20px);max-height:calc(100vh - 28px)}
+  .notifications-actions .muted-btn{font-size:.72rem;padding:6px 8px;max-width:calc(100vw - 112px);overflow:hidden;text-overflow:ellipsis}
+  .notification-item{padding:11px 10px;gap:9px}
+  .notification-copy strong{font-size:.86rem}
+  .notification-preview{font-size:.76rem}
+  .notification-time{font-size:.65rem;margin-top:5px}
+}
+
 /* ===== Chat-style buyer/seller messaging ===== */
 .message-quick-row{display:flex;justify-content:flex-end;margin-top:6px}
 .message-buyer-btn{min-height:34px;padding:7px 11px}
@@ -571,7 +605,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 .chat-row.is-start{margin-top:10px}
 .chat-row.mine{justify-content:flex-end}
 .chat-row.theirs{justify-content:flex-start}
-.chat-bubble{--tl:18px;--tr:18px;--br:18px;--bl:18px;display:flow-root;max-width:78%;padding:8px 12px 6px;border-radius:var(--tl) var(--tr) var(--br) var(--bl);font-size:.94rem;line-height:1.38;word-break:break-word;overflow-wrap:anywhere}
+.chat-bubble{--tl:18px;--tr:18px;--br:18px;--bl:18px;display:flex;flex-direction:column;max-width:78%;padding:8px 12px 6px;border-radius:var(--tl) var(--tr) var(--br) var(--bl);font-size:.94rem;line-height:1.38;word-break:break-word;overflow-wrap:anywhere;min-width:0}.chat-bubble-content{min-width:0;overflow-wrap:anywhere}.chat-bubble-content .chat-text{display:block;min-width:0;overflow-wrap:anywhere}
 .chat-row.mine .chat-bubble{background:linear-gradient(180deg,#2a8bf5,#1678e8);color:#fff;--tr:6px;--br:6px}
 .chat-row.mine.is-start .chat-bubble{--tr:18px}
 .chat-row.mine.is-end .chat-bubble{--br:4px}
@@ -580,7 +614,7 @@ html.light-theme .account-delete-btn{filter:invert(1) hue-rotate(180deg)}
 .chat-row.theirs.is-end .chat-bubble{--bl:4px}
 .chat-row.is-pending .chat-bubble{opacity:.72}
 .chat-text{white-space:pre-wrap}
-.chat-meta{float:right;display:inline-flex;align-items:center;gap:3px;margin:7px 0 -2px 10px;font-size:.66rem;line-height:1;opacity:.72}
+.chat-meta{align-self:flex-end;display:inline-flex;align-items:center;gap:3px;margin:6px 0 0;font-size:.66rem;line-height:1;opacity:.72;white-space:nowrap}
 .chat-offer{display:flex;align-items:baseline;gap:8px;margin:0 0 6px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.16)}
 .chat-row.theirs .chat-offer{background:rgba(22,120,232,.2)}
 .chat-offer-tag{font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
@@ -1354,3 +1388,729 @@ input[type=file],
     font-size: 0.82rem;
   }
 }
+/* Rich notification cards: keep the product identity visible without making the panel tall. */
+.notification-item{position:relative;display:grid;grid-template-columns:10px 46px minmax(0,1fr);align-items:start;gap:10px;padding:10px 12px;min-height:84px}
+.notification-dot-wrap{width:10px;display:flex;justify-content:center;padding-top:7px}
+.notification-thumb{width:46px;height:46px;display:block;object-fit:cover;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);flex:0 0 auto}
+.notification-thumb-empty{display:grid;place-items:center;color:var(--muted)}
+.notification-thumb-empty svg{width:18px;height:18px}
+.notification-copy{min-width:0;display:grid;gap:2px;overflow:hidden}
+.notification-copy strong{display:block;font-size:.84rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-listing-title{display:block;font-size:.79rem;line-height:1.25;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-from{display:block;font-size:.69rem;line-height:1.25;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-offer{display:inline;font-weight:800;color:var(--accent)}
+.notification-preview{display:block;margin-top:2px;color:var(--muted);font-size:.75rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-time{display:block;margin-top:3px;color:var(--muted);font-size:.64rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-dot{margin-top:0}
+.notification-dot-hidden{visibility:hidden}
+@media (max-width:640px){
+  .notification-item{grid-template-columns:8px 42px minmax(0,1fr);gap:8px;padding:9px 9px;min-height:78px}
+  .notification-thumb{width:42px;height:42px;border-radius:9px}
+  .notification-copy strong{font-size:.82rem}
+  .notification-listing-title{font-size:.76rem}
+  .notification-from{font-size:.66rem}
+  .notification-preview{font-size:.72rem}
+  .notification-time{font-size:.62rem}
+}
+
+/* ===== Notification tabs / persistent chats ===== */
+.notifications-tabs{display:flex;gap:6px;padding:0 14px 8px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+.notifications-tab{border:1px solid transparent;background:transparent;color:var(--muted);padding:7px 11px;border-radius:999px;font-size:.76rem;font-weight:800;min-height:34px}
+.notifications-tab:hover{background:rgba(255,255,255,.05);transform:none}
+.notifications-tab.is-active{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.1);color:var(--text)}
+.notifications-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px 0;flex-shrink:0;min-width:0}
+.notifications-toolbar .muted{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem}
+.notifications-toolbar .muted-btn{min-height:32px;padding:6px 9px;font-size:.72rem;white-space:nowrap;flex:0 0 auto}
+.notification-empty{display:flex;flex-direction:column;gap:5px;line-height:1.4}
+.notification-empty strong{color:var(--text);font-size:.92rem}
+.notification-empty span{display:block}
+.chat-list-item{min-height:78px}
+.chat-list-offer{font-weight:800;color:var(--accent)}
+
+
+/* Responsive notifications: keep every line in its own lane on narrow phones. */
+.notification-item{min-width:0;align-items:flex-start}
+.notification-dot-wrap{width:8px;flex:0 0 8px;display:flex;justify-content:center;padding-top:1px}
+.notification-copy{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.notification-copy strong,.notification-listing-title,.notification-from,.notification-preview,.notification-time{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.notification-copy strong{white-space:normal}
+.notification-listing-title{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.notification-from{white-space:normal;display:block}
+.notification-preview{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.notification-time{white-space:normal;display:block}
+.notification-thumb{flex:0 0 46px}
+.notifications-actions{min-width:0;flex-wrap:wrap;justify-content:flex-end}
+.notifications-actions .muted-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.offer-summary-copy{min-width:0;flex:1 1 auto}
+.offer-summary-copy strong,.offer-summary-copy small,.offer-summary-copy time{overflow-wrap:anywhere;word-break:break-word}
+.offer-summary-copy strong{white-space:normal;display:block}
+.offer-summary-copy small{display:block}
+.offer-summary-copy time{display:block;color:var(--muted);font-size:.68rem;line-height:1.25}
+.offer-summary-amount{display:block}
+@media (max-width:480px){
+  .notifications-header{flex-direction:column;align-items:stretch;gap:10px}
+  .notifications-actions{justify-content:space-between;width:100%}
+  .notifications-actions .muted-btn{flex:1 1 auto;max-width:none}
+  .notifications-actions .lightbox-close{flex:0 0 38px}
+  .notifications-toolbar{align-items:stretch;grid-template-columns:minmax(0,1fr) auto}
+  .notification-item{padding:10px 9px;gap:8px}
+  .notification-thumb{width:42px;height:42px;flex-basis:42px}
+  .notification-copy strong{font-size:.84rem}
+  .notification-listing-title{font-size:.75rem}
+  .notification-from,.notification-preview{font-size:.68rem}
+  .notification-time{font-size:.63rem}
+  .offer-summary-row{gap:8px}
+  .offer-summary-row .muted-btn{padding:6px 8px;font-size:.7rem}
+}
+
+/* Seller offers: compact summary that only appears when the seller opens it. */
+.my-listings-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.my-listings-toolbar .muted{min-width:0}
+.my-listings-toolbar .muted-btn{min-height:34px;padding:6px 10px;white-space:nowrap}
+.offers-summary-panel{margin:0 0 14px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);border-radius:14px}
+.offers-summary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:.8rem}
+.offers-summary-head strong{color:var(--text)}
+.offers-summary-head span{color:var(--muted);font-size:.7rem}
+.offer-summary-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)}
+.offer-summary-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+.offer-summary-copy strong{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.offer-summary-copy span{font-size:.8rem;font-weight:800;color:var(--accent)}
+.offer-summary-copy small{color:var(--muted);font-size:.68rem;line-height:1.25;white-space:normal;overflow-wrap:anywhere}
+.offer-summary-row .muted-btn{flex:0 0 auto;min-height:32px;padding:6px 9px}
+.offer-row{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;font-size:.82rem;color:var(--muted);margin-bottom:5px}
+.offer-row > div:first-child{min-width:0;display:flex;flex-direction:column;gap:2px}
+.offer-row-message{font-size:.69rem;line-height:1.25;color:var(--muted);overflow-wrap:anywhere}
+.offers-box-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+@media (max-width:640px){
+  .notifications-tabs{padding-left:9px;padding-right:9px}
+  .notifications-toolbar{padding-left:9px;padding-right:9px}
+  .notifications-toolbar .muted{font-size:.68rem}
+  .notifications-toolbar .muted-btn{font-size:.68rem}
+  .my-listings-toolbar{align-items:center}
+  .offers-summary-panel{padding:9px 10px}
+  .offer-summary-row{align-items:flex-start}
+  .offer-summary-copy strong{max-width:180px}
+}
+
+/* Fix: chat cards have no unread-dot column, so keep the image and text in separate columns. */
+.chat-list-item{
+  grid-template-columns:46px minmax(0,1fr) !important;
+  align-items:start !important;
+  gap:10px !important;
+  min-width:0;
+}
+.chat-list-item .notification-thumb{
+  grid-column:1;
+  grid-row:1;
+  width:46px;
+  height:46px;
+  min-width:0;
+  flex:none;
+}
+.chat-list-item .notification-copy{
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+  width:100%;
+}
+.chat-list-item .notification-copy strong,
+.chat-list-item .notification-listing-title{
+  white-space:normal;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.chat-list-item .notification-from,
+.chat-list-item .notification-preview,
+.chat-list-item .notification-time{
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+@media (max-width:640px){
+  .chat-list-item{
+    grid-template-columns:42px minmax(0,1fr) !important;
+    gap:8px !important;
+    padding:10px 9px;
+  }
+  .chat-list-item .notification-thumb{
+    width:42px;
+    height:42px;
+  }
+}
+
+/* ===== Final responsive fix: Updates and Chats cards ===== */
+.notification-item{
+  display:grid !important;
+  grid-template-columns:8px 46px minmax(0,1fr) !important;
+  align-items:start !important;
+  column-gap:10px !important;
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-dot-wrap{
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:8px !important;
+  min-width:8px !important;
+  padding-top:6px !important;
+  display:flex !important;
+  justify-content:center !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-thumb{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:46px !important;
+  height:46px !important;
+  min-width:46px !important;
+  max-width:46px !important;
+  flex:none !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-copy{
+  grid-column:3 !important;
+  grid-row:1 !important;
+  min-width:0 !important;
+  width:100% !important;
+  max-width:none !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:2px !important;
+}
+.notification-item .notification-copy strong,
+.notification-item .notification-listing-title,
+.notification-item .notification-from,
+.notification-item .notification-preview,
+.notification-item .notification-time{
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+}
+.notification-item .notification-copy strong{
+  white-space:normal !important;
+  line-height:1.2 !important;
+}
+.notification-item .notification-listing-title{
+  white-space:normal !important;
+  display:block !important;
+  line-height:1.25 !important;
+}
+.notification-item .notification-from,
+.notification-item .notification-preview,
+.notification-item .notification-time{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.3 !important;
+}
+
+/* Chats intentionally have no unread-dot column. */
+.notification-item.chat-list-item{
+  grid-template-columns:46px minmax(0,1fr) !important;
+  column-gap:10px !important;
+}
+.notification-item.chat-list-item > .notification-thumb{
+  grid-column:1 !important;
+}
+.notification-item.chat-list-item > .notification-copy{
+  grid-column:2 !important;
+}
+
+@media (max-width:640px){
+  .notification-item{
+    grid-template-columns:8px 42px minmax(0,1fr) !important;
+    column-gap:8px !important;
+    padding:10px 9px !important;
+  }
+  .notification-item > .notification-thumb{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+    border-radius:9px !important;
+  }
+  .notification-item.chat-list-item{
+    grid-template-columns:42px minmax(0,1fr) !important;
+  }
+  .notification-item.chat-list-item > .notification-thumb{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+  }
+}
+
+@media (max-width:380px){
+  .notification-item{
+    grid-template-columns:7px 38px minmax(0,1fr) !important;
+    column-gap:7px !important;
+    padding:9px 8px !important;
+  }
+  .notification-item > .notification-thumb{
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    border-radius:8px !important;
+  }
+  .notification-item.chat-list-item{
+    grid-template-columns:38px minmax(0,1fr) !important;
+  }
+  .notification-item.chat-list-item > .notification-thumb{
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+  }
+}
+
+
+/* ===== Final fix: prevent image/text overlap in Updates and Chats ===== */
+.notification-item{
+  position:relative !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:flex-start !important;
+  gap:10px !important;
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-dot-wrap{
+  flex:0 0 8px !important;
+  width:8px !important;
+  min-width:8px !important;
+  height:46px !important;
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:center !important;
+  padding-top:6px !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-thumb{
+  position:relative !important;
+  flex:0 0 46px !important;
+  width:46px !important;
+  min-width:46px !important;
+  max-width:46px !important;
+  height:46px !important;
+  min-height:46px !important;
+  max-height:46px !important;
+  display:block !important;
+  object-fit:cover !important;
+  box-sizing:border-box !important;
+}
+.notification-item > .notification-copy{
+  position:relative !important;
+  flex:1 1 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:2px !important;
+}
+.notification-item > .notification-copy > *{
+  position:relative !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+}
+.notification-item > .notification-copy strong,
+.notification-item > .notification-copy .notification-listing-title{
+  white-space:normal !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  line-height:1.25 !important;
+}
+.notification-item > .notification-copy .notification-from,
+.notification-item > .notification-copy .notification-preview,
+.notification-item > .notification-copy .notification-time{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.3 !important;
+}
+
+/* Chats have no unread-dot column. */
+.notification-item.chat-list-item{
+  display:flex !important;
+  gap:10px !important;
+}
+.notification-item.chat-list-item > .notification-thumb{
+  flex:0 0 46px !important;
+}
+.notification-item.chat-list-item > .notification-copy{
+  flex:1 1 auto !important;
+}
+
+@media (max-width:640px){
+  .notification-item{
+    gap:8px !important;
+    padding:10px 9px !important;
+  }
+  .notification-item > .notification-dot-wrap{
+    flex-basis:7px !important;
+    width:7px !important;
+    min-width:7px !important;
+    height:42px !important;
+    padding-top:5px !important;
+  }
+  .notification-item > .notification-thumb{
+    flex-basis:42px !important;
+    width:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+    height:42px !important;
+    min-height:42px !important;
+    max-height:42px !important;
+  }
+  .notification-item.chat-list-item > .notification-thumb{
+    flex-basis:42px !important;
+  }
+}
+
+@media (max-width:380px){
+  .notification-item{gap:7px !important;padding:9px 8px !important}
+  .notification-item > .notification-dot-wrap{flex-basis:6px !important;width:6px !important;min-width:6px !important;height:38px !important}
+  .notification-item > .notification-thumb{flex-basis:38px !important;width:38px !important;min-width:38px !important;max-width:38px !important;height:38px !important;min-height:38px !important;max-height:38px !important}
+}
+
+/* ===== Updates-only final fix: let the notification card grow to fit ALL of its content ===== */
+.notification-item:not(.chat-list-item){
+  height:auto !important;
+  min-height:84px !important;
+  max-height:none !important;
+  overflow:visible !important;
+  align-items:flex-start !important;
+  box-sizing:border-box !important;
+}
+.notification-item:not(.chat-list-item) > .notification-copy{
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:visible !important;
+  box-sizing:border-box !important;
+}
+.notification-item:not(.chat-list-item) > .notification-copy > *{
+  height:auto !important;
+  max-height:none !important;
+  min-height:0 !important;
+  box-sizing:border-box !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+.notification-item:not(.chat-list-item) > .notification-copy > strong,
+.notification-item:not(.chat-list-item) .notification-listing-title{
+  white-space:normal !important;
+  display:block !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+  line-height:1.25 !important;
+}
+.notification-item:not(.chat-list-item) .notification-from,
+.notification-item:not(.chat-list-item) .notification-preview,
+.notification-item:not(.chat-list-item) .notification-time{
+  white-space:normal !important;
+  display:block !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+  line-height:1.3 !important;
+}
+@media (max-width:640px){
+  .notification-item:not(.chat-list-item){
+    min-height:0 !important;
+    padding-top:10px !important;
+    padding-bottom:12px !important;
+  }
+}
+@media (max-width:380px){
+  .notification-item:not(.chat-list-item){
+    padding-top:9px !important;
+    padding-bottom:11px !important;
+  }
+}
+
+
+/* ===== Updates-only structural fix: every field stays inside its own card ===== */
+.notification-item.update-item{
+  display:grid !important;
+  grid-template-columns:8px 46px minmax(0,1fr) !important;
+  grid-template-rows:auto !important;
+  align-items:start !important;
+  align-content:start !important;
+  gap:10px !important;
+  width:100% !important;
+  height:auto !important;
+  min-height:84px !important;
+  max-height:none !important;
+  padding:10px 12px !important;
+  margin:0 !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  white-space:normal !important;
+  line-height:normal !important;
+}
+.notification-item.update-item > .notification-dot-wrap{
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:8px !important;
+  height:auto !important;
+  min-width:8px !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:6px 0 0 !important;
+  align-self:start !important;
+}
+.notification-item.update-item > .notification-thumb{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:46px !important;
+  height:46px !important;
+  min-width:46px !important;
+  max-width:46px !important;
+  min-height:46px !important;
+  max-height:46px !important;
+  margin:0 !important;
+  align-self:start !important;
+}
+.notification-item.update-item > .notification-copy{
+  grid-column:3 !important;
+  grid-row:1 !important;
+  width:auto !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  height:auto !important;
+  max-height:none !important;
+  margin:0 !important;
+  padding:0 !important;
+  overflow:visible !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  gap:3px !important;
+}
+.notification-item.update-item > .notification-copy > *{
+  position:static !important;
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  margin:0 !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+}
+.notification-item.update-item > .notification-copy strong{
+  font-size:.84rem !important;
+  line-height:1.2 !important;
+  font-weight:800 !important;
+}
+.notification-item.update-item .notification-listing-title{
+  font-size:.79rem !important;
+  line-height:1.25 !important;
+  font-weight:700 !important;
+}
+.notification-item.update-item .notification-from,
+.notification-item.update-item .notification-preview,
+.notification-item.update-item .notification-time{
+  font-size:.72rem !important;
+  line-height:1.3 !important;
+}
+@media (max-width:640px){
+  .notification-item.update-item{
+    grid-template-columns:7px 42px minmax(0,1fr) !important;
+    gap:8px !important;
+    min-height:0 !important;
+    padding:10px 9px 11px !important;
+  }
+  .notification-item.update-item > .notification-dot-wrap{
+    width:7px !important;
+    min-width:7px !important;
+    padding-top:5px !important;
+  }
+  .notification-item.update-item > .notification-thumb{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+    min-height:42px !important;
+    max-height:42px !important;
+  }
+  .notification-item.update-item > .notification-copy{
+    gap:2px !important;
+  }
+  .notification-item.update-item > .notification-copy strong{font-size:.82rem !important;}
+  .notification-item.update-item .notification-listing-title{font-size:.75rem !important;}
+  .notification-item.update-item .notification-from,
+  .notification-item.update-item .notification-preview,
+  .notification-item.update-item .notification-time{font-size:.68rem !important;}
+}
+@media (max-width:380px){
+  .notification-item.update-item{
+    grid-template-columns:6px 38px minmax(0,1fr) !important;
+    gap:7px !important;
+    padding:9px 8px 10px !important;
+  }
+  .notification-item.update-item > .notification-dot-wrap{
+    width:6px !important;
+    min-width:6px !important;
+    padding-top:4px !important;
+  }
+  .notification-item.update-item > .notification-thumb{
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+  }
+}
+
+/* ===== Final viewport-safe notifications fix ===== */
+.app-overlay,
+.app-overlay-panel,
+.notifications-panel,
+.notifications-list,
+.notification-item,
+.notification-item.update-item,
+.notification-item.chat-list-item{
+  box-sizing:border-box !important;
+  min-width:0 !important;
+}
+
+#notifications-overlay{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden !important;
+  padding-left:max(8px, env(safe-area-inset-left));
+  padding-right:max(8px, env(safe-area-inset-right));
+  padding-top:max(12px, env(safe-area-inset-top));
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+}
+
+#notifications-overlay .notifications-panel{
+  width:min(560px, 100%);
+  max-width:100%;
+  min-width:0;
+  max-height:calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  overflow:hidden !important;
+}
+
+#notifications-overlay .notifications-list{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden !important;
+  overflow-y:auto;
+  padding-left:0;
+  padding-right:0;
+}
+
+#notifications-overlay .notification-item{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  align-self:stretch !important;
+  overflow:hidden !important;
+}
+
+#notifications-overlay .notification-item > .notification-copy{
+  min-width:0 !important;
+  max-width:100% !important;
+  width:100% !important;
+  overflow:hidden !important;
+}
+
+#notifications-overlay .notification-item > .notification-copy > *{
+  min-width:0 !important;
+  max-width:100% !important;
+  inline-size:auto !important;
+  overflow-wrap:anywhere !important;
+  word-break:break-word !important;
+}
+
+#notifications-overlay .notification-item.update-item{
+  grid-template-columns:minmax(6px,8px) minmax(38px,46px) minmax(0,1fr) !important;
+  overflow:hidden !important;
+}
+
+#notifications-overlay .notification-item.update-item > .notification-thumb{
+  max-width:100% !important;
+  min-width:0 !important;
+  justify-self:start !important;
+}
+
+#notifications-overlay .notification-item.chat-list-item{
+  grid-template-columns:minmax(38px,46px) minmax(0,1fr) !important;
+  overflow:hidden !important;
+}
+
+@media (max-width:560px){
+  #notifications-overlay{
+    padding-left:max(6px, env(safe-area-inset-left));
+    padding-right:max(6px, env(safe-area-inset-right));
+  }
+  #notifications-overlay .notifications-panel{
+    width:100%;
+    max-width:100%;
+    border-radius:16px;
+  }
+}
+
+@media (max-width:390px){
+  #notifications-overlay .notifications-panel{
+    border-radius:14px;
+  }
+  #notifications-overlay .notification-item.update-item{
+    grid-template-columns:6px 36px minmax(0,1fr) !important;
+    gap:6px !important;
+    padding:8px 7px 9px !important;
+  }
+  #notifications-overlay .notification-item.update-item > .notification-thumb{
+    width:36px !important;
+    height:36px !important;
+    min-width:36px !important;
+    max-width:36px !important;
+    min-height:36px !important;
+    max-height:36px !important;
+  }
+  #notifications-overlay .notification-item.chat-list-item{
+    grid-template-columns:36px minmax(0,1fr) !important;
+    gap:6px !important;
+    padding:8px 7px 9px !important;
+  }
+  #notifications-overlay .notification-item.chat-list-item > .notification-thumb{
+    width:36px !important;
+    height:36px !important;
+    min-width:36px !important;
+    max-width:36px !important;
+  }
+}
+
+.chat-closed-notice{border:1px solid rgba(47,143,255,.24);background:rgba(47,143,255,.08);color:#d7e9ff;max-width:94%}
+#message-overlay .chat-composer.is-closed{opacity:.82}
+#message-overlay .chat-send:disabled,#message-overlay .chat-icon-btn:disabled,#message-overlay .chat-composer textarea:disabled{cursor:not-allowed;opacity:.55}
+
+/* System line inside a chat, e.g. when the other person deleted their account */
+#message-overlay .chat-system{margin:14px 0 8px}
+#message-overlay .chat-system span{max-width:90%;text-align:center;line-height:1.35;background:rgba(255,138,141,.1);color:#ffb3b5}

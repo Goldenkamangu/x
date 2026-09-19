@@ -294,6 +294,7 @@ function buildDrawerMenu() {
     navDrawerUser.innerHTML = `${escapeHtml(displayName)}<div class="muted">${escapeHtml(currentUser.email || '')}</div>`
     navDrawerUser.style.display = ''
     const buttons = [
+      { icon: '<svg class=\"icon\" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" aria-hidden=\"true\"><path d=\"M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 21h4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>', label: 'Notifications', action: () => openNotifications() },
       { icon: ICON_LISTINGS, label: 'My Listings', action: () => openMyListings() },
       { icon: ICON_CART, label: 'My Cart', action: () => openCart() },
       { icon: ICON_STORE, label: hasStore ? 'My Store' : 'Open a Store', action: () => openStoreManage() },
@@ -536,6 +537,8 @@ function updateCartCounts() {
 }
 
 function updateMobileNavUser() {
+  navNotificationsBtn?.classList.toggle('hidden', !currentUser)
+  navNotificationsBtn?.setAttribute('aria-hidden', currentUser ? 'false' : 'true')
   if (!mobileNavUser) return
   if (!currentUser) {
     mobileNavUser.innerHTML = ''
@@ -680,6 +683,28 @@ const cartClear = document.getElementById('cart-clear')
 const uxToast = document.getElementById('ux-toast')
 let uxToastTimer = null
 
+// Live buyer/seller notification system. Uses the existing listing_messages
+// table + Supabase Realtime, so no extra notification rows are stored.
+const navNotificationsBtn = document.getElementById('nav-notifications-btn')
+const navNotificationsBadge = document.getElementById('nav-notifications-badge')
+const notificationsOverlay = document.getElementById('notifications-overlay')
+const notificationsClose = document.getElementById('notifications-close')
+const notificationsList = document.getElementById('notifications-list')
+const notificationsEnable = document.getElementById('notifications-enable')
+const notificationsClear = document.getElementById('notifications-clear')
+const notificationsTabUpdates = document.getElementById('notifications-tab-updates')
+const notificationsTabChats = document.getElementById('notifications-tab-chats')
+const notificationsContext = document.getElementById('notifications-context')
+const chatsList = document.getElementById('chats-list')
+const NOTIFICATION_SEEN_PREFIX = 'linkhub-message-seen-v1:'
+const NOTIFICATION_DISMISSED_PREFIX = 'linkhub-message-dismissed-v1:'
+const NOTIFICATION_POLL_MS = 20000
+let notificationChannel = null
+let notificationPollTimer = null
+let notificationUnreadCount = 0
+let notifiedMessageIds = new Set()
+let activeNotificationTab = 'updates'
+
 function persistCart() {
   saveStoredJSON(CART_STORAGE_KEY, [...cartIds])
 }
@@ -691,6 +716,435 @@ function showUxToast(message, tone = 'default') {
   clearTimeout(uxToastTimer)
   uxToastTimer = setTimeout(() => uxToast.classList.remove('show'), 2400)
 }
+
+function notificationSeenKey() {
+  return `${NOTIFICATION_SEEN_PREFIX}${currentUser?.id || 'signed-out'}`
+}
+
+function notificationDismissedKey() {
+  return `${NOTIFICATION_DISMISSED_PREFIX}${currentUser?.id || 'signed-out'}`
+}
+
+function getDismissedNotificationIds() {
+  try {
+    const raw = localStorage.getItem(notificationDismissedKey())
+    const parsed = raw ? JSON.parse(raw) : []
+    return new Set(Array.isArray(parsed) ? parsed.map(String).slice(-500) : [])
+  } catch { return new Set() }
+}
+
+function dismissNotificationIds(ids) {
+  if (!ids?.length || !currentUser) return
+  const merged = getDismissedNotificationIds()
+  ids.forEach((id) => { if (id) merged.add(String(id)) })
+  try {
+    localStorage.setItem(notificationDismissedKey(), JSON.stringify([...merged].slice(-500)))
+  } catch {}
+}
+
+function clearDismissedNotifications() {
+  try { localStorage.removeItem(notificationDismissedKey()) } catch {}
+}
+
+function getNotificationSeenAt() {
+  try {
+    const saved = localStorage.getItem(notificationSeenKey())
+    if (saved) return saved
+  } catch {}
+  return new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString()
+}
+
+function setNotificationBadge(count) {
+  notificationUnreadCount = Math.max(0, Number(count) || 0)
+  if (!navNotificationsBadge) return
+  if (notificationUnreadCount > 0) {
+    navNotificationsBadge.textContent = notificationUnreadCount > 99 ? '99+' : String(notificationUnreadCount)
+    navNotificationsBadge.classList.remove('hidden')
+  } else {
+    navNotificationsBadge.textContent = ''
+    navNotificationsBadge.classList.add('hidden')
+  }
+}
+
+function markNotificationsSeen() {
+  if (!currentUser) return
+  try { localStorage.setItem(notificationSeenKey(), new Date().toISOString()) } catch {}
+  setNotificationBadge(0)
+}
+
+async function refreshNotificationCount() {
+  if (!useSupabase || !currentUser) {
+    setNotificationBadge(0)
+    return
+  }
+  try {
+    const { count, error } = await db.from('listing_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', currentUser.id)
+      .gt('created_at', getNotificationSeenAt())
+    if (error) throw error
+    setNotificationBadge(count || 0)
+  } catch (e) {
+    console.warn('Notification count failed:', e)
+  }
+}
+
+function messageConversationKey(listingId, userA, userB) {
+  if (!listingId || !userA || !userB) return ''
+  const users = [String(userA), String(userB)].sort()
+  return `${String(listingId)}:${users[0]}:${users[1]}`
+}
+
+function getMessageListing(row) {
+  if (!row) return null
+  const live = row.listing_id ? currentListings.find((item) => String(item.id) === String(row.listing_id)) : null
+  if (live) return live
+  const title = String(row.listing_title_snapshot || '').trim()
+  const image = String(row.listing_image_snapshot || '').trim()
+  if (!title && !image) return null
+  return {
+    id: row.listing_id || null,
+    title: title || 'Listing no longer available',
+    image_url: image || null,
+    image_urls: image ? [image] : [],
+    user_id: row.listing_owner_id_snapshot || null,
+  }
+}
+
+function getNotificationListing(listingId, row = null) {
+  if (listingId) {
+    const live = currentListings.find((item) => String(item.id) === String(listingId))
+    if (live) return live
+  }
+  return getMessageListing(row)
+}
+
+function notificationListingTitle(listingId, row = null) {
+  const listing = getNotificationListing(listingId, row)
+  return listing?.title || 'Listing no longer available'
+}
+
+function notificationListingImage(listingId, row = null) {
+  const listing = getNotificationListing(listingId, row)
+  const image = listing ? getListingImages(listing)[0] : ''
+  return image && isValidImageUrl(image) ? image : ''
+}
+
+function deletedCounterpartyRole(row) {
+  if (!row || !currentUser) return ''
+  const senderDeleted = !row.sender_id && String(row.receiver_id || '') === String(currentUser.id)
+  const receiverDeleted = !row.receiver_id && String(row.sender_id || '') === String(currentUser.id)
+  if (!senderDeleted && !receiverDeleted) return ''
+  if (senderDeleted) return String(row.sender_role || 'buyer').toLowerCase()
+  const senderRole = String(row.sender_role || 'buyer').toLowerCase()
+  return senderRole === 'seller' ? 'buyer' : 'seller'
+}
+
+function counterpartyDeletedText(row) {
+  const role = deletedCounterpartyRole(row)
+  if (!role) return ''
+  return `The ${role} deleted their LinkHub account. You can still read this conversation, but you can’t send new messages to this account.`
+}
+
+function counterpartyDeletedShort(row) {
+  const role = deletedCounterpartyRole(row)
+  return role ? `The ${role} deleted their account` : ''
+}
+
+function notificationSenderLabel(row) {
+  const deleted = counterpartyDeletedShort(row)
+  if (deleted) return deleted
+  const listing = getNotificationListing(row?.listing_id, row)
+  const store = row?.sender_id ? getStoreForUser(row.sender_id) : null
+  if (store?.name) return store.name
+  if (listing && String(listing.user_id) === String(row?.sender_id)) return 'Seller'
+  return 'Buyer'
+}
+
+function notificationTypeLabel(row) {
+  return deletedCounterpartyRole(row) ? 'Conversation closed' : (row?.offer_amount != null ? 'New offer' : 'New message')
+}
+
+function formatNotificationTime(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function maybeBrowserNotify(title, body, data = {}) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return
+    const note = new Notification(title, { body, tag: `linkhub-message-${data.messageId || Date.now()}` })
+    setTimeout(() => note.close?.(), 6000)
+  } catch (e) {
+    console.warn('Browser notification failed:', e)
+  }
+}
+
+async function enableBrowserNotifications() {
+  if (!('Notification' in window)) {
+    showUxToast('Your browser does not support notifications.', 'error')
+    return
+  }
+  try {
+    const permission = await Notification.requestPermission()
+    if (permission === 'granted') {
+      notificationsEnable?.classList.add('hidden')
+      showUxToast('Browser notifications are on.')
+    } else if (permission === 'denied') {
+      showUxToast('Notifications are blocked in your browser settings.', 'error')
+    }
+  } catch {
+    showUxToast('Could not turn on browser notifications.', 'error')
+  }
+}
+
+async function loadNotificationList() {
+  if (!notificationsList) return
+  if (!useSupabase || !currentUser) {
+    notificationsList.innerHTML = '<div class="notification-empty">Sign in to see your messages.</div>'
+    return
+  }
+  notificationsList.innerHTML = '<div class="notification-empty">Loading…</div>'
+  try {
+    const dismissed = getDismissedNotificationIds()
+    const { data, error } = await db.from('listing_messages')
+      .select('id,listing_id,listing_title_snapshot,listing_image_snapshot,listing_owner_id_snapshot,conversation_key,sender_id,receiver_id,sender_role,kind,body,offer_amount,created_at')
+      .eq('receiver_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) throw error
+    const closedSeen = new Set()
+    const visible = (data || []).filter((row) => !dismissed.has(String(row.id))).filter((row) => {
+      if (!deletedCounterpartyRole(row)) return true
+      const key = row.conversation_key || String(row.listing_id || row.id)
+      if (closedSeen.has(key)) return false
+      closedSeen.add(key)
+      return true
+    })
+    if (!visible.length) {
+      notificationsList.innerHTML = '<div class="notification-empty"><strong>No updates</strong><span>Your notifications are clear. Your conversations are still saved under <b>Chats</b>.</span></div>'
+      return
+    }
+    const seenAt = getNotificationSeenAt()
+    notificationsList.innerHTML = visible.map((row) => {
+      const unread = new Date(row.created_at) > new Date(seenAt)
+      const listingTitle = notificationListingTitle(row.listing_id, row)
+      const listingImage = notificationListingImage(row.listing_id, row)
+      const sender = notificationSenderLabel(row)
+      const typeLabel = notificationTypeLabel(row)
+      const offer = row.offer_amount != null ? `R${Number(row.offer_amount).toFixed(2)}` : ''
+      const previewText = counterpartyDeletedText(row) || String(row.body || '').trim() || (offer ? `Offer: ${offer}` : 'You received a new message.')
+      const thumb = listingImage
+        ? `<img class="notification-thumb" src="${escapeHtml(listingImage)}" alt="" loading="lazy">`
+        : `<span class="notification-thumb notification-thumb-empty" aria-hidden="true">${ICON_LISTINGS}</span>`
+      const offerLine = offer ? `<span class="notification-offer">Offer ${escapeHtml(offer)}</span>` : ''
+      return `<button type="button" class="notification-item update-item${unread ? ' notification-unread' : ''}${deletedCounterpartyRole(row) ? ' conversation-closed-item' : ''}" data-notification-id="${escapeHtml(row.id)}" data-listing-id="${escapeHtml(row.listing_id || "")}" data-sender-id="${escapeHtml(row.sender_id || "")}" data-conversation-key="${escapeHtml(row.conversation_key || "")}">
+        <span class="notification-dot-wrap"><span class="notification-dot${unread ? '' : ' notification-dot-hidden'}" aria-hidden="true"></span></span>
+        ${thumb}
+        <span class="notification-copy">
+          <strong>${escapeHtml(typeLabel)}</strong>
+          <span class="notification-listing-title">${escapeHtml(listingTitle)}</span>
+          <span class="notification-from">From ${escapeHtml(sender)}${offerLine ? ` · ${offerLine}` : ''}</span>
+          <span class="notification-preview">${escapeHtml(previewText)}</span>
+          <small class="notification-time">${escapeHtml(formatNotificationTime(row.created_at))}</small>
+        </span>
+      </button>`
+    }).join('')
+  } catch (e) {
+    console.warn('Loading notifications failed:', e)
+    notificationsList.innerHTML = '<div class="notification-empty">Notifications could not be loaded right now.</div>'
+  }
+}
+
+async function loadChatList() {
+  if (!chatsList) return
+  if (!useSupabase || !currentUser) {
+    chatsList.innerHTML = '<div class="notification-empty">Sign in to see your chats.</div>'
+    return
+  }
+  chatsList.innerHTML = '<div class="notification-empty">Loading…</div>'
+  try {
+    const { data, error } = await db.from('listing_messages')
+      .select('id,listing_id,listing_title_snapshot,listing_image_snapshot,listing_owner_id_snapshot,conversation_key,sender_id,receiver_id,sender_role,kind,body,offer_amount,created_at')
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+      .order('created_at', { ascending: false })
+      .limit(250)
+    if (error) throw error
+    const threads = new Map()
+    for (const row of data || []) {
+      const otherUserId = String(row.sender_id) === String(currentUser.id) ? row.receiver_id : row.sender_id
+      const key = row.conversation_key || `${row.listing_id}:${otherUserId}`
+      if (!threads.has(key)) threads.set(key, row)
+    }
+    if (!threads.size) {
+      chatsList.innerHTML = '<div class="notification-empty"><strong>No conversations yet</strong><span>When you message a buyer or seller, the conversation will stay here.</span></div>'
+      return
+    }
+    chatsList.innerHTML = [...threads.values()].map((row) => {
+      const listingTitle = notificationListingTitle(row.listing_id, row)
+      const listingImage = notificationListingImage(row.listing_id, row)
+      const otherUserId = String(row.sender_id) === String(currentUser.id) ? row.receiver_id : row.sender_id
+      const sender = deletedCounterpartyRole(row)
+        ? counterpartyDeletedShort(row)
+        : (String(row.sender_id) === String(currentUser.id) ? 'You' : notificationSenderLabel(row))
+      const preview = counterpartyDeletedText(row) || String(row.body || '').trim() || (row.offer_amount != null ? `Offer: R${Number(row.offer_amount).toFixed(2)}` : 'Message')
+      const offer = row.offer_amount != null ? `<span class="chat-list-offer">Offer R${Number(row.offer_amount).toFixed(2)}</span>` : ''
+      const thumb = listingImage
+        ? `<img class="notification-thumb" src="${escapeHtml(listingImage)}" alt="" loading="lazy">`
+        : `<span class="notification-thumb notification-thumb-empty" aria-hidden="true">${ICON_LISTINGS}</span>`
+      return `<button type="button" class="notification-item chat-list-item${deletedCounterpartyRole(row) ? ' conversation-closed-item' : ''}" data-listing-id="${escapeHtml(row.listing_id || '')}" data-sender-id="${escapeHtml(otherUserId || '')}" data-conversation-key="${escapeHtml(row.conversation_key || '')}">
+        ${thumb}
+        <span class="notification-copy">
+          <strong>${escapeHtml(listingTitle)}</strong>
+          <span class="notification-from">${escapeHtml(sender)}${offer ? ` · ${offer}` : ''}</span>
+          <span class="notification-preview">${escapeHtml(preview)}</span>
+          <small class="notification-time">${escapeHtml(formatNotificationTime(row.created_at))}</small>
+        </span>
+      </button>`
+    }).join('')
+  } catch (e) {
+    console.warn('Loading chats failed:', e)
+    chatsList.innerHTML = '<div class="notification-empty">Chats could not be loaded right now.</div>'
+  }
+}
+
+function setNotificationTab(tab) {
+  activeNotificationTab = tab === 'chats' ? 'chats' : 'updates'
+  const updates = activeNotificationTab === 'updates'
+  notificationsList?.classList.toggle('hidden', !updates)
+  chatsList?.classList.toggle('hidden', updates)
+  notificationsClear?.classList.toggle('hidden', !updates)
+  notificationsTabUpdates?.classList.toggle('is-active', updates)
+  notificationsTabChats?.classList.toggle('is-active', !updates)
+  notificationsTabUpdates?.setAttribute('aria-selected', String(updates))
+  notificationsTabChats?.setAttribute('aria-selected', String(!updates))
+  if (notificationsContext) notificationsContext.textContent = updates ? 'New messages and offers' : 'Your recent conversations'
+  if (!updates) loadChatList()
+}
+
+async function openNotifications() {
+  if (!notificationsOverlay) return
+  if (notificationsEnable && 'Notification' in window && Notification.permission === 'granted') notificationsEnable.classList.add('hidden')
+  else notificationsEnable?.classList.remove('hidden')
+  notificationsOverlay.classList.remove('hidden')
+  notificationsOverlay.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('lightbox-open')
+  setNotificationTab('updates')
+  await loadNotificationList()
+  markNotificationsSeen()
+}
+
+function closeNotifications() {
+  if (!notificationsOverlay) return
+  notificationsOverlay.classList.add('hidden')
+  notificationsOverlay.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('lightbox-open')
+}
+
+function showIncomingMessageNotification(row) {
+  if (!row || !currentUser || String(row.receiver_id) !== String(currentUser.id)) return
+  const id = String(row.id || '')
+  if (!id || notifiedMessageIds.has(id)) return
+  notifiedMessageIds.add(id)
+  if (notifiedMessageIds.size > 200) notifiedMessageIds = new Set([...notifiedMessageIds].slice(-100))
+
+  const isOpenThread = activeMessageContext && String(activeMessageContext.conversationKey || '') === String(row.conversation_key || '')
+  refreshNotificationCount().catch(() => {})
+  if (isOpenThread && !document.hidden) return
+
+  const text = String(row.body || '').trim()
+  const preview = text.length > 90 ? `${text.slice(0, 87)}…` : text
+  const listingTitle = notificationListingTitle(row.listing_id, row)
+  const typeLabel = notificationTypeLabel(row)
+  showUxToast(`${typeLabel} · ${listingTitle}`)
+  maybeBrowserNotify(`LinkHub · ${typeLabel}`, `${listingTitle}${preview ? ` — ${preview}` : ''}`, { messageId: row.id })
+}
+
+function stopGlobalMessageNotifications() {
+  if (notificationPollTimer) { clearInterval(notificationPollTimer); notificationPollTimer = null }
+  if (notificationChannel) {
+    try { db.removeChannel(notificationChannel) } catch {}
+    notificationChannel = null
+  }
+  notifiedMessageIds = new Set()
+  setNotificationBadge(0)
+}
+
+function startGlobalMessageNotifications() {
+  stopGlobalMessageNotifications()
+  if (!useSupabase || !currentUser) return
+  refreshNotificationCount().catch(() => {})
+  if (typeof db.channel === 'function') {
+    try {
+      notificationChannel = db.channel(`linkhub-notifications-${currentUser.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'listing_messages',
+          filter: `receiver_id=eq.${currentUser.id}`
+        }, (payload) => showIncomingMessageNotification(payload?.new))
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') refreshNotificationCount().catch(() => {})
+        })
+    } catch (e) {
+      console.warn('Global message realtime unavailable:', e)
+    }
+  }
+  notificationPollTimer = setInterval(() => {
+    if (!currentUser || document.hidden) return
+    refreshNotificationCount().catch(() => {})
+  }, NOTIFICATION_POLL_MS)
+}
+
+navNotificationsBtn?.addEventListener('click', openNotifications)
+notificationsClose?.addEventListener('click', closeNotifications)
+notificationsOverlay?.addEventListener('click', (event) => {
+  if (event.target === notificationsOverlay) closeNotifications()
+})
+notificationsEnable?.addEventListener('click', enableBrowserNotifications)
+notificationsTabUpdates?.addEventListener('click', () => setNotificationTab('updates'))
+notificationsTabChats?.addEventListener('click', () => setNotificationTab('chats'))
+notificationsClear?.addEventListener('click', () => {
+  const ids = [...(notificationsList?.querySelectorAll('[data-notification-id]') || [])].map((el) => el.dataset.notificationId).filter(Boolean)
+  dismissNotificationIds(ids)
+  markNotificationsSeen()
+  loadNotificationList()
+  showUxToast(ids.length ? 'Updates cleared. Your chats are still saved.' : 'No updates to clear.')
+})
+const handleConversationOpen = async (event) => {
+  const item = event.target.closest('.notification-item')
+  if (!item || !currentUser) return
+  const listingId = item.dataset.listingId || ''
+  const senderId = item.dataset.senderId || ''
+  const conversationKey = item.dataset.conversationKey || ''
+  let seedRow = null
+  try {
+    if (useSupabase) {
+      let q = db.from('listing_messages')
+        .select('id,listing_id,listing_title_snapshot,listing_image_snapshot,listing_owner_id_snapshot,conversation_key,sender_id,receiver_id,sender_role,kind,body,offer_amount,created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (conversationKey) q = q.eq('conversation_key', conversationKey)
+      else if (listingId) q = q.eq('listing_id', listingId).or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+      const { data } = await q
+      seedRow = data?.[0] || null
+    }
+  } catch {}
+  const listing = getMessageListing(seedRow || { listing_id: listingId })
+  if (!listing) { closeNotifications(); showUxToast('That conversation is no longer available.'); return }
+  const me = String(currentUser.id)
+  const otherId = seedRow ? (String(seedRow.sender_id || '') === me ? seedRow.receiver_id : seedRow.sender_id) : senderId
+  const ownerId = listing.user_id || seedRow?.listing_owner_id_snapshot
+  const mode = String(ownerId || '') === me ? 'seller' : 'buyer'
+  const otherName = seedRow ? notificationSenderLabel(seedRow) : ''
+  closeNotifications()
+  openMessageThread(listing, otherId || null, mode, otherName, seedRow || null)
+}
+notificationsList?.addEventListener('click', handleConversationOpen)
+chatsList?.addEventListener('click', handleConversationOpen)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshNotificationCount().catch(() => {})
+})
+
 function cartItems() {
   return [...cartIds].map(id => currentListings.find(item => String(item.id) === String(id))).filter(Boolean)
 }
@@ -1186,6 +1640,7 @@ document.getElementById('account-admin-reports')?.addEventListener('click', () =
 })
 
 async function handleAuthChange() {
+  stopGlobalMessageNotifications()
   const { data } = await db.auth.getUser()
   const user = data.user
   currentUser = user
@@ -1203,6 +1658,7 @@ async function handleAuthChange() {
   }
   buildDrawerMenu()
   buildDesktopNav()
+  if (user) startGlobalMessageNotifications()
   // Re-render listings so owner-only actions update visibility
   await fetchAndRenderListings()
 }
@@ -1670,10 +2126,14 @@ const myListingsOverlay = document.getElementById('my-listings-overlay')
 const myListingsClose = document.getElementById('my-listings-close')
 const myListingsGrid = document.getElementById('my-listings-grid')
 const myListingsCount = document.getElementById('my-listings-count')
+const myListingsOffersBtn = document.getElementById('my-listings-offers')
+const myListingsOffersPanel = document.getElementById('my-listings-offers-panel')
 
 function renderMyListings() {
   if (!myListingsGrid) return
   myListingsGrid.innerHTML = ''
+  myListingsOffersPanel?.classList.add('hidden')
+  if (myListingsOffersBtn) { myListingsOffersBtn.classList.add('hidden'); myListingsOffersBtn.textContent = 'Offers' }
   if (!currentUser) return
   const mine = currentListings.filter((item) => item.user_id === currentUser.id)
   if (myListingsCount) myListingsCount.textContent = `${mine.length} listing${mine.length === 1 ? '' : 's'}`
@@ -1682,7 +2142,9 @@ function renderMyListings() {
     return
   }
   mine.forEach((item) => renderListing(item, myListingsGrid))
-  loadOffersForMyListings(mine.map((item) => item.id))
+  const listingIds = mine.map((item) => item.id)
+  // Seller offers are shown in the compact Offers panel above the listings.
+  loadSellerOfferSummary(listingIds)
 }
 
 // ---------------------------------------------------------------------------
@@ -1829,7 +2291,8 @@ function renderMessageRows({ forceScroll = false } = {}) {
   if (!messageThread) return
   const ctx = activeMessageContext
   const nearBottom = messageThread.scrollHeight - messageThread.scrollTop - messageThread.clientHeight < 140
-  const notice = '<div class="chat-notice">Only you two can see this chat. Messages are deleted after 31 days.</div>'
+  const closedText = counterpartyDeletedText(chatRows.find((row) => deletedCounterpartyRole(row))) || ctx?.closedNotice || ''
+  const notice = closedText ? `<div class="chat-notice chat-closed-notice">${escapeHtml(closedText)}</div>` : '<div class="chat-notice">Only you two can see this chat. Messages are deleted after 31 days.</div>'
 
   if (!chatRows.length) {
     const who = escapeHtml(ctx?.otherName || 'them')
@@ -1838,7 +2301,9 @@ function renderMessageRows({ forceScroll = false } = {}) {
   } else {
     const me = String(currentUser?.id || '')
     const sym = chatCurrencySymbol()
+    const isNotice = (row) => row?.kind === 'account_closed' && !row.sender_id
     const closeTo = (a, b) => !!a && !!b
+      && !isNotice(a) && !isNotice(b)
       && String(a.sender_id) === String(b.sender_id)
       && formatChatDay(a.created_at) === formatChatDay(b.created_at)
       && Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < CHAT_GROUP_MS
@@ -1850,6 +2315,10 @@ function renderMessageRows({ forceScroll = false } = {}) {
       const day = formatChatDay(row.created_at)
       if (day !== lastDay) html += `<div class="chat-day"><span>${escapeHtml(day)}</span></div>`
       lastDay = day
+      if (isNotice(row)) {
+        html += `<div class="chat-day chat-system"><span>${escapeHtml(String(row.body || 'This account was deleted.'))}</span></div>`
+        return
+      }
       const mine = String(row.sender_id) === me
       const isStart = !closeTo(prev, row)
       const isEnd = !closeTo(row, next)
@@ -1863,7 +2332,7 @@ function renderMessageRows({ forceScroll = false } = {}) {
       const textHtml = body && !autoBody ? `<span class="chat-text">${escapeHtml(body)}</span>` : ''
       const tick = mine ? (row._pending ? CHAT_ICON_CLOCK : CHAT_ICON_TICK) : ''
       const cls = `chat-row ${mine ? 'mine' : 'theirs'}${isStart ? ' is-start' : ''}${isEnd ? ' is-end' : ''}${row._pending ? ' is-pending' : ''}`
-      html += `<div class="${cls}"><div class="chat-bubble">${offerHtml}${textHtml}<span class="chat-meta">${escapeHtml(formatChatClock(row.created_at))}${tick}</span></div></div>`
+      html += `<div class="${cls}"><div class="chat-bubble"><div class="chat-bubble-content">${offerHtml}${textHtml}</div><span class="chat-meta">${escapeHtml(formatChatClock(row.created_at))}${tick}</span></div></div>`
     })
     messageThread.innerHTML = html
   }
@@ -1873,22 +2342,40 @@ function renderMessageRows({ forceScroll = false } = {}) {
 }
 
 // Adds new rows (from a fetch, a realtime push or our own insert) without duplicates.
+function setChatClosedState(closed) {
+  if (messageInput) { messageInput.disabled = closed; messageInput.placeholder = closed ? 'Conversation closed' : 'Message' }
+  if (messageSend) messageSend.disabled = closed
+  if (chatOfferToggle) chatOfferToggle.disabled = closed
+  messageInput?.closest('.chat-composer')?.classList.toggle('is-closed', closed)
+  if (closed) { setChatOfferBar(false); chatQuickReplies?.classList.add('hidden') }
+}
+
 function mergeChatRows(newRows = [], { forceScroll = false } = {}) {
   const ctx = activeMessageContext
   if (!ctx || !currentUser) return
   const me = String(currentUser.id)
-  const other = String(ctx.otherUserId)
+  const other = String(ctx.otherUserId || '')
   const byId = new Map(chatRows.filter((r) => !r._pending).map((r) => [String(r.id), r]))
   for (const r of newRows || []) {
-    if (!r || String(r.listing_id) !== String(ctx.listingId)) continue
-    const pair = [String(r.sender_id), String(r.receiver_id)]
-    if (!pair.includes(me) || !pair.includes(other)) continue
+    if (!r) continue
+    if (ctx.conversationKey && r.conversation_key) {
+      if (String(r.conversation_key) !== String(ctx.conversationKey)) continue
+    } else {
+      if (String(r.listing_id || '') !== String(ctx.listingId || '')) continue
+      const pair = [String(r.sender_id || ''), String(r.receiver_id || '')]
+      if (!pair.includes(me) || !pair.includes(other)) continue
+    }
     byId.set(String(r.id), r)
   }
   const confirmed = [...byId.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
   const pending = chatRows.filter((r) => r._pending)
   const before = chatRows.map((r) => r.id).join('|')
   chatRows = confirmed.concat(pending)
+  if (!ctx.closed && chatRows.some((r) => deletedCounterpartyRole(r))) {
+    ctx.closed = true
+    setChatClosedState(true)
+    if (messageListingTitle) messageListingTitle.textContent = 'Conversation closed'
+  }
   if (!forceScroll && chatRows.map((r) => r.id).join('|') === before) return
   renderMessageRows({ forceScroll })
 }
@@ -1897,16 +2384,19 @@ async function loadMessageThread({ quiet = false, forceScroll = false } = {}) {
   const ctx = activeMessageContext
   if (!useSupabase || !ctx || !currentUser) return
   const { listingId, otherUserId } = ctx
-  if (!listingId || !otherUserId) return
+  if (!listingId && !ctx.conversationKey) return
   if (!quiet) setChatStatus('')
-  const filter = `and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`
-  const { data, error } = await db.from('listing_messages')
-    .select('id,listing_id,sender_id,receiver_id,body,offer_amount,created_at')
-    .eq('listing_id', listingId)
-    .or(filter)
+  let query = db.from('listing_messages')
+    .select('id,listing_id,listing_title_snapshot,listing_image_snapshot,listing_owner_id_snapshot,conversation_key,sender_id,receiver_id,sender_role,kind,body,offer_amount,created_at')
     .order('created_at', { ascending: true })
+  if (ctx.conversationKey) query = query.eq('conversation_key', ctx.conversationKey)
+  else {
+    const filter = `and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`
+    query = query.eq('listing_id', listingId).or(filter)
+  }
+  const { data, error } = await query
   if (error) throw error
-  if (ctx !== activeMessageContext) return // chat was closed or switched while loading
+  if (ctx !== activeMessageContext) return
   mergeChatRows(data || [], { forceScroll })
 }
 
@@ -1927,7 +2417,7 @@ function startChatLive() {
   try {
     if (typeof db.channel === 'function') {
       chatChannel = db.channel(`listing-chat-${ctx.listingId}-${currentUser.id}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_messages', filter: `listing_id=eq.${ctx.listingId}` }, (payload) => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_messages', filter: ctx.conversationKey ? `conversation_key=eq.${ctx.conversationKey}` : `listing_id=eq.${ctx.listingId}` }, (payload) => {
           if (ctx !== activeMessageContext || !payload?.new) return
           mergeChatRows([payload.new])
         })
@@ -1959,27 +2449,37 @@ function syncChatViewport() {
 window.visualViewport?.addEventListener('resize', syncChatViewport)
 window.visualViewport?.addEventListener('scroll', syncChatViewport)
 
-async function openMessageThread(listing, otherUserId, mode = 'buyer', otherName = '') {
-  if (!currentUser || !listing || !otherUserId || !useSupabase) {
+async function openMessageThread(listing, otherUserId, mode = 'buyer', otherName = '', seedRow = null) {
+  if (!currentUser || !listing || (!otherUserId && !seedRow?.conversation_key) || !useSupabase) {
     if (!useSupabase) alert('Messaging needs the Supabase database to be set up first.')
     return
   }
-  const store = getStoreForUser(otherUserId)
-  let name = String(otherName || store?.name || (mode === 'seller' ? 'Buyer' : 'Seller')).trim()
+  const accountGone = !otherUserId // the other person deleted their account
+  const listingGone = !listing.id // the listing was removed, only the saved title/photo are left
+  const closed = accountGone || listingGone
+  const deletedRole = seedRow ? deletedCounterpartyRole(seedRow) : ''
+  const store = otherUserId ? getStoreForUser(otherUserId) : null
+  let name = accountGone ? `${deletedRole ? deletedRole.charAt(0).toUpperCase() + deletedRole.slice(1) : 'Other person'} deleted account` : String(otherName || store?.name || (mode === 'seller' ? 'Buyer' : 'Seller')).trim()
   if (name.includes('@')) name = getDisplayNameFromEmail(name)
-  const ctx = { listingId: listing.id, otherUserId: String(otherUserId), mode, listing, otherName: name }
+  const conversationKey = seedRow?.conversation_key || messageConversationKey(listing.id, currentUser.id, otherUserId)
+  const ctx = { listingId: listing.id, otherUserId: otherUserId ? String(otherUserId) : '', mode, listing, otherName: name, conversationKey, closed, closedNotice: accountGone ? (seedRow ? counterpartyDeletedText(seedRow) : '') : (listingGone ? 'This listing was removed. You can still read this conversation, but you can’t send new messages about it.' : '') }
   activeMessageContext = ctx
   chatRows = []
 
   if (messageTitle) messageTitle.textContent = name
-  if (messageListingTitle) messageListingTitle.textContent = mode === 'seller' ? 'Buyer' : 'Seller'
-  renderChatAvatar(name, otherUserId, store?.logo_url)
+  if (messageListingTitle) messageListingTitle.textContent = accountGone ? 'Conversation closed' : (listingGone ? 'Listing removed' : (mode === 'seller' ? 'Buyer' : 'Seller'))
+  renderChatAvatar(accountGone ? '?' : name, otherUserId || 'deleted-account', store?.logo_url)
   renderChatListingCard(listing)
   if (messageInput) { messageInput.value = ''; autosizeChatInput() }
   setChatOfferBar(false)
   setChatStatus('')
   // Only buyers attach an offer amount; a seller is replying to an existing offer.
-  if (chatOfferToggle) chatOfferToggle.classList.toggle('hidden', mode === 'seller')
+  if (chatOfferToggle) chatOfferToggle.classList.toggle('hidden', closed || mode === 'seller')
+  if (messageInput) { messageInput.disabled = closed; messageInput.placeholder = closed ? 'Conversation closed' : 'Message' }
+  if (messageSend) messageSend.disabled = closed
+  if (chatOfferToggle) chatOfferToggle.disabled = closed
+  const chatComposer = messageInput?.closest('.chat-composer')
+  chatComposer?.classList.toggle('is-closed', closed)
   if (chatQuickReplies) chatQuickReplies.innerHTML = ''
 
   if (messageOverlay) {
@@ -2013,6 +2513,11 @@ function closeMessageThread() {
   document.documentElement.classList.remove('lightbox-open')
   activeMessageContext = null
   chatRows = []
+  const chatComposer = messageInput?.closest('.chat-composer')
+  chatComposer?.classList.remove('is-closed')
+  if (messageInput) { messageInput.disabled = false; messageInput.placeholder = 'Message' }
+  if (messageSend) messageSend.disabled = false
+  if (chatOfferToggle) chatOfferToggle.disabled = false
 }
 
 messageClose?.addEventListener('click', closeMessageThread)
@@ -2022,7 +2527,7 @@ messageOverlay?.addEventListener('click', (event) => {
 
 async function sendMessage() {
   const ctx = activeMessageContext
-  if (!ctx || !currentUser || !useSupabase) return
+  if (!ctx || ctx.closed || !currentUser || !useSupabase) return
   const body = (messageInput?.value || '').trim()
   const rawAmount = (messageOfferAmount?.value || '').trim()
   const isBuyer = ctx.mode === 'buyer'
@@ -2043,6 +2548,8 @@ async function sendMessage() {
     id: tempId, _pending: true, listing_id: ctx.listingId,
     sender_id: currentUser.id, receiver_id: ctx.otherUserId,
     body: messageBody, offer_amount: amount, created_at: new Date().toISOString(),
+    conversation_key: ctx.conversationKey, sender_role: String(ctx.mode || 'buyer') === 'seller' ? 'seller' : 'buyer',
+    listing_title_snapshot: ctx.listing?.title || 'Listing', listing_image_snapshot: getListingImages(ctx.listing || {})[0] || null, listing_owner_id_snapshot: ctx.listing?.user_id || null,
   })
   if (messageInput) { messageInput.value = ''; autosizeChatInput() }
   setChatOfferBar(false)
@@ -2051,6 +2558,24 @@ async function sendMessage() {
   if (!chatIsTouch()) messageInput?.focus()
 
   try {
+    const listingImages = getListingImages(ctx.listing || {}).filter(isValidImageUrl)
+    const senderRole = String(ctx.mode || 'buyer') === 'seller' ? 'seller' : 'buyer'
+    const { data, error: messageError } = await db.from('listing_messages').insert([{
+      listing_id: ctx.listingId,
+      listing_title_snapshot: ctx.listing?.title || 'Listing',
+      listing_image_snapshot: listingImages[0] || null,
+      listing_owner_id_snapshot: ctx.listing?.user_id || null,
+      conversation_key: ctx.conversationKey,
+      sender_id: currentUser.id,
+      receiver_id: ctx.otherUserId,
+      sender_role: senderRole,
+      body: messageBody,
+      offer_amount: amount,
+    }]).select('id,listing_id,listing_title_snapshot,listing_image_snapshot,listing_owner_id_snapshot,conversation_key,sender_id,receiver_id,sender_role,kind,body,offer_amount,created_at').single()
+    if (messageError) throw messageError
+
+    // Keep the older offers table in sync when it exists, but never let a legacy offers-table error
+    // prevent the actual buyer/seller message from being delivered. Seller offers are read from messages.
     if (amount) {
       const buyerName = currentUser.user_metadata?.full_name || currentUser.email || 'A buyer'
       const { error: offerError } = await db.from('offers').insert([{
@@ -2061,16 +2586,8 @@ async function sendMessage() {
         buyer_name: buyerName,
         buyer_contact: currentUser.email || null,
       }])
-      if (offerError) throw offerError
+      if (offerError) console.warn('Legacy offers table could not be updated; message was still sent:', offerError.message)
     }
-    const { data, error: messageError } = await db.from('listing_messages').insert([{
-      listing_id: ctx.listingId,
-      sender_id: currentUser.id,
-      receiver_id: ctx.otherUserId,
-      body: messageBody,
-      offer_amount: amount,
-    }]).select('id,listing_id,sender_id,receiver_id,body,offer_amount,created_at').single()
-    if (messageError) throw messageError
     if (ctx !== activeMessageContext) return
     chatRows = chatRows.filter((r) => r.id !== tempId)
     mergeChatRows([data], { forceScroll: true })
@@ -2117,35 +2634,81 @@ chatQuickReplies?.addEventListener('click', (event) => {
   messageInput.focus()
 })
 
+async function fetchSellerOfferMessages(listingIds) {
+  if (!useSupabase || !currentUser || !listingIds.length) return []
+  const idSet = new Set(listingIds.map(String))
+  const { data, error } = await db.from('listing_messages')
+    .select('id,listing_id,sender_id,body,offer_amount,created_at')
+    .eq('receiver_id', currentUser.id)
+    .not('offer_amount', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(250)
+  if (error) throw error
+  return (data || []).filter((row) => idSet.has(String(row.listing_id)))
+}
+
 async function loadOffersForMyListings(listingIds) {
   if (!useSupabase || !currentUser || !listingIds.length) return
   try {
-    const { data, error } = await db.from('offers').select('*').eq('seller_id', currentUser.id)
-    if (error) throw error
+    const data = await fetchSellerOfferMessages(listingIds)
     const byListing = {}
-    for (const offer of data || []) {
+    for (const offer of data) {
       const key = String(offer.listing_id)
       if (!byListing[key]) byListing[key] = []
       byListing[key].push(offer)
     }
     for (const id of listingIds) {
       const offers = byListing[String(id)]
-      if (!offers || !offers.length) continue
+      if (!offers?.length) continue
       const card = myListingsGrid.querySelector(`[data-listing-id="${CSS.escape(String(id))}"]`)
       if (!card) continue
-      offers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      const rows = offers.map((o) => {
-        const amountStr = Number.isFinite(Number(o.amount)) ? Number(o.amount).toFixed(2) : o.amount
-        const mail = o.buyer_contact ? `<a href="mailto:${escapeHtml(o.buyer_contact)}">${escapeHtml(o.buyer_contact)}</a>` : ''
-        return `<div class="offer-row"><div><strong>${escapeHtml(amountStr)}</strong> from ${escapeHtml(o.buyer_name || 'a buyer')}${mail ? ` — ${mail}` : ''}</div><div class="message-quick-row"><button class="message-buyer-btn muted-btn" type="button" data-id="${escapeHtml(id)}" data-buyer-id="${escapeHtml(o.buyer_id || '')}" data-buyer-name="${escapeHtml(o.buyer_name || '')}">Message</button></div></div>`
+      const rows = offers.slice(0, 5).map((o) => {
+        const amountStr = Number.isFinite(Number(o.offer_amount)) ? Number(o.offer_amount).toFixed(2) : o.offer_amount
+        const preview = String(o.body || '').trim()
+        return `<div class="offer-row"><div><strong>R${escapeHtml(amountStr)}</strong><span class="offer-row-message">${escapeHtml(preview || 'Offer sent')}</span></div><div class="message-quick-row"><button class="message-buyer-btn muted-btn" type="button" data-id="${escapeHtml(id)}" data-buyer-id="${escapeHtml(o.sender_id || '')}" data-buyer-name="Buyer">Message</button></div></div>`
       }).join('')
       const box = document.createElement('div')
       box.className = 'offers-box'
-      box.innerHTML = `<div class="offers-box-title">${offers.length} offer${offers.length === 1 ? '' : 's'}</div>${rows}`
+      box.innerHTML = `<div class="offers-box-title">${offers.length} offer${offers.length === 1 ? '' : 's'} on this listing</div>${rows}`
       card.appendChild(box)
     }
   } catch (e) {
-    console.warn('Loading offers failed:', e)
+    console.warn('Loading listing offers failed:', e)
+  }
+}
+
+async function loadSellerOfferSummary(listingIds) {
+  if (!myListingsOffersBtn || !myListingsOffersPanel || !useSupabase || !currentUser || !listingIds.length) return
+  try {
+    const data = await fetchSellerOfferMessages(listingIds)
+    if (!data.length) {
+      myListingsOffersBtn.classList.add('hidden')
+      return
+    }
+    myListingsOffersBtn.textContent = `Offers (${data.length})`
+    myListingsOffersBtn.classList.remove('hidden')
+    myListingsOffersBtn.onclick = () => {
+      myListingsOffersPanel.classList.toggle('hidden')
+    }
+    const rows = data.slice(0, 50).map((o) => {
+      const listing = currentListings.find((l) => String(l.id) === String(o.listing_id))
+      const title = listing?.title || 'Listing'
+      const body = String(o.body || '').trim()
+      const amount = Number.isFinite(Number(o.offer_amount)) ? `R${Number(o.offer_amount).toFixed(2)}` : 'Offer'
+      return `<div class="offer-summary-row">
+        <div class="offer-summary-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <span class="offer-summary-amount">Offer ${escapeHtml(amount)}</span>
+          <small>${escapeHtml(body || 'The buyer sent a price offer.')}</small>
+          <time>${escapeHtml(formatNotificationTime(o.created_at))}</time>
+        </div>
+        <button class="message-buyer-btn muted-btn" type="button" data-id="${escapeHtml(o.listing_id)}" data-buyer-id="${escapeHtml(o.sender_id)}" data-buyer-name="Buyer">Open chat</button>
+      </div>`
+    }).join('')
+    myListingsOffersPanel.innerHTML = `<div class="offers-summary-head"><div><strong>Offers from buyers</strong><small>Price offers sent for your listings. Open the chat to continue.</small></div><span>${data.length}</span></div>${rows}`
+  } catch (e) {
+    myListingsOffersBtn.classList.add('hidden')
+    console.warn('Loading seller offers failed:', e)
   }
 }
 
@@ -4190,7 +4753,18 @@ async function trackListingView(item) {
 // the store's initials on a coloured tile. Images opt in with data-logo-name.
 document.addEventListener('error', (event) => {
   const img = event.target
-  if (!(img instanceof HTMLImageElement) || img.dataset.logoName === undefined) return
+  if (!(img instanceof HTMLImageElement)) return
+  // Listing thumbnails in chats/notifications: the saved photo can disappear (for example when the seller
+  // deletes their account, their images are removed from Storage), so fall back to the placeholder icon.
+  if (img.classList.contains('notification-thumb') || img.classList.contains('chat-listing-thumb')) {
+    const placeholder = document.createElement('span')
+    placeholder.className = img.classList.contains('notification-thumb') ? 'notification-thumb notification-thumb-empty' : 'chat-listing-thumb'
+    placeholder.setAttribute('aria-hidden', 'true')
+    placeholder.innerHTML = ICON_LISTINGS
+    img.replaceWith(placeholder)
+    return
+  }
+  if (img.dataset.logoName === undefined) return
   const name = img.dataset.logoName
   const badge = document.createElement('span')
   badge.className = 'logo-initials'

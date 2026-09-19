@@ -26,7 +26,13 @@
       <div class="nav-brand">
         <img src="logo.svg" alt="LinkHub logo" class="brand-logo" />
       </div>
-      <div id="mobile-nav-user" class="mobile-nav-user"></div>
+      <div class="site-nav-actions">
+        <button id="nav-notifications-btn" class="nav-notifications-btn" type="button" aria-label="Notifications" aria-expanded="false" title="Notifications">
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span id="nav-notifications-badge" class="nav-notifications-badge hidden" aria-hidden="true"></span>
+        </button>
+        <div id="mobile-nav-user" class="mobile-nav-user"></div>
+      </div>
       <div
         id="desktop-nav"
         class="desktop-nav"
@@ -1158,6 +1164,31 @@
       </div>
     </div>
 
+    <div id="notifications-overlay" class="app-overlay hidden" aria-hidden="true">
+      <div class="app-overlay-panel notifications-panel" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
+        <div class="overlay-header notifications-header">
+          <div>
+            <span class="eyebrow">Updates & chats</span>
+            <h2 id="notifications-title">Notifications</h2>
+          </div>
+          <div class="notifications-actions">
+            <button id="notifications-enable" type="button" class="muted-btn">Turn on browser alerts</button>
+            <button id="notifications-close" type="button" class="lightbox-close" aria-label="Close notifications">&times;</button>
+          </div>
+        </div>
+        <div class="notifications-tabs" role="tablist" aria-label="Notifications and chats">
+          <button id="notifications-tab-updates" type="button" class="notifications-tab is-active" role="tab" aria-selected="true">Updates</button>
+          <button id="notifications-tab-chats" type="button" class="notifications-tab" role="tab" aria-selected="false">Chats</button>
+        </div>
+        <div class="notifications-toolbar">
+          <span id="notifications-context" class="muted">New messages and offers</span>
+          <button id="notifications-clear" type="button" class="muted-btn">Clear updates</button>
+        </div>
+        <div id="notifications-list" class="notifications-list"></div>
+        <div id="chats-list" class="notifications-list hidden"></div>
+      </div>
+    </div>
+
     <div id="image-lightbox" class="lightbox-overlay hidden" aria-hidden="true">
       <button
         id="lightbox-close"
@@ -1231,8 +1262,12 @@
             &times;
           </button>
         </div>
-        <div id="my-listings-count" class="muted"></div>
+        <div class="my-listings-toolbar">
+          <div id="my-listings-count" class="muted"></div>
+          <button id="my-listings-offers" type="button" class="muted-btn hidden">Offers</button>
+        </div>
         <div id="my-listings-grid" class="listing-grid"></div>
+        <div id="my-listings-offers-panel" class="offers-summary-panel hidden" aria-live="polite"></div>
       </div>
     </div>
 
@@ -1484,6 +1519,6 @@
       </form>
     </div>
 
-    <script type="module" src="app.js?v=20260919-discovery1"></script>
+    <script type="module" src="app.js?v=20260919-account-alert"></script>
   </body>
 </html>
