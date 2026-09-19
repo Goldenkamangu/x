@@ -1582,31 +1582,20 @@ document.body.addEventListener('click', async (ev) => {
     btn.textContent = ''
     btn.innerHTML = favoritedIds.has(id) ? `${ICON_STAR_FILLED} Saved` : `${ICON_STAR_OUTLINE} Save`
   }
+  if (btn.classList.contains('message-buyer-btn')) {
+    if (!currentUser) return alert('Please sign in to message.')
+    const listing = currentListings.find((r) => String(r.id) === String(id))
+    const buyerId = btn.dataset.buyerId || ''
+    if (listing && buyerId) openMessageThread(listing, buyerId, 'seller', btn.dataset.buyerName || '')
+    return
+  }
   if (btn.classList.contains('offer-btn')) {
     if (!currentUser) return alert('Please sign in to make an offer.')
     const item = currentListings.find((r) => r.id === id)
-    const amount = prompt(`Your offer for "${item ? item.title : 'this listing'}"?`)
-    if (!amount || !amount.trim()) return
-    const numAmount = Number(amount.replace(/[^0-9.]/g, ''))
-    if (!Number.isFinite(numAmount) || numAmount <= 0) return alert('Please enter a valid amount.')
-    try {
-      if (useSupabase) {
-        const buyerName = currentUser.user_metadata?.full_name || currentUser.email || 'A buyer'
-        const { error } = await db.from('offers').insert([{
-          listing_id: id,
-          buyer_id: currentUser.id,
-          seller_id: item?.user_id || null,
-          amount: numAmount,
-          buyer_name: buyerName,
-          buyer_contact: currentUser.email || null,
-        }])
-        if (error) throw error
-      }
-      alert('Offer sent! Check My Listings to see offers on your own posts.')
-    } catch (e) {
-      console.warn('Offer insert failed:', e)
-      alert("Couldn't send your offer right now. Please try again later.")
-    }
+    if (!item) return
+    if (String(item.user_id) === String(currentUser.id)) return alert('You cannot make an offer on your own listing.')
+    openMessageThread(item, item.user_id, 'buyer')
+    return
   }
   if (btn.classList.contains('confirm-available-btn')) {
     if (!currentUser) return
@@ -1696,6 +1685,438 @@ function renderMyListings() {
   loadOffersForMyListings(mine.map((item) => item.id))
 }
 
+// ---------------------------------------------------------------------------
+// Chat-style messaging between buyer and seller (opened from "Make an Offer"
+// and the seller's "Message" button). Behaves like a normal messaging app:
+// bubbles grouped by sender, day separators, live updates, quick replies and
+// an optional offer amount that shows up as an offer card inside the bubble.
+// ---------------------------------------------------------------------------
+const messageOverlay = document.getElementById('message-overlay')
+const messageClose = document.getElementById('message-close')
+const messageTitle = document.getElementById('message-title')
+const messageListingTitle = document.getElementById('message-listing-title')
+const messageThread = document.getElementById('message-thread')
+const messageOfferAmount = document.getElementById('message-offer-amount')
+const messageInput = document.getElementById('message-input')
+const messageSend = document.getElementById('message-send')
+const messageStatus = document.getElementById('message-status')
+const chatAvatarEl = document.getElementById('chat-avatar')
+const chatListingCard = document.getElementById('chat-listing-card')
+const chatQuickReplies = document.getElementById('chat-quick-replies')
+const chatOfferBar = document.getElementById('chat-offer-bar')
+const chatOfferToggle = document.getElementById('chat-offer-toggle')
+const chatOfferClear = document.getElementById('chat-offer-clear')
+
+const CHAT_QUICK_REPLIES = ['Is this still available?', "What's your best price?", 'Where can we meet?', 'Can you deliver?']
+const CHAT_GROUP_MS = 5 * 60 * 1000
+const CHAT_POLL_MS = 8000
+const CHAT_ICON_TICK = '<svg class="chat-tick" viewBox="0 0 16 16" width="14" height="14" aria-label="Sent"><path d="M3 8.6l3.1 3L13 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const CHAT_ICON_CLOCK = '<svg class="chat-tick" viewBox="0 0 16 16" width="14" height="14" aria-label="Sending"><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.2l2 1.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+let activeMessageContext = null
+let chatRows = []
+let chatChannel = null
+let chatPollTimer = null
+
+function chatIsTouch() {
+  return !!window.matchMedia?.('(pointer: coarse)').matches
+}
+
+function initialsFromName(name) {
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean)
+  const first = parts[0]?.[0] || '?'
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
+}
+
+function avatarHueFromSeed(seed) {
+  let h = 0
+  for (const c of String(seed)) h = (h * 31 + c.charCodeAt(0)) % 360
+  return h
+}
+
+function renderChatAvatar(name, seed, logoUrl) {
+  if (!chatAvatarEl) return
+  const showInitials = () => {
+    chatAvatarEl.textContent = initialsFromName(name)
+    chatAvatarEl.style.background = `hsl(${avatarHueFromSeed(seed)} 55% 38%)`
+  }
+  if (logoUrl && isValidImageUrl(logoUrl)) {
+    chatAvatarEl.innerHTML = `<img src="${escapeHtml(logoUrl)}" alt="">`
+    chatAvatarEl.style.background = ''
+    // Broken or missing logo: show the initials instead of a broken-image icon.
+    chatAvatarEl.querySelector('img')?.addEventListener('error', showInitials, { once: true })
+    return
+  }
+  showInitials()
+}
+
+function chatCurrencySymbol() {
+  const l = activeMessageContext?.listing
+  const code = String(l?.price_currency || l?.currency || '').toUpperCase()
+  return code === 'USD' ? '$' : code === 'ZAR' ? 'R' : ''
+}
+
+function renderChatListingCard(listing) {
+  if (!chatListingCard) return
+  if (!listing) { chatListingCard.classList.add('hidden'); return }
+  const img = getListingImages(listing)[0]
+  const thumb = img && isValidImageUrl(img)
+    ? `<img class="chat-listing-thumb" src="${escapeHtml(img)}" alt="">`
+    : `<span class="chat-listing-thumb">${ICON_LISTINGS}</span>`
+  chatListingCard.innerHTML = `${thumb}<div class="chat-listing-info"><span class="chat-listing-title">${escapeHtml(listing.title || 'Listing')}</span><span class="chat-listing-price">${escapeHtml(formatListingPrice(listing))}</span></div>`
+  chatListingCard.classList.remove('hidden')
+}
+
+function formatChatClock(value) {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatChatDay(value) {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diffDays = Math.round((startOf(new Date()) - startOf(d)) / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function setChatStatus(text = '', isError = false) {
+  if (!messageStatus) return
+  messageStatus.textContent = text
+  messageStatus.classList.toggle('is-error', !!isError)
+}
+
+function autosizeChatInput() {
+  if (!messageInput) return
+  const max = 120
+  messageInput.style.height = 'auto'
+  // scrollHeight ignores the border, so add it back or the box overflows by a couple of px and shows a scrollbar.
+  const border = messageInput.offsetHeight - messageInput.clientHeight
+  const wanted = messageInput.scrollHeight + border
+  messageInput.style.height = `${Math.min(wanted, max)}px`
+  messageInput.style.overflowY = wanted > max ? 'auto' : 'hidden'
+}
+
+function updateChatSendState() {
+  const has = !!(messageInput?.value || '').trim() || !!(messageOfferAmount?.value || '').trim()
+  messageSend?.classList.toggle('is-ready', has)
+}
+
+function setChatOfferBar(open) {
+  if (chatOfferBar) chatOfferBar.classList.toggle('hidden', !open)
+  if (chatOfferToggle) {
+    chatOfferToggle.classList.toggle('active', !!open)
+    chatOfferToggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+  }
+  if (!open && messageOfferAmount) messageOfferAmount.value = ''
+  updateChatSendState()
+}
+
+function updateChatQuickReplies() {
+  if (!chatQuickReplies) return
+  const show = !!activeMessageContext && activeMessageContext.mode === 'buyer' && !chatRows.length
+  if (show && !chatQuickReplies.childElementCount) {
+    chatQuickReplies.innerHTML = CHAT_QUICK_REPLIES.map((t) => `<button type="button" class="chat-chip">${escapeHtml(t)}</button>`).join('')
+  }
+  chatQuickReplies.classList.toggle('hidden', !show)
+}
+
+function renderMessageRows({ forceScroll = false } = {}) {
+  if (!messageThread) return
+  const ctx = activeMessageContext
+  const nearBottom = messageThread.scrollHeight - messageThread.scrollTop - messageThread.clientHeight < 140
+  const notice = '<div class="chat-notice">Only you two can see this chat. Messages are deleted after 31 days.</div>'
+
+  if (!chatRows.length) {
+    const who = escapeHtml(ctx?.otherName || 'them')
+    const hint = ctx?.mode === 'buyer' ? 'Ask a question or make an offer.' : 'Send a message to reply to their offer.'
+    messageThread.innerHTML = `${notice}<div class="chat-empty"><strong>No messages yet</strong><span>Say hello to ${who}. ${hint}</span></div>`
+  } else {
+    const me = String(currentUser?.id || '')
+    const sym = chatCurrencySymbol()
+    const closeTo = (a, b) => !!a && !!b
+      && String(a.sender_id) === String(b.sender_id)
+      && formatChatDay(a.created_at) === formatChatDay(b.created_at)
+      && Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < CHAT_GROUP_MS
+    let html = notice
+    let lastDay = ''
+    chatRows.forEach((row, i) => {
+      const prev = chatRows[i - 1]
+      const next = chatRows[i + 1]
+      const day = formatChatDay(row.created_at)
+      if (day !== lastDay) html += `<div class="chat-day"><span>${escapeHtml(day)}</span></div>`
+      lastDay = day
+      const mine = String(row.sender_id) === me
+      const isStart = !closeTo(prev, row)
+      const isEnd = !closeTo(row, next)
+      const amount = row.offer_amount != null && Number.isFinite(Number(row.offer_amount)) ? Number(row.offer_amount) : null
+      const body = String(row.body || '')
+      // When the buyer sends only an amount, the body is auto-generated. The offer card says it already.
+      const autoBody = amount != null && /^I'd like to offer [\d.]+ for this listing\.$/.test(body)
+      const offerHtml = amount != null
+        ? `<div class="chat-offer"><span class="chat-offer-tag">Offer</span><strong>${escapeHtml(sym + amount.toFixed(2))}</strong></div>`
+        : ''
+      const textHtml = body && !autoBody ? `<span class="chat-text">${escapeHtml(body)}</span>` : ''
+      const tick = mine ? (row._pending ? CHAT_ICON_CLOCK : CHAT_ICON_TICK) : ''
+      const cls = `chat-row ${mine ? 'mine' : 'theirs'}${isStart ? ' is-start' : ''}${isEnd ? ' is-end' : ''}${row._pending ? ' is-pending' : ''}`
+      html += `<div class="${cls}"><div class="chat-bubble">${offerHtml}${textHtml}<span class="chat-meta">${escapeHtml(formatChatClock(row.created_at))}${tick}</span></div></div>`
+    })
+    messageThread.innerHTML = html
+  }
+
+  if (forceScroll || nearBottom) messageThread.scrollTop = messageThread.scrollHeight
+  updateChatQuickReplies()
+}
+
+// Adds new rows (from a fetch, a realtime push or our own insert) without duplicates.
+function mergeChatRows(newRows = [], { forceScroll = false } = {}) {
+  const ctx = activeMessageContext
+  if (!ctx || !currentUser) return
+  const me = String(currentUser.id)
+  const other = String(ctx.otherUserId)
+  const byId = new Map(chatRows.filter((r) => !r._pending).map((r) => [String(r.id), r]))
+  for (const r of newRows || []) {
+    if (!r || String(r.listing_id) !== String(ctx.listingId)) continue
+    const pair = [String(r.sender_id), String(r.receiver_id)]
+    if (!pair.includes(me) || !pair.includes(other)) continue
+    byId.set(String(r.id), r)
+  }
+  const confirmed = [...byId.values()].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  const pending = chatRows.filter((r) => r._pending)
+  const before = chatRows.map((r) => r.id).join('|')
+  chatRows = confirmed.concat(pending)
+  if (!forceScroll && chatRows.map((r) => r.id).join('|') === before) return
+  renderMessageRows({ forceScroll })
+}
+
+async function loadMessageThread({ quiet = false, forceScroll = false } = {}) {
+  const ctx = activeMessageContext
+  if (!useSupabase || !ctx || !currentUser) return
+  const { listingId, otherUserId } = ctx
+  if (!listingId || !otherUserId) return
+  if (!quiet) setChatStatus('')
+  const filter = `and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`
+  const { data, error } = await db.from('listing_messages')
+    .select('id,listing_id,sender_id,receiver_id,body,offer_amount,created_at')
+    .eq('listing_id', listingId)
+    .or(filter)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  if (ctx !== activeMessageContext) return // chat was closed or switched while loading
+  mergeChatRows(data || [], { forceScroll })
+}
+
+function stopChatLive() {
+  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null }
+  if (chatChannel) {
+    try { db.removeChannel(chatChannel) } catch { /* ignore */ }
+    chatChannel = null
+  }
+}
+
+// Realtime gives instant delivery. The light poll is a safety net in case
+// Realtime isn't enabled for the table yet, so chats still update on their own.
+function startChatLive() {
+  stopChatLive()
+  const ctx = activeMessageContext
+  if (!ctx || !useSupabase || !currentUser) return
+  try {
+    if (typeof db.channel === 'function') {
+      chatChannel = db.channel(`listing-chat-${ctx.listingId}-${currentUser.id}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_messages', filter: `listing_id=eq.${ctx.listingId}` }, (payload) => {
+          if (ctx !== activeMessageContext || !payload?.new) return
+          mergeChatRows([payload.new])
+        })
+        .subscribe()
+    }
+  } catch (e) {
+    console.warn('Realtime chat unavailable, using polling only:', e)
+  }
+  chatPollTimer = setInterval(() => {
+    if (ctx !== activeMessageContext || document.hidden) return
+    loadMessageThread({ quiet: true }).catch(() => {})
+  }, CHAT_POLL_MS)
+}
+
+// On phones the on-screen keyboard shrinks the visual viewport; keep the
+// composer glued to the top of the keyboard like a normal chat app.
+function syncChatViewport() {
+  if (!messageOverlay || messageOverlay.classList.contains('hidden')) return
+  const vv = window.visualViewport
+  if (!vv || window.innerWidth > 640) {
+    messageOverlay.style.height = ''
+    messageOverlay.style.top = ''
+    return
+  }
+  messageOverlay.style.height = `${vv.height}px`
+  messageOverlay.style.top = `${vv.offsetTop}px`
+  if (messageThread) messageThread.scrollTop = messageThread.scrollHeight
+}
+window.visualViewport?.addEventListener('resize', syncChatViewport)
+window.visualViewport?.addEventListener('scroll', syncChatViewport)
+
+async function openMessageThread(listing, otherUserId, mode = 'buyer', otherName = '') {
+  if (!currentUser || !listing || !otherUserId || !useSupabase) {
+    if (!useSupabase) alert('Messaging needs the Supabase database to be set up first.')
+    return
+  }
+  const store = getStoreForUser(otherUserId)
+  let name = String(otherName || store?.name || (mode === 'seller' ? 'Buyer' : 'Seller')).trim()
+  if (name.includes('@')) name = getDisplayNameFromEmail(name)
+  const ctx = { listingId: listing.id, otherUserId: String(otherUserId), mode, listing, otherName: name }
+  activeMessageContext = ctx
+  chatRows = []
+
+  if (messageTitle) messageTitle.textContent = name
+  if (messageListingTitle) messageListingTitle.textContent = mode === 'seller' ? 'Buyer' : 'Seller'
+  renderChatAvatar(name, otherUserId, store?.logo_url)
+  renderChatListingCard(listing)
+  if (messageInput) { messageInput.value = ''; autosizeChatInput() }
+  setChatOfferBar(false)
+  setChatStatus('')
+  // Only buyers attach an offer amount; a seller is replying to an existing offer.
+  if (chatOfferToggle) chatOfferToggle.classList.toggle('hidden', mode === 'seller')
+  if (chatQuickReplies) chatQuickReplies.innerHTML = ''
+
+  if (messageOverlay) {
+    messageOverlay.classList.remove('hidden')
+    messageOverlay.setAttribute('aria-hidden', 'false')
+    document.documentElement.classList.add('lightbox-open')
+  }
+  renderMessageRows({ forceScroll: true })
+  syncChatViewport()
+  startChatLive()
+  try {
+    await loadMessageThread({ forceScroll: true })
+  } catch (e) {
+    console.warn('Loading messages failed:', e)
+    if (ctx !== activeMessageContext) return
+    setChatStatus('Could not load messages.', true)
+    chatQuickReplies?.classList.add('hidden')
+    if (messageThread) messageThread.innerHTML = '<div class="chat-empty"><strong>Messages are not available yet</strong><span>Run the messaging SQL in Supabase, then reopen this chat.</span></div>'
+  }
+  // Don't pop the keyboard over the conversation on phones.
+  if (!chatIsTouch()) setTimeout(() => messageInput?.focus(), 30)
+}
+
+function closeMessageThread() {
+  if (!messageOverlay) return
+  stopChatLive()
+  messageOverlay.classList.add('hidden')
+  messageOverlay.setAttribute('aria-hidden', 'true')
+  messageOverlay.style.height = ''
+  messageOverlay.style.top = ''
+  document.documentElement.classList.remove('lightbox-open')
+  activeMessageContext = null
+  chatRows = []
+}
+
+messageClose?.addEventListener('click', closeMessageThread)
+messageOverlay?.addEventListener('click', (event) => {
+  if (event.target === messageOverlay) closeMessageThread()
+})
+
+async function sendMessage() {
+  const ctx = activeMessageContext
+  if (!ctx || !currentUser || !useSupabase) return
+  const body = (messageInput?.value || '').trim()
+  const rawAmount = (messageOfferAmount?.value || '').trim()
+  const isBuyer = ctx.mode === 'buyer'
+  const amount = isBuyer && rawAmount ? Number(rawAmount.replace(/[^0-9.]/g, '')) : null
+  if (isBuyer && rawAmount && (!Number.isFinite(amount) || amount <= 0)) {
+    setChatStatus('Enter a valid offer amount.', true)
+    messageOfferAmount?.focus()
+    return
+  }
+  // The amount is optional. A buyer may start with a normal message and add an offer whenever they want.
+  if (!body && !amount) return
+
+  const messageBody = body || `I'd like to offer ${amount.toFixed(2)} for this listing.`
+  const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+
+  // Optimistic bubble so it feels instant, like any chat app.
+  chatRows.push({
+    id: tempId, _pending: true, listing_id: ctx.listingId,
+    sender_id: currentUser.id, receiver_id: ctx.otherUserId,
+    body: messageBody, offer_amount: amount, created_at: new Date().toISOString(),
+  })
+  if (messageInput) { messageInput.value = ''; autosizeChatInput() }
+  setChatOfferBar(false)
+  setChatStatus('')
+  renderMessageRows({ forceScroll: true })
+  if (!chatIsTouch()) messageInput?.focus()
+
+  try {
+    if (amount) {
+      const buyerName = currentUser.user_metadata?.full_name || currentUser.email || 'A buyer'
+      const { error: offerError } = await db.from('offers').insert([{
+        listing_id: ctx.listingId,
+        buyer_id: currentUser.id,
+        seller_id: ctx.otherUserId,
+        amount,
+        buyer_name: buyerName,
+        buyer_contact: currentUser.email || null,
+      }])
+      if (offerError) throw offerError
+    }
+    const { data, error: messageError } = await db.from('listing_messages').insert([{
+      listing_id: ctx.listingId,
+      sender_id: currentUser.id,
+      receiver_id: ctx.otherUserId,
+      body: messageBody,
+      offer_amount: amount,
+    }]).select('id,listing_id,sender_id,receiver_id,body,offer_amount,created_at').single()
+    if (messageError) throw messageError
+    if (ctx !== activeMessageContext) return
+    chatRows = chatRows.filter((r) => r.id !== tempId)
+    mergeChatRows([data], { forceScroll: true })
+  } catch (e) {
+    console.warn('Message send failed:', e)
+    if (ctx !== activeMessageContext) return
+    chatRows = chatRows.filter((r) => r.id !== tempId)
+    // Put the text back so nothing the person typed is lost.
+    if (messageInput && !messageInput.value) { messageInput.value = body; autosizeChatInput() }
+    if (amount) { setChatOfferBar(true); if (messageOfferAmount) messageOfferAmount.value = String(amount) }
+    updateChatSendState()
+    renderMessageRows({ forceScroll: true })
+    setChatStatus(e?.message || 'Could not send. Try again.', true)
+  }
+}
+
+messageSend?.addEventListener('click', sendMessage)
+messageInput?.addEventListener('input', () => { autosizeChatInput(); updateChatSendState() })
+messageInput?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  // Phones: Enter adds a new line and the send button sends. Desktop: Enter sends, Shift+Enter adds a line.
+  if (chatIsTouch()) return
+  event.preventDefault()
+  sendMessage()
+})
+messageOfferAmount?.addEventListener('input', updateChatSendState)
+messageOfferAmount?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return
+  event.preventDefault()
+  sendMessage()
+})
+chatOfferToggle?.addEventListener('click', () => {
+  const opening = chatOfferBar?.classList.contains('hidden')
+  setChatOfferBar(!!opening)
+  if (opening) setTimeout(() => messageOfferAmount?.focus(), 30)
+})
+chatOfferClear?.addEventListener('click', () => setChatOfferBar(false))
+chatQuickReplies?.addEventListener('click', (event) => {
+  const chip = event.target.closest('.chat-chip')
+  if (!chip || !messageInput) return
+  messageInput.value = chip.textContent || ''
+  autosizeChatInput()
+  updateChatSendState()
+  messageInput.focus()
+})
+
 async function loadOffersForMyListings(listingIds) {
   if (!useSupabase || !currentUser || !listingIds.length) return
   try {
@@ -1716,7 +2137,7 @@ async function loadOffersForMyListings(listingIds) {
       const rows = offers.map((o) => {
         const amountStr = Number.isFinite(Number(o.amount)) ? Number(o.amount).toFixed(2) : o.amount
         const mail = o.buyer_contact ? `<a href="mailto:${escapeHtml(o.buyer_contact)}">${escapeHtml(o.buyer_contact)}</a>` : ''
-        return `<div class="offer-row"><strong>${escapeHtml(amountStr)}</strong> from ${escapeHtml(o.buyer_name || 'a buyer')}${mail ? ` — ${mail}` : ''}</div>`
+        return `<div class="offer-row"><div><strong>${escapeHtml(amountStr)}</strong> from ${escapeHtml(o.buyer_name || 'a buyer')}${mail ? ` — ${mail}` : ''}</div><div class="message-quick-row"><button class="message-buyer-btn muted-btn" type="button" data-id="${escapeHtml(id)}" data-buyer-id="${escapeHtml(o.buyer_id || '')}" data-buyer-name="${escapeHtml(o.buyer_name || '')}">Message</button></div></div>`
       }).join('')
       const box = document.createElement('div')
       box.className = 'offers-box'
@@ -1832,8 +2253,23 @@ function openStore(userId) {
     storeCategoryEl.classList.toggle('hidden', !s?.category)
   }
   if (storeLogoImg) {
-    if (s?.logo_url) { storeLogoImg.src = s.logo_url; storeLogoImg.classList.remove('hidden') }
-    else { storeLogoImg.src = ''; storeLogoImg.classList.add('hidden') }
+    const logoFallback = document.getElementById('store-logo-fallback')
+    logoFallback?.classList.add('hidden')
+    if (s?.logo_url) {
+      storeLogoImg.onerror = () => {
+        storeLogoImg.classList.add('hidden')
+        if (!logoFallback) return
+        logoFallback.textContent = initialsFromName(s?.name)
+        logoFallback.style.background = `hsl(${avatarHueFromSeed(userId)} 55% 38%)`
+        logoFallback.classList.remove('hidden')
+      }
+      storeLogoImg.src = s.logo_url
+      storeLogoImg.classList.remove('hidden')
+    } else {
+      storeLogoImg.onerror = null
+      storeLogoImg.src = ''
+      storeLogoImg.classList.add('hidden')
+    }
   }
   if (storeContactMeta) {
     const bits = []
@@ -1925,7 +2361,7 @@ function renderBusinessExploreGrid() {
     const countLabel = `${store.listingCount} listing${store.listingCount === 1 ? '' : 's'}`
     const meta = [store.category, store.location || store.city].filter(Boolean).join(' • ')
     const logo = store.logo_url
-      ? `<div class="business-explore-logo"><img src="${escapeHtml(store.logo_url)}" alt="" loading="lazy"></div>`
+      ? `<div class="business-explore-logo"><img src="${escapeHtml(store.logo_url)}" alt="" loading="lazy" data-logo-name="${escapeHtml(store.name || '')}" data-logo-seed="${escapeHtml(store.ownerId || '')}"></div>`
       : `<div class="business-explore-icon">${ICON_STORE}</div>`
     const hasWhatsApp = !!buildWhatsAppUrl(store.phone)
     return `
@@ -1994,6 +2430,7 @@ const storeManageHours = document.getElementById('store-manage-hours')
 const storeManageFulfilment = document.getElementById('store-manage-fulfilment')
 const storeManageLogo = document.getElementById('store-manage-logo')
 const storeManageLogoPreview = document.getElementById('store-manage-logo-preview')
+storeManageLogoPreview?.addEventListener('error', () => storeManageLogoPreview.classList.add('hidden'))
 const storeManageBanner = document.getElementById('store-manage-banner')
 const storeManageBannerPreview = document.getElementById('store-manage-banner-preview')
 const storeManageMsg = document.getElementById('store-manage-msg')
@@ -2556,6 +2993,7 @@ function renderFilteredListings() {
     return text.includes(term)
   }))
   listCount.textContent = `${filtered.length} listing${filtered.length === 1 ? '' : 's'}`
+  if (recentlyViewedReady) renderRecentlyViewed()
   listingsContainer.innerHTML = ''
   if (!filtered.length) {
     const empty = document.createElement('div')
@@ -3215,18 +3653,17 @@ cartyForm?.addEventListener('submit', async ev => {
 
 // Carty intentionally opens only when the user taps the button.
 
-// Recently viewed + "You might also like"
+// Recently viewed (strip at the top of the feed) + "You might also like" (inside the listing overlay)
 const RECENT_VIEWED_KEY = 'linkhub-recently-viewed-v1'
 const RECENT_VIEWED_LIMIT = 8
+const SIMILAR_LISTINGS_LIMIT = 8
 const recentlyViewedSection = document.getElementById('recently-viewed-section')
 const recentlyViewedList = document.getElementById('recently-viewed-list')
 const clearRecentlyViewedBtn = document.getElementById('clear-recently-viewed')
-const similarListingsSection = document.getElementById('similar-listings-section')
-const similarListingsList = document.getElementById('similar-listings-list')
 const recentlyViewedScrollLeftBtn = document.getElementById('recently-viewed-scroll-left')
 const recentlyViewedScrollRightBtn = document.getElementById('recently-viewed-scroll-right')
-const similarListingsScrollLeftBtn = document.getElementById('similar-listings-scroll-left')
-const similarListingsScrollRightBtn = document.getElementById('similar-listings-scroll-right')
+var recentlyViewedReady = false // var on purpose: renderFilteredListings can run before this block is evaluated
+let recentlyViewedSig = ''
 
 function updateMiniScrollControls(list, leftButton, rightButton) {
   if (!list) return
@@ -3245,10 +3682,8 @@ function setupMiniScrollControls(list, leftButton, rightButton) {
 }
 
 setupMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
-setupMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
 window.addEventListener('resize', () => {
   updateMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
-  updateMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
 })
 
 function getRecentlyViewedIds() {
@@ -3270,6 +3705,7 @@ function rememberRecentlyViewed(listingId) {
   renderRecentlyViewed()
 }
 
+// Compact vertical card: photo on top, then price, title and location.
 function miniListingCard(item) {
   const card = document.createElement('button')
   card.type = 'button'
@@ -3277,60 +3713,94 @@ function miniListingCard(item) {
   card.dataset.listingId = String(item.id)
   card.setAttribute('aria-label', `Open ${item.title || 'listing'}`)
   const images = getListingImages(item).filter(isValidImageUrl)
+  const soldTag = item.sold ? '<span class="mini-sold-tag">Sold</span>' : ''
   const imageHtml = images.length
-    ? `<div class="mini-listing-img"><img src="${escapeHtml(images[0])}" alt="" loading="lazy"></div>`
-    : `<div class="mini-listing-placeholder">${ICON_STORE}</div>`
-  const price = item.price != null && String(item.price).trim() !== ''
-    ? `<div class="mini-listing-price">${escapeHtml(formatListingPrice(item))}</div>` : ''
-  card.innerHTML = `${imageHtml}<div class="mini-listing-title">${escapeHtml(item.title || 'Untitled listing')}</div>${price}<div class="mini-listing-meta">${escapeHtml(item.location || item.city || item.category || '')}</div>`
+    ? `<div class="mini-listing-img"><img src="${escapeHtml(images[0])}" alt="" loading="lazy">${soldTag}</div>`
+    : `<div class="mini-listing-placeholder">${ICON_STORE}${soldTag}</div>`
+  const hasPrice = item.price != null && String(item.price).trim() !== ''
+  const price = `<div class="mini-listing-price">${escapeHtml(hasPrice ? formatListingPrice(item) : 'Price on request')}</div>`
+  const meta = item.location || item.city || item.category || ''
+  card.innerHTML = `${imageHtml}<div class="mini-listing-body">${price}<div class="mini-listing-title">${escapeHtml(item.title || 'Untitled listing')}</div>${meta ? `<div class="mini-listing-meta">${escapeHtml(meta)}</div>` : ''}</div>`
+  // Photo can't load: show the placeholder icon instead of a broken image.
+  card.querySelector('.mini-listing-img img')?.addEventListener('error', (event) => {
+    const wrap = event.target.closest('.mini-listing-img')
+    if (!wrap) return
+    wrap.className = 'mini-listing-placeholder'
+    wrap.innerHTML = `${ICON_STORE}${soldTag}`
+  }, { once: true })
   card.addEventListener('click', () => {
     openListingOverlay(item)
   })
   return card
 }
 
+// The strip sits above the listings, so hide it while someone is searching or
+// filtering by category; the results should come first then.
 function renderRecentlyViewed() {
   if (!recentlyViewedSection || !recentlyViewedList) return
   const ids = getRecentlyViewedIds()
   const items = ids.map(id => currentListings.find(item => String(item.id) === id)).filter(Boolean)
-  recentlyViewedList.innerHTML = ''
+  const filtering = !!(searchEl?.value.trim()) || !!activeCategory
   if (!items.length) {
+    recentlyViewedList.innerHTML = ''
+    recentlyViewedSig = ''
     recentlyViewedSection.classList.add('hidden')
     return
   }
-  items.forEach(item => recentlyViewedList.appendChild(miniListingCard(item)))
-  recentlyViewedSection.classList.remove('hidden')
-  updateMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn)
+  const sig = items.map(item => `${item.id}:${item.sold ? 1 : 0}`).join('|')
+  if (sig !== recentlyViewedSig || !recentlyViewedList.childElementCount) {
+    recentlyViewedList.innerHTML = ''
+    items.forEach(item => recentlyViewedList.appendChild(miniListingCard(item)))
+    recentlyViewedList.scrollLeft = 0
+    recentlyViewedSig = sig
+  }
+  recentlyViewedSection.classList.toggle('hidden', filtering)
+  if (!filtering) requestAnimationFrame(() => updateMiniScrollControls(recentlyViewedList, recentlyViewedScrollLeftBtn, recentlyViewedScrollRightBtn))
 }
 
+function similarWords(text) {
+  return String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2)
+}
+
+// "You might also like" lives inside the listing overlay (under the seller
+// buttons), so it shows up right when someone is looking at a listing.
 function renderSimilarListings(baseItem) {
-  if (!similarListingsSection || !similarListingsList) return
-  if (!baseItem) {
-    similarListingsSection.classList.add('hidden')
-    return
-  }
-  const category = String(baseItem.category || '').toLowerCase()
-  const titleWords = new Set(String(baseItem.title || '').toLowerCase().split(/\\s+/).filter(w => w.length > 2))
-  const scored = currentListings
+  const section = document.getElementById('listing-overlay-similar')
+  const list = document.getElementById('similar-listings-list')
+  if (!section || !list || !baseItem) return
+  if (section.dataset.itemId !== String(baseItem.id)) return // overlay is showing a different listing
+  const baseCategory = String(baseItem.category || '').toLowerCase()
+  const baseWords = new Set(similarWords(baseItem.title))
+  const basePrice = Number(baseItem.price)
+  const basePlace = String(baseItem.location || baseItem.city || '').toLowerCase()
+  const ranked = currentListings
     .filter(item => String(item.id) !== String(baseItem.id) && !item.sold)
     .map(item => {
-      const itemWords = String(item.title || '').toLowerCase().split(/\\s+/)
       let score = 0
-      if (category && String(item.category || '').toLowerCase() === category) score += 5
-      if (titleWords.size) score += itemWords.filter(w => titleWords.has(w)).length * 2
-      return { item, score }
+      if (baseCategory && String(item.category || '').toLowerCase() === baseCategory) score += 5
+      score += similarWords(item.title).filter(w => baseWords.has(w)).length * 2
+      const related = score > 0 // same category or shared title words; price and place only help with ordering
+      const price = Number(item.price)
+      if (Number.isFinite(basePrice) && basePrice > 0 && Number.isFinite(price) && price >= basePrice / 2 && price <= basePrice * 2) score += 1
+      if (basePlace && String(item.location || item.city || '').toLowerCase() === basePlace) score += 1
+      return { item, score, related, time: new Date(item.created_at || 0).getTime() || 0 }
     })
-    .sort((a,b) => b.score - a.score)
-    .slice(0, 4)
-    .map(x => x.item)
-  similarListingsList.innerHTML = ''
-  if (!scored.length) {
-    similarListingsSection.classList.add('hidden')
+    .sort((a, b) => b.score - a.score || b.time - a.time)
+  // Prefer genuinely related listings; if there are only a few, top up with the newest so the row isn't empty.
+  let picks = ranked.filter(x => x.related)
+  if (picks.length < 4) picks = ranked
+  picks = picks.slice(0, SIMILAR_LISTINGS_LIMIT).map(x => x.item)
+  list.innerHTML = ''
+  if (!picks.length) {
+    section.classList.add('hidden')
     return
   }
-  scored.forEach(item => similarListingsList.appendChild(miniListingCard(item)))
-  similarListingsSection.classList.remove('hidden')
-  updateMiniScrollControls(similarListingsList, similarListingsScrollLeftBtn, similarListingsScrollRightBtn)
+  picks.forEach(item => list.appendChild(miniListingCard(item)))
+  section.classList.remove('hidden')
+  const left = document.getElementById('similar-listings-scroll-left')
+  const right = document.getElementById('similar-listings-scroll-right')
+  setupMiniScrollControls(list, left, right)
+  requestAnimationFrame(() => updateMiniScrollControls(list, left, right))
 }
 
 clearRecentlyViewedBtn?.addEventListener('click', () => {
@@ -3339,6 +3809,7 @@ clearRecentlyViewedBtn?.addEventListener('click', () => {
 })
 
 renderRecentlyViewed()
+recentlyViewedReady = true
 
 const listingOverlay = document.createElement('div')
 listingOverlay.id = 'listing-overlay'
@@ -3420,6 +3891,19 @@ function openListingOverlay(item) {
         <button type="button" class="hero-btn hero-btn-primary" data-overlay-contact-id="${escapeHtml(item.id)}">Contact seller</button>
         <button type="button" class="muted-btn" data-close-listing-overlay>Close</button>
       </div>
+      <section id="listing-overlay-similar" class="listing-overlay-similar hidden" data-item-id="${escapeHtml(item.id)}" aria-label="You might also like">
+        <div class="strip-header">
+          <h3 class="strip-title">
+            <svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18"><path d="m12 3 2.3 5.1 5.5.5-4.1 3.6 1.2 5.3-4.9-2.8-4.9 2.8 1.2-5.3-4.1-3.6 5.5-.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>
+            You might also like
+          </h3>
+        </div>
+        <div class="strip-scroll">
+          <button id="similar-listings-scroll-left" class="strip-arrow left" type="button" aria-label="Scroll left" disabled>&#8249;</button>
+          <div id="similar-listings-list" class="mini-listing-grid"></div>
+          <button id="similar-listings-scroll-right" class="strip-arrow right" type="button" aria-label="Scroll right" disabled>&#8250;</button>
+        </div>
+      </section>
     </div>
   `
 
@@ -3701,6 +4185,20 @@ async function trackListingView(item) {
     // View counting is optional; the listing still works when the RPC is not installed yet.
   }
 }
+
+// Logo fallback: if a store logo fails to load, swap the broken-image icon for
+// the store's initials on a coloured tile. Images opt in with data-logo-name.
+document.addEventListener('error', (event) => {
+  const img = event.target
+  if (!(img instanceof HTMLImageElement) || img.dataset.logoName === undefined) return
+  const name = img.dataset.logoName
+  const badge = document.createElement('span')
+  badge.className = 'logo-initials'
+  badge.setAttribute('aria-hidden', 'true')
+  badge.textContent = initialsFromName(name)
+  badge.style.background = `hsl(${avatarHueFromSeed(img.dataset.logoSeed || name)} 55% 38%)`
+  img.replaceWith(badge)
+}, true)
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))

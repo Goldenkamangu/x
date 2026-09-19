@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v5'; // bumped: force stale/old registrations to update
+const CACHE_NAME = 'linkhub-shell-v6'; // bumped: new chat-style messaging UI
 const APP_SHELL = [
   './',
   './index.html',

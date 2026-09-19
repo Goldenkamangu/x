@@ -321,7 +321,6 @@
           <img src="logo.svg" alt="LinkHub" class="loading-logo" />
         </div>
         <div class="loading-heading">
-          <p class="loading-brand">LinkHub</p>
           <p class="loading-copy">Don’t need it? Sell it. Make some money.</p>
         </div>
         <div class="loading-progress" aria-hidden="true">
@@ -714,127 +713,22 @@
             <span aria-hidden="true">›</span>
           </button>
         </div>
+        <section id="recently-viewed-section" class="recent-strip hidden" aria-label="Recently viewed">
+          <div class="strip-header">
+            <h3 class="strip-title">
+              <svg class="section-inline-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12 7.5v5l3.3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              Recently viewed
+            </h3>
+            <button id="clear-recently-viewed" type="button" class="strip-clear">Clear</button>
+          </div>
+          <div class="strip-scroll">
+            <button id="recently-viewed-scroll-left" class="strip-arrow left" type="button" aria-label="Scroll recently viewed left" disabled>&#8249;</button>
+            <div id="recently-viewed-list" class="mini-listing-grid"></div>
+            <button id="recently-viewed-scroll-right" class="strip-arrow right" type="button" aria-label="Scroll recently viewed right" disabled>&#8250;</button>
+          </div>
+        </section>
         <div id="listings" class="listing-grid"></div>
       </section>
-
-      <div
-        class="discovery-sections"
-        aria-label="Browsing history and recommendations"
-      >
-        <section
-          id="recently-viewed-section"
-          class="card nice-to-have-section hidden"
-        >
-          <div class="section-header">
-            <div>
-              <span class="eyebrow">Your activity</span>
-              <h2>
-                <svg
-                  class="section-inline-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  focusable="false"
-                  width="20"
-                  height="20"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="8.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.6"
-                  />
-                  <path
-                    d="M12 7.5v5l3.3 2"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                Recently viewed
-              </h2>
-            </div>
-            <button id="clear-recently-viewed" type="button" class="muted-btn">
-              Clear
-            </button>
-          </div>
-          <div class="mini-scroll-wrap">
-            <button
-              id="recently-viewed-scroll-left"
-              class="category-scroll-btn"
-              type="button"
-              aria-label="Scroll recently viewed left"
-              disabled
-            >
-              <span aria-hidden="true">‹</span>
-            </button>
-            <div id="recently-viewed-list" class="mini-listing-grid"></div>
-            <button
-              id="recently-viewed-scroll-right"
-              class="category-scroll-btn"
-              type="button"
-              aria-label="Scroll recently viewed right"
-              disabled
-            >
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
-        </section>
-
-        <section
-          id="similar-listings-section"
-          class="card nice-to-have-section hidden"
-        >
-          <div class="section-header">
-            <div>
-              <span class="eyebrow">Keep browsing</span>
-              <h2>
-                <svg
-                  class="section-inline-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  focusable="false"
-                  width="20"
-                  height="20"
-                >
-                  <path
-                    d="m12 3 2.3 5.1 5.5.5-4.1 3.6 1.2 5.3-4.9-2.8-4.9 2.8 1.2-5.3-4.1-3.6 5.5-.5z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                You might also like
-              </h2>
-            </div>
-          </div>
-          <div class="mini-scroll-wrap">
-            <button
-              id="similar-listings-scroll-left"
-              class="category-scroll-btn"
-              type="button"
-              aria-label="Scroll recommendations left"
-              disabled
-            >
-              <span aria-hidden="true">‹</span>
-            </button>
-            <div id="similar-listings-list" class="mini-listing-grid"></div>
-            <button
-              id="similar-listings-scroll-right"
-              class="category-scroll-btn"
-              type="button"
-              aria-label="Scroll recommendations right"
-              disabled
-            >
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
-        </section>
-      </div>
     </main>
 
     <footer class="site-footer">
@@ -1226,6 +1120,44 @@
       </div>
     </div>
 
+
+    <!-- Chat-style buyer/seller messaging, opened from Make an Offer / Message. -->
+    <div id="message-overlay" class="app-overlay chat-overlay hidden" aria-hidden="true">
+      <div class="app-overlay-panel message-panel chat-panel" role="dialog" aria-modal="true" aria-labelledby="message-title">
+        <header class="chat-header">
+          <button id="message-close" type="button" class="chat-back" aria-label="Back">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <div id="chat-avatar" class="chat-avatar" aria-hidden="true"></div>
+          <div class="chat-header-text">
+            <h2 id="message-title">Chat</h2>
+            <p id="message-listing-title" class="chat-subtitle"></p>
+          </div>
+        </header>
+        <div id="chat-listing-card" class="chat-listing-card hidden"></div>
+        <div id="message-thread" class="message-thread chat-thread" aria-live="polite"></div>
+        <div id="chat-quick-replies" class="chat-quick-replies hidden"></div>
+        <div id="offer-composer" class="chat-composer">
+          <div id="chat-offer-bar" class="chat-offer-bar hidden">
+            <span class="chat-offer-label">Your offer</span>
+            <span class="chat-offer-currency" aria-hidden="true">R</span>
+            <input id="message-offer-amount" inputmode="decimal" type="number" min="0.01" step="0.01" placeholder="0.00" aria-label="Offer amount" />
+            <button id="chat-offer-clear" type="button" class="chat-offer-clear" aria-label="Remove offer">&times;</button>
+          </div>
+          <div class="chat-input-row">
+            <button id="chat-offer-toggle" type="button" class="chat-icon-btn" aria-label="Add an offer" aria-expanded="false" title="Add an offer">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.4 6.4a1.5 1.5 0 0 1-2.1 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /></svg>
+            </button>
+            <textarea id="message-input" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea>
+            <button id="message-send" type="button" class="chat-send" aria-label="Send">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+          </div>
+          <span id="message-status" class="chat-status" role="status"></span>
+        </div>
+      </div>
+    </div>
+
     <div id="image-lightbox" class="lightbox-overlay hidden" aria-hidden="true">
       <button
         id="lightbox-close"
@@ -1331,6 +1263,7 @@
         </div>
         <div id="store-profile-head" class="store-profile-head">
           <img id="store-logo" class="store-logo hidden" alt="" />
+          <div id="store-logo-fallback" class="store-logo store-logo-initials hidden" aria-hidden="true"></div>
           <div class="store-profile-copy">
             <div id="store-category" class="store-meta-chip hidden"></div>
             <p id="store-bio" class="muted store-bio"></p>
@@ -1551,6 +1484,6 @@
       </form>
     </div>
 
-    <script type="module" src="app.js?v=20260824-direct-text-wrap"></script>
+    <script type="module" src="app.js?v=20260919-discovery1"></script>
   </body>
 </html>
