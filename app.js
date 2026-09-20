@@ -2109,14 +2109,20 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     setFormCompact(true)
   } catch (e) {}
-
-  // Hide the branded loading screen once the app has booted.
-  setTimeout(armLoadingScreenHide, 1200)
 })
 
-window.addEventListener('load', () => {
-  setTimeout(armLoadingScreenHide, 250)
-}, { once: true })
+// The splash always stays for at least this long, even when the app loads instantly (cached visits).
+// On a slow connection it simply leaves as soon as the page has loaded.
+const SPLASH_MIN_MS = 2000
+
+function scheduleLoadingScreenHide() {
+  const shownAt = window.__linkhubSplashShownAt ?? 0 // stamped by a tiny script right after the splash markup
+  const wait = Math.max(0, SPLASH_MIN_MS - (performance.now() - shownAt))
+  setTimeout(armLoadingScreenHide, wait)
+}
+
+if (document.readyState === 'complete') scheduleLoadingScreenHide()
+else window.addEventListener('load', scheduleLoadingScreenHide, { once: true })
 
 // Safety fallback: if the app boot process is interrupted, the loader still clears.
 setTimeout(armLoadingScreenHide, 5000)

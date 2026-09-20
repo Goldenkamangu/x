@@ -2114,3 +2114,10 @@ input[type=file],
 /* System line inside a chat, e.g. when the other person deleted their account */
 #message-overlay .chat-system{margin:14px 0 8px}
 #message-overlay .chat-system span{max-width:90%;text-align:center;line-height:1.35;background:rgba(255,138,141,.1);color:#ffb3b5}
+
+/* Splash: the logo, loading bar and "Loading..." text sit together as one group in the middle of the screen
+   (before, the bar and text were pinned near the bottom). */
+.loading-inner{gap:0}
+.loading-progress,.loading-status{position:static;left:auto;bottom:auto;transform:none}
+.loading-progress{margin-top:30px}
+.loading-status{margin-top:14px}
