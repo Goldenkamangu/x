@@ -10,3 +10,9 @@ Based on the referenced UX psychology video. The implementation focuses on ethic
 - Loss framing: avoided manipulative urgency or fear-based prompts.
 
 No SQL was changed in this UX pass.
+
+
+### Interaction polish
+- Desktop scrollbars use a subtle dark/blue LinkHub style rather than a bright browser-white track.
+- Carty shows a lightweight animated “Thinking” indicator only while waiting for a response.
+- Listing creation shows visible progress through photo preparation, upload, validation, and publishing instead of leaving the user staring at an unchanged button.

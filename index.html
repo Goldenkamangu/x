@@ -336,6 +336,26 @@
         </p>
       </div>
     </div>
+    <div id="linkhub-action-modal" class="linkhub-action-modal hidden" aria-hidden="true">
+      <div class="linkhub-action-backdrop"></div>
+      <section class="linkhub-action-card" role="dialog" aria-modal="true" aria-labelledby="linkhub-action-title">
+        <div class="linkhub-action-brand">
+          <img src="logo.svg" alt="LinkHub" />
+        </div>
+        <div class="linkhub-action-icon is-loading" id="linkhub-action-icon" aria-hidden="true"><span></span></div>
+        <h2 id="linkhub-action-title">Creating your listing</h2>
+        <p id="linkhub-action-detail">Preparing everything...</p>
+        <div id="linkhub-action-progress-wrap" class="linkhub-action-progress-wrap">
+          <div class="linkhub-action-progress"><span id="linkhub-action-progress-fill"></span></div>
+          <span id="linkhub-action-progress-label">Getting ready</span>
+        </div>
+        <div id="linkhub-action-missing" class="linkhub-action-missing hidden"></div>
+        <div class="linkhub-action-actions">
+          <button id="linkhub-action-close" type="button" class="muted-btn hidden">Back to listing</button>
+          <button id="linkhub-action-fix" type="button" class="hero-btn hero-btn-primary hidden">Fix missing details</button>
+        </div>
+      </section>
+    </div>
     <script>window.__linkhubSplashShownAt = performance.now()</script>
 
     <section id="business-explore" class="card business-explore-section" style="display:none">
@@ -486,6 +506,13 @@
             <div class="ux-progress-steps" aria-hidden="true">
               <span class="active">Basics</span><span>Details</span
               ><span>Photos</span><span>Publish</span>
+            </div>
+          </div>
+          <div id="listing-submit-state" class="listing-submit-state" role="status" aria-live="polite" aria-hidden="true">
+            <span class="listing-submit-spinner" aria-hidden="true"></span>
+            <div class="listing-submit-copy">
+              <strong id="listing-submit-title">Creating your listing</strong>
+              <span id="listing-submit-detail">Preparing everything...</span>
             </div>
           </div>
           <form id="listing-form" class="form-grid">
@@ -947,6 +974,12 @@
               <span id="store-summary-complete">1 of 8</span><span>ready</span>
             </div>
           </div>
+          <div class="store-setup-note">
+            <div class="store-setup-note-icon">✦</div>
+            <div><strong>Start with the basics</strong><span>Give customers a clear name, what you sell, and where to find you. You can change everything later.</span></div>
+            <button id="store-use-account-name" type="button" class="muted-btn store-use-name-btn">Use my account name</button>
+          </div>
+          <div class="store-form-section-title"><span>1</span><div><strong>Business basics</strong><small>What customers see first.</small></div></div>
           <div class="store-form-grid">
             <label
               >Store name
@@ -960,12 +993,13 @@
             </label>
             <label
               >Store category
-              <input
-                id="store-manage-category"
-                type="text"
-                placeholder="e.g. Electronics, Clothing, Furniture"
-                maxlength="60"
-              />
+              <input id="store-manage-category" type="text" list="store-category-options" placeholder="e.g. Electronics, Clothing, Furniture" maxlength="60" />
+            </label>
+            <label
+              >Business type
+              <select id="store-manage-type">
+                <option value="">Choose a type</option><option value="Retail">Retail</option><option value="Services">Services</option><option value="Food &amp; drink">Food &amp; drink</option><option value="Fashion &amp; beauty">Fashion &amp; beauty</option><option value="Home &amp; lifestyle">Home &amp; lifestyle</option><option value="Electronics">Electronics</option><option value="Other">Other</option>
+              </select>
             </label>
             <label
               >Phone number
@@ -986,6 +1020,11 @@
                 maxlength="80"
               />
             </label>
+            <label class="store-form-wide"
+              >Short tagline <span class="muted">(optional)</span>
+              <input id="store-manage-tagline" type="text" maxlength="120" placeholder="e.g. Affordable electronics with friendly service" />
+            </label>
+            <datalist id="store-category-options"><option value="Electronics"></option><option value="Clothing"></option><option value="Beauty"></option><option value="Food &amp; drink"></option><option value="Furniture"></option><option value="Home &amp; lifestyle"></option><option value="Services"></option><option value="Automotive"></option></datalist>
             <label class="store-form-wide"
               >Address <span class="muted">(optional)</span>
               <input
@@ -1023,6 +1062,10 @@
                 </option>
               </select>
             </label>
+            <label>Website <span class="muted">(optional)</span><input id="store-manage-website" type="url" inputmode="url" placeholder="https://example.com" maxlength="200" /></label>
+            <label>WhatsApp <span class="muted">(optional)</span><input id="store-manage-whatsapp" type="tel" inputmode="tel" placeholder="e.g. 071 234 5678" maxlength="30" /></label>
+            <label>Instagram <span class="muted">(optional)</span><input id="store-manage-instagram" type="url" inputmode="url" placeholder="https://instagram.com/yourstore" maxlength="200" /></label>
+            <div class="store-form-section-title store-form-section-title-brand"><span>2</span><div><strong>Storefront details</strong><small>Help customers understand your business.</small></div></div>
             <label
               >Store logo <span class="muted">(optional)</span>
               <input id="store-manage-logo" type="file" accept="image/*" />
@@ -1045,11 +1088,41 @@
               >
             </label>
           </div>
+          <fieldset id="store-design" class="store-design">
+            <legend>3 · Make it yours</legend>
+            <div class="store-form-section-title store-form-section-title-design"><span>3</span><div><strong>Brand your storefront</strong><small>Choose a style, then fine-tune it below.</small></div></div>
+            <div class="store-design-presets" aria-label="Quick store styles"><button type="button" class="store-design-preset active" data-store-preset="clean"><strong>Clean</strong><span>Simple + bright</span></button><button type="button" class="store-design-preset" data-store-preset="bold"><strong>Bold</strong><span>Stronger accent</span></button><button type="button" class="store-design-preset" data-store-preset="classic"><strong>Classic</strong><span>More editorial</span></button></div>
+            <div class="store-design-row">
+              <span class="store-design-label">Accent colour</span>
+              <div class="store-design-controls">
+                <div id="store-design-accents" class="store-swatches"></div>
+                <input id="store-design-accent-custom" type="color" aria-label="Pick your own colour" />
+              </div>
+            </div>
+            <div class="store-design-row">
+              <span class="store-design-label">Font style</span>
+              <div id="store-design-fonts" class="store-choice"></div>
+            </div>
+            <div class="store-design-row">
+              <span class="store-design-label">Listing layout</span>
+              <div id="store-design-layouts" class="store-choice"></div>
+            </div>
+            <div class="store-design-row store-design-stack">
+              <label class="store-design-label" for="store-design-announcement">Announcement <span class="muted">(optional)</span></label>
+              <input id="store-design-announcement" type="text" maxlength="140" placeholder="e.g. Free delivery in Joburg this weekend" />
+            </div>
+            <div class="store-design-row store-design-stack">
+              <span class="store-design-label">Featured listings <span class="muted">(up to 3, shown first)</span></span>
+              <div id="store-design-featured" class="store-featured-list"></div>
+            </div>
+            <div id="store-design-preview" class="store-preview" aria-label="Preview of your store"></div>
+          </fieldset>
           <div class="account-actions">
             <button id="store-manage-save" type="submit">Save Store</button>
             <button id="store-manage-view" type="button" class="muted-btn">
               View My Store
             </button>
+            <button id="store-manage-share" type="button" class="muted-btn hidden">Copy Store Link</button>
             <button
               id="store-manage-delete"
               type="button"
@@ -1281,6 +1354,9 @@
             <button id="store-share" type="button" class="muted-btn">
               Share Store
             </button>
+            <button id="store-dashboard-btn" type="button" class="muted-btn hidden">
+              Dashboard
+            </button>
             <button id="store-edit" type="button" class="muted-btn hidden">
               Edit Store
             </button>
@@ -1299,13 +1375,30 @@
           <div id="store-logo-fallback" class="store-logo store-logo-initials hidden" aria-hidden="true"></div>
           <div class="store-profile-copy">
             <div id="store-category" class="store-meta-chip hidden"></div>
+            <div id="store-rating-chip" class="store-rating-chip hidden"></div>
             <p id="store-bio" class="muted store-bio"></p>
             <div id="store-contact-meta" class="store-contact-meta"></div>
           </div>
         </div>
+        <div id="store-announcement" class="store-announcement hidden"></div>
         <img id="store-banner" class="store-banner hidden" alt="" />
         <div id="store-count" class="muted"></div>
         <div id="store-grid" class="listing-grid"></div>
+        <section id="store-reviews" class="reviews-section" aria-label="Seller reviews">
+          <h3 class="reviews-heading">Seller reviews</h3>
+          <div id="store-reviews-mount" class="reviews-mount"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Seller dashboard: visitors, contact taps, chats, sales and ratings -->
+    <div id="dashboard-overlay" class="app-overlay hidden" aria-hidden="true">
+      <div class="app-overlay-panel dashboard-panel">
+        <div class="overlay-header dashboard-overlay-header">
+          <h2 id="dashboard-title">Dashboard</h2>
+          <button id="dashboard-close" type="button" class="lightbox-close" aria-label="Close dashboard">&times;</button>
+        </div>
+        <div id="dashboard-body" class="dashboard-body"></div>
       </div>
     </div>
 
@@ -1517,6 +1610,6 @@
       </form>
     </div>
 
-    <script type="module" src="app.js?v=20260919-splash"></script>
+    <script type="module" src="app.js?v=20260921-windows-back"></script>
   </body>
 </html>

@@ -242,7 +242,7 @@ const mobileNavUser = document.getElementById('mobile-nav-user')
 let navScrollTimer = null
 
 function openDrawer() {
-  document.querySelector('.mobile-bottom-nav')?.classList.remove('nav-hidden')
+  document.querySelector('.mobile-bottom-nav')?.classList.add('nav-hidden')
   clearTimeout(navScrollTimer)
   if (!navDrawer) return
   navDrawer.classList.add('open')
@@ -298,6 +298,7 @@ function buildDrawerMenu() {
       { icon: ICON_LISTINGS, label: 'My Listings', action: () => openMyListings() },
       { icon: ICON_CART, label: 'My Cart', action: () => openCart() },
       { icon: ICON_STORE, label: hasStore ? 'My Store' : 'Open a Store', action: () => openStoreManage() },
+      { icon: dashboardIcon(), label: 'Dashboard', action: () => openDashboard() },
       { icon: ICON_GEAR, label: 'Account Settings', action: () => openAccountSettings() },
     ]
     if (isSiteOwner) buttons.push({ icon: ICON_SHIELD, label: 'Reports', action: () => openAdminReports() })
@@ -370,7 +371,9 @@ if (mobileBottomNav) {
   const isBlockingOverlayOpen = () => {
     const cartyOpen = !document.getElementById('carty-panel')?.classList.contains('hidden')
     const lightboxOpen = document.documentElement.classList.contains('lightbox-open')
-    return cartyOpen || lightboxOpen
+    const actionOpen = !document.getElementById('linkhub-action-modal')?.classList.contains('hidden')
+    const drawerOpen = navDrawer?.classList.contains('open')
+    return cartyOpen || lightboxOpen || actionOpen || drawerOpen
   }
 
   const updateMobileNavVisibility = () => {
@@ -549,6 +552,104 @@ function updateMobileNavUser() {
   mobileNavUser.innerHTML = `<span class="nav-user-dot" aria-hidden="true"></span>${escapeHtml(displayName)}`
 }
 
+// Account menu on wide screens: the everyday actions stay in the bar, the rest live in one dropdown.
+var navMenuListenersReady = false
+
+function navMenuIcon(name) {
+  const paths = {
+    listings: 'M4 6h16M4 12h16M4 18h10',
+    store: 'M3 9l1.6-5h14.8L21 9M4 9v11h16V9M9.5 20v-6h5v6',
+    dashboard: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+    account: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0',
+    reports: 'M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h6',
+    install: 'M12 4v11m0 0-4-4m4 4 4-4M5 20h14',
+    terms: 'M7 3h10v18H7zM10 8h4M10 12h4M10 16h3',
+    logout: 'M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10',
+  }
+  return `<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="${paths[name] || paths.account}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+}
+
+function setNavMenuOpen(open, focusTrigger = false) {
+  const wrap = document.querySelector('.nav-menu-wrap')
+  if (!wrap) return
+  const trigger = wrap.querySelector('.nav-user-btn')
+  const menu = wrap.querySelector('.nav-menu')
+  if (!trigger || !menu) return
+  menu.classList.toggle('hidden', !open)
+  trigger.setAttribute('aria-expanded', open ? 'true' : 'false')
+  if (!open && focusTrigger) trigger.focus()
+}
+
+function navMenuIsOpen() {
+  return !!document.querySelector('.nav-menu-wrap .nav-menu:not(.hidden)')
+}
+
+function ensureNavMenuListeners() {
+  if (navMenuListenersReady) return
+  navMenuListenersReady = true
+  document.addEventListener('click', (event) => {
+    if (navMenuIsOpen() && !event.target.closest('.nav-menu-wrap')) setNavMenuOpen(false)
+  })
+  window.addEventListener('resize', () => { if (navMenuIsOpen()) setNavMenuOpen(false) })
+  document.addEventListener('keydown', (event) => {
+    if (!navMenuIsOpen()) return
+    const items = [...document.querySelectorAll('.nav-menu-wrap .nav-menu [role="menuitem"]')]
+    const i = items.indexOf(document.activeElement)
+    if (event.key === 'Escape') { setNavMenuOpen(false, true); return }
+    if (event.key === 'ArrowDown') { event.preventDefault(); items[(i + 1) % items.length]?.focus() }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); items[(i <= 0 ? items.length : i) - 1]?.focus() }
+    else if (event.key === 'Home') { event.preventDefault(); items[0]?.focus() }
+    else if (event.key === 'End') { event.preventDefault(); items[items.length - 1]?.focus() }
+    else if (event.key === 'Tab') setNavMenuOpen(false)
+  })
+}
+
+function buildAccountMenu(displayName, items) {
+  ensureNavMenuListeners()
+  const wrap = document.createElement('div')
+  wrap.className = 'nav-menu-wrap'
+  const trigger = document.createElement('button')
+  trigger.type = 'button'
+  trigger.className = 'nav-user-btn'
+  trigger.setAttribute('aria-haspopup', 'menu')
+  trigger.setAttribute('aria-expanded', 'false')
+  trigger.setAttribute('aria-label', `${displayName}, account menu`)
+  trigger.innerHTML = `<span class="nav-user-name">${escapeHtml(displayName)}</span><svg class="nav-user-chevron" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  const menu = document.createElement('div')
+  menu.className = 'nav-menu hidden'
+  menu.setAttribute('role', 'menu')
+  items.forEach((item) => {
+    if (item.divider) {
+      const sep = document.createElement('div')
+      sep.className = 'nav-menu-sep'
+      sep.setAttribute('role', 'separator')
+      menu.appendChild(sep)
+      return
+    }
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.setAttribute('role', 'menuitem')
+    btn.className = `nav-menu-item${item.danger ? ' danger' : ''}`
+    btn.innerHTML = `${navMenuIcon(item.icon)}<span>${escapeHtml(item.label)}</span>`
+    btn.addEventListener('click', () => { setNavMenuOpen(false); item.action() })
+    menu.appendChild(btn)
+  })
+  trigger.addEventListener('click', () => {
+    const open = menu.classList.contains('hidden')
+    setNavMenuOpen(open)
+  })
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      event.stopPropagation()
+      setNavMenuOpen(true)
+      menu.querySelector('[role="menuitem"]')?.focus()
+    }
+  })
+  wrap.append(trigger, menu)
+  return wrap
+}
+
 function buildDesktopNav() {
   updateMobileNavUser()
   if (!desktopNav) return
@@ -568,21 +669,25 @@ function buildDesktopNav() {
   desktopNav.appendChild(desktopButton('Browse', () => document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   desktopNav.appendChild(desktopButtonWithIcon('Cart', ICON_CART, () => openCart()))
   desktopNav.appendChild(desktopButton('Post a Listing', () => createListingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' }), true))
-  desktopNav.appendChild(desktopButton('My Listings', () => openMyListings()))
-  desktopNav.appendChild(desktopButton(store?.name ? 'My Store' : 'Open Store', () => openStoreManage()))
-  desktopNav.appendChild(desktopButton('Account', () => openAccountSettings()))
-  if (String(currentUser.email || '').toLowerCase() === OWNER_EMAIL) desktopNav.appendChild(desktopButton('Reports', () => openAdminReports()))
-  desktopNav.appendChild(desktopButtonWithIcon('Install', ICON_INSTALL, () => promptInstall()))
-  desktopNav.appendChild(desktopButton('Terms', () => openTerms()))
-  const user = document.createElement('span')
-  user.className = 'nav-user'
-  user.innerHTML = `<span class="nav-user-dot" aria-hidden="true"></span>${escapeHtml(displayName)}`
-  desktopNav.appendChild(user)
-  desktopNav.appendChild(desktopButton('Logout', async () => {
-    await db.auth.signOut()
-    authMsg.textContent = 'Logged out.'
-    await handleAuthChange()
-  }, false, true))
+  const menuItems = [
+    { label: 'My Listings', icon: 'listings', action: () => openMyListings() },
+    { label: store?.name ? 'My Store' : 'Open Store', icon: 'store', action: () => openStoreManage() },
+    { label: 'Dashboard', icon: 'dashboard', action: () => openDashboard() },
+    { label: 'Account', icon: 'account', action: () => openAccountSettings() },
+  ]
+  if (String(currentUser.email || '').toLowerCase() === OWNER_EMAIL) menuItems.push({ label: 'Reports', icon: 'reports', action: () => openAdminReports() })
+  menuItems.push(
+    { divider: true },
+    { label: 'Install app', icon: 'install', action: () => promptInstall() },
+    { label: 'Terms', icon: 'terms', action: () => openTerms() },
+    { divider: true },
+    { label: 'Logout', icon: 'logout', danger: true, action: async () => {
+      await db.auth.signOut()
+      authMsg.textContent = 'Logged out.'
+      await handleAuthChange()
+    } },
+  )
+  desktopNav.appendChild(buildAccountMenu(displayName, menuItems))
   updateCartCounts()
 }
 
@@ -661,6 +766,10 @@ const toggleMoreBtn = document.getElementById('toggle-more')
 const createListingBtn = document.getElementById('create-listing')
 const cancelEditBtn = document.getElementById('cancel-edit')
 const listingMsg = document.getElementById('listing-msg')
+const listingSubmitState = document.getElementById('listing-submit-state')
+const listingSubmitTitle = document.getElementById('listing-submit-title')
+const listingSubmitDetail = document.getElementById('listing-submit-detail')
+const createListingSectionEl = document.getElementById('create-listing-section')
 const listCount = document.getElementById('list-count')
 const listingsContainer = document.getElementById('listings')
 const searchEl = document.getElementById('search-input')
@@ -1136,7 +1245,6 @@ const handleConversationOpen = async (event) => {
   const ownerId = listing.user_id || seedRow?.listing_owner_id_snapshot
   const mode = String(ownerId || '') === me ? 'seller' : 'buyer'
   const otherName = seedRow ? notificationSenderLabel(seedRow) : ''
-  closeNotifications()
   openMessageThread(listing, otherId || null, mode, otherName, seedRow || null)
 }
 notificationsList?.addEventListener('click', handleConversationOpen)
@@ -1355,6 +1463,7 @@ function formatLocation(value) {
 }
 
 function showFormError(message, field) {
+  setListingSubmitState(false)
   listingMsg.textContent = message
   if (field) {
     field.focus()
@@ -1703,15 +1812,194 @@ async function compressImage(file, maxDimension = 1280, quality = 0.75) {
   }
 }
 
+function setListingSubmitState(active, title = 'Creating your listing', detail = 'Preparing everything...') {
+  if (!listingSubmitState) return
+  listingSubmitState.classList.toggle('active', !!active)
+  listingSubmitState.setAttribute('aria-hidden', active ? 'false' : 'true')
+  createListingSectionEl?.classList.toggle('is-submitting', !!active)
+  if (listingSubmitTitle) listingSubmitTitle.textContent = title
+  if (listingSubmitDetail) listingSubmitDetail.textContent = detail
+  if (active) openLinkHubProgress(title, detail, 12, 'Checking details')
+  if (createListingBtn) {
+    createListingBtn.disabled = !!active
+    createListingBtn.setAttribute('aria-busy', active ? 'true' : 'false')
+  }
+}
+
+function updateListingSubmitState(title, detail, progress = null) {
+  if (!listingSubmitState) return
+  if (listingSubmitTitle) listingSubmitTitle.textContent = title
+  if (listingSubmitDetail) listingSubmitDetail.textContent = detail
+  if (typeof progress === 'number') {
+    const pct = Math.max(24, Math.min(100, progress))
+    const fill = document.getElementById('listing-progress-fill')
+    if (fill) fill.style.width = `${pct}%`
+  }
+  updateLinkHubProgress(title, detail, progress, detail.replace(/[.…]+$/, ''))
+}
+
+const linkhubActionModal = document.getElementById('linkhub-action-modal')
+const linkhubActionIcon = document.getElementById('linkhub-action-icon')
+const linkhubActionTitle = document.getElementById('linkhub-action-title')
+const linkhubActionDetail = document.getElementById('linkhub-action-detail')
+const linkhubActionProgressWrap = document.getElementById('linkhub-action-progress-wrap')
+const linkhubActionProgressFill = document.getElementById('linkhub-action-progress-fill')
+const linkhubActionProgressLabel = document.getElementById('linkhub-action-progress-label')
+const linkhubActionMissing = document.getElementById('linkhub-action-missing')
+const linkhubActionClose = document.getElementById('linkhub-action-close')
+const linkhubActionFix = document.getElementById('linkhub-action-fix')
+let linkhubActionTimer = null
+let linkhubActionFocusField = null
+
+function closeLinkHubActionModal() {
+  clearTimeout(linkhubActionTimer)
+  linkhubActionTimer = null
+  linkhubActionModal?.classList.add('hidden')
+  linkhubActionModal?.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('linkhub-action-open')
+}
+
+function setLinkHubActionIcon(state = 'loading') {
+  if (!linkhubActionIcon) return
+  linkhubActionIcon.className = `linkhub-action-icon is-${state}`
+}
+
+function openLinkHubProgress(title, detail, progress = 10, label = 'Getting ready') {
+  if (!linkhubActionModal) return
+  clearTimeout(linkhubActionTimer)
+  linkhubActionModal.className = 'linkhub-action-modal'
+  linkhubActionModal.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('linkhub-action-open')
+  setLinkHubActionIcon('loading')
+  if (linkhubActionTitle) linkhubActionTitle.textContent = title
+  if (linkhubActionDetail) linkhubActionDetail.textContent = detail
+  if (linkhubActionProgressFill) linkhubActionProgressFill.style.width = `${Math.max(8, Math.min(100, progress))}%`
+  if (linkhubActionProgressLabel) linkhubActionProgressLabel.textContent = label
+  linkhubActionProgressWrap?.classList.remove('hidden')
+  linkhubActionMissing?.classList.add('hidden')
+  linkhubActionClose?.classList.add('hidden')
+  linkhubActionFix?.classList.add('hidden')
+}
+
+function updateLinkHubProgress(title, detail, progress = null, label = '') {
+  if (!linkhubActionModal || linkhubActionModal.classList.contains('hidden')) return
+  if (linkhubActionTitle) linkhubActionTitle.textContent = title
+  if (linkhubActionDetail) linkhubActionDetail.textContent = detail
+  if (typeof progress === 'number' && linkhubActionProgressFill) linkhubActionProgressFill.style.width = `${Math.max(8, Math.min(100, progress))}%`
+  if (linkhubActionProgressLabel && label) linkhubActionProgressLabel.textContent = label
+}
+
+function showLinkHubMissing(fields, focusField = null) {
+  if (!linkhubActionModal) return
+  clearTimeout(linkhubActionTimer)
+  linkhubActionFocusField = focusField
+  linkhubActionModal.className = 'linkhub-action-modal is-warning'
+  linkhubActionModal.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('linkhub-action-open')
+  setLinkHubActionIcon('warning')
+  if (linkhubActionTitle) linkhubActionTitle.textContent = 'A few details are still missing'
+  if (linkhubActionDetail) linkhubActionDetail.textContent = 'LinkHub needs these before your listing can be posted.'
+  if (linkhubActionMissing) {
+    const count = fields.length
+    const items = fields.map((field, index) => `
+      <li class="linkhub-missing-item${index === 0 ? ' is-first' : ''}">
+        <span class="linkhub-missing-number" aria-hidden="true">${index + 1}</span>
+        <div class="linkhub-missing-item-copy">
+          <strong>${index === 0 ? 'Start here' : 'Still needed'}</strong>
+          <span>${escapeHtml(field)}</span>
+        </div>
+      </li>
+    `).join('')
+    linkhubActionMissing.innerHTML = `
+      <div class="linkhub-missing-summary">
+        <span class="linkhub-missing-count">${count}</span>
+        <div>
+          <strong>${count === 1 ? 'One detail is missing' : `${count} details are missing`}</strong>
+          <span>Finish these before your listing can be posted.</span>
+        </div>
+      </div>
+      <ul class="linkhub-missing-list">${items}</ul>
+    `
+    linkhubActionMissing.classList.remove('hidden')
+  }
+  linkhubActionProgressWrap?.classList.add('hidden')
+  linkhubActionClose?.classList.remove('hidden')
+  linkhubActionFix?.classList.remove('hidden')
+}
+
+function showLinkHubResult(success, title, detail) {
+  if (!linkhubActionModal) return
+  linkhubActionModal.className = 'linkhub-action-modal is-complete'
+  linkhubActionModal.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('linkhub-action-open')
+  setLinkHubActionIcon(success ? 'success' : 'error')
+  if (linkhubActionTitle) linkhubActionTitle.textContent = title
+  if (linkhubActionDetail) linkhubActionDetail.textContent = detail
+  linkhubActionProgressWrap?.classList.add('hidden')
+  linkhubActionMissing?.classList.add('hidden')
+  linkhubActionClose?.classList.remove('hidden')
+  linkhubActionFix?.classList.add('hidden')
+  if (success) linkhubActionTimer = setTimeout(closeLinkHubActionModal, 1100)
+}
+
+linkhubActionClose?.addEventListener('click', () => {
+  closeLinkHubActionModal()
+  if (linkhubActionFocusField) {
+    const field = linkhubActionFocusField
+    linkhubActionFocusField = null
+    setTimeout(() => {
+      field.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      field.focus?.()
+    }, 60)
+  }
+})
+linkhubActionFix?.addEventListener('click', () => linkhubActionClose?.click())
+
 createListingBtn.addEventListener('click', async () => {
   listingMsg.textContent = ''
   const agreeTermsEl = document.getElementById('agree-terms')
+  syncFormHiddenFields()
+  const missing = []
+  let firstMissing = null
+  const requireField = (value, label, field) => {
+    if (!String(value || '').trim()) {
+      missing.push(label)
+      if (!firstMissing) firstMissing = field || null
+    }
+  }
+  requireField(titleEl?.value, 'Add a title for the listing.', titleEl)
+  requireField(priceEl?.value, 'Add a price.', priceEl)
+  requireField(urlEl?.value, 'Tell buyers the item condition.', urlEl || urlEditor)
+  requireField(categoryEl?.value, 'Choose a category.', categoryEl)
+  requireField(deliveryTypeEl?.value, 'Choose delivery or pickup.', deliveryTypeEl)
+  requireField(locationEl?.value, 'Add your location or city.', locationEl || locationEditor)
+  requireField(descEl?.value, 'Add a short description.', descEl)
+  requireField(contactMethodEl?.value, 'Choose a contact method.', contactMethodEl)
+  requireField(contactDetailsEl?.value, 'Enter contact details.', contactDetailsEl || contactDetailsEditor)
+  requireField(paymentTypeEl?.value, 'Choose a payment method.', paymentTypeEl)
+
+  const existingForValidation = editingId ? (currentListings.find((item) => item.id === editingId) || localState.listings.find((item) => item.id === editingId)) : null
+  const hasExistingImages = !!(existingForValidation && getListingImages(existingForValidation).length)
+  const selectedFilesForValidation = imageEl?.files ? [...imageEl.files] : []
+  if (selectedFilesForValidation.length > 3) {
+    missing.push('Choose no more than 3 photos.')
+    if (!firstMissing) firstMissing = imageEl
+  }
+  if (!selectedFilesForValidation.length && !hasExistingImages) {
+    missing.push('Add at least 1 photo.')
+    if (!firstMissing) firstMissing = imageEl
+  }
   if (agreeTermsEl && !agreeTermsEl.checked) {
-    listingMsg.textContent = 'Please agree to the Terms & Conditions before posting.'
-    agreeTermsEl.focus()
+    missing.push('Agree to the Terms & Conditions.')
+    if (!firstMissing) firstMissing = agreeTermsEl
+  }
+  if (missing.length) {
+    showLinkHubMissing(missing, firstMissing)
     return
   }
+
   try {
+    setListingSubmitState(true, editingId ? 'Saving your changes' : 'Creating your listing', editingId ? 'Checking the listing details...' : 'Checking the listing details...')
     // Get the signed-in user first — the storage policies require uploads to
     // live under "<user_id>/filename", so the path needs the id up front.
     const currentUser = (await db.auth.getUser()).data.user
@@ -1737,13 +2025,15 @@ createListingBtn.addEventListener('click', async () => {
     if (selectedFiles.length) image_urls = []
 
     if (selectedFiles.length) {
-      listingMsg.textContent = `Optimizing ${selectedFiles.length} image${selectedFiles.length === 1 ? '' : 's'}…`
+      updateListingSubmitState(editingId ? 'Saving your changes' : 'Creating your listing', `Optimizing ${selectedFiles.length} photo${selectedFiles.length === 1 ? '' : 's'}…`, 42)
       for (let i = 0; i < selectedFiles.length; i++) {
+        updateListingSubmitState(editingId ? 'Saving your changes' : 'Creating your listing', `Preparing photo ${i + 1} of ${selectedFiles.length}…`, 42 + Math.round(((i + 0.35) / selectedFiles.length) * 30))
         const compressed = await compressImage(selectedFiles[i])
         const path = `${currentUser?.id || 'anon'}/${Date.now()}_${i}_${compressed.name}`
         let uploadedUrl = null
         try {
           if (useSupabase && db.storage) {
+            updateListingSubmitState(editingId ? 'Saving your changes' : 'Creating your listing', `Uploading photo ${i + 1} of ${selectedFiles.length}…`, 48 + Math.round(((i + 0.65) / selectedFiles.length) * 30))
             const storage = db.storage.from(LISTING_IMAGES_BUCKET)
             const { data: upData, error: upErr } = await storage.upload(path, compressed, { upsert: false })
             if (!upErr) {
@@ -1762,7 +2052,7 @@ createListingBtn.addEventListener('click', async () => {
         }
         if (isValidImageUrl(uploadedUrl)) image_urls.push(uploadedUrl)
       }
-      listingMsg.textContent = ''
+      updateListingSubmitState(editingId ? 'Saving your changes' : 'Creating your listing', 'Photos are ready. Finishing the details…', 82)
     }
 
     if (!image_urls.length && existingListing) image_urls = getListingImages(existingListing)
@@ -1793,6 +2083,8 @@ createListingBtn.addEventListener('click', async () => {
       try { await db.storage.from(LISTING_IMAGES_BUCKET).remove([...new Set(uploadedStoragePaths)]) }
       catch (cleanupErr) { console.warn('Could not clean up newly uploaded listing images', cleanupErr) }
     }
+
+    updateListingSubmitState(editingId ? 'Saving your changes' : 'Publishing your listing', 'Checking the final details…', 88)
 
     if (!obj.title) { await cleanupUploadedStorage(); return showFormError('Please enter a title for your listing.', titleEl) }
     if (!obj.price) { await cleanupUploadedStorage(); return showFormError('Please enter a price for your listing.', priceEl) }
@@ -1847,6 +2139,7 @@ createListingBtn.addEventListener('click', async () => {
     }
 
     // If editing, perform update flow instead of insert
+    updateListingSubmitState(editingId ? 'Saving your changes' : 'Publishing your listing', editingId ? 'Saving your changes to LinkHub…' : 'Publishing it on LinkHub…', 94)
     if (editingId) {
       const updateObj = { ...obj }
       delete updateObj.sold
@@ -1875,6 +2168,8 @@ createListingBtn.addEventListener('click', async () => {
         }
       }
 
+      setListingSubmitState(false)
+      showLinkHubResult(true, 'Listing updated', 'Your changes are now live on LinkHub.')
       listingMsg.textContent = 'Listing updated successfully.'
       exitEditMode()
       setListingField(titleEl, '')
@@ -1893,6 +2188,8 @@ createListingBtn.addEventListener('click', async () => {
       const { error } = await tryInsert(obj)
       if (error) throw error
 
+      setListingSubmitState(false)
+      showLinkHubResult(true, 'Listing created', 'Your listing is now live on LinkHub.')
       listingMsg.textContent = 'Listing created successfully.'
       setListingField(titleEl, '')
       priceEl.value = ''
@@ -1909,11 +2206,13 @@ createListingBtn.addEventListener('click', async () => {
       await fetchAndRenderListings()
     }
   } catch (err) {
+    setListingSubmitState(false)
     if (typeof uploadedStoragePaths !== 'undefined' && uploadedStoragePaths.length && useSupabase && db.storage) {
       try { await db.storage.from(LISTING_IMAGES_BUCKET).remove([...new Set(uploadedStoragePaths)]) }
       catch (cleanupErr) { console.warn('Could not clean up listing images after save failure', cleanupErr) }
     }
     listingMsg.textContent = err.message
+    showLinkHubResult(false, 'LinkHub could not publish it', err?.message || 'Something went wrong while creating the listing.')
   }
 })
 
@@ -1943,33 +2242,6 @@ document.body.addEventListener('click', async (ev) => {
   if (!btn) return
   const id = btn.dataset && btn.dataset.id
   if (!id) return
-  if (btn.classList.contains('rate-star')) {
-    if (!currentUser) return alert('Please sign in to rate listings.')
-    const value = Number(btn.dataset.value)
-    const row = btn.closest('.rate-row')
-    try {
-      const { error } = await db.from('ratings').upsert({ listing_id: id, rater_id: currentUser.id, rating: value }, { onConflict: 'listing_id,rater_id' })
-      if (error) throw error
-      myRatingsByListing[String(id)] = value
-      const prev = ratingsByListing[String(id)] || { sum: 0, count: 0 }
-      // We don't know if this replaced an existing vote from this rater without
-      // a fresh fetch, so just refresh from the server for accurate aggregates.
-      const { data: freshRows } = await db.from('ratings').select('rating').eq('listing_id', id)
-      const sum = (freshRows || []).reduce((a, r) => a + Number(r.rating || 0), 0)
-      ratingsByListing[String(id)] = { sum, count: (freshRows || []).length }
-      if (row) {
-        row.querySelectorAll('.rate-star').forEach((s) => {
-          const active = Number(s.dataset.value) <= value
-          s.classList.toggle('active', active)
-          s.innerHTML = active ? ICON_STAR_FILLED : ICON_STAR_OUTLINE
-        })
-        const label = row.querySelector('.rate-label')
-        if (label) label.textContent = 'Your rating:'
-      }
-    } catch (e) {
-      alert(e.message || 'Could not save your rating — has the ratings table been created in Supabase?')
-    }
-  }
   if (btn.classList.contains('delete-btn')) {
     if (!currentUser) return alert('You must be signed in to delete listings.')
     if (!confirm('Delete this listing? This cannot be undone.')) return
@@ -2806,7 +3078,13 @@ function renderStoreListings() {
     storeGrid.innerHTML = '<div class="muted">This seller doesn\'t have any active listings right now.</div>'
     return
   }
-  sortListings(items).forEach((item) => renderListing(item, storeGrid))
+  const featured = new Set((storeDesignsById[String(activeStoreUserId)]?.featured_ids || []).map(String))
+  const sorted = sortListings(items)
+  const ordered = [...sorted.filter((i) => featured.has(String(i.id))), ...sorted.filter((i) => !featured.has(String(i.id)))]
+  ordered.forEach((item) => {
+    renderListing(item, storeGrid)
+    if (featured.has(String(item.id))) storeGrid.lastElementChild?.classList.add('listing-featured')
+  })
 }
 
 // Opens the store/marketplace view for a given seller, reading their name,
@@ -2816,7 +3094,7 @@ function openStore(userId) {
   activeStoreUserId = userId
   const s = getStoreForUser(userId)
   if (storeNameHeading) storeNameHeading.textContent = s?.name || 'Seller Marketplace'
-  if (storeBioEl) storeBioEl.textContent = s?.bio || ''
+  if (storeBioEl) { const copy=[s?.tagline,s?.bio].filter(Boolean).join('\n'); storeBioEl.textContent=copy; storeBioEl.style.whiteSpace=s?.tagline&&s?.bio?'pre-line':'' }
   if (storeCategoryEl) {
     storeCategoryEl.textContent = s?.category || ''
     storeCategoryEl.classList.toggle('hidden', !s?.category)
@@ -2847,7 +3125,11 @@ function openStore(userId) {
     if (s?.address) bits.push(`<span>⌖ ${escapeHtml(s.address)}</span>`)
     if (s?.opening_hours) bits.push(`<span>🕒 ${escapeHtml(s.opening_hours)}</span>`)
     if (s?.fulfilment) bits.push(`<span>🚚 ${escapeHtml(s.fulfilment)}</span>`)
-    storeContactMeta.innerHTML = bits.join('')
+    if (s?.business_type) bits.push(`<span>🏷️ ${escapeHtml(s.business_type)}</span>`)
+    { const site = safeWebUrl(s?.website_url); if (site) bits.push(`<a href="${escapeHtml(site)}" target="_blank" rel="noopener noreferrer">🌐 Website</a>`) }
+    if (s?.whatsapp) { const digits=String(s.whatsapp).replace(/[^0-9+]/g,''); bits.push(`<a href="https://wa.me/${encodeURIComponent(digits.replace(/^\+/,''))}" target="_blank" rel="noopener">💬 WhatsApp</a>`) }
+    { const ig = safeWebUrl(s?.instagram_url); if (ig) bits.push(`<a href="${escapeHtml(ig)}" target="_blank" rel="noopener noreferrer">◎ Instagram</a>`) }
+    storeContactMeta.innerHTML=bits.join('')
   }
   if (storeEditBtn) {
     const isMine = currentUser && String(currentUser.id) === String(userId)
@@ -2862,13 +3144,18 @@ function openStore(userId) {
       storeBannerImg.classList.add('hidden')
     }
   }
+  applyStoreDesign(userId)
+  renderStoreRatingChip(userId)
+  mountReviews(document.getElementById('store-reviews-mount'), { kind: 'seller', targetId: userId, ownerId: userId })
+  recordStoreVisit(userId)
+  document.getElementById('store-dashboard-btn')?.classList.toggle('hidden', !(currentUser && String(currentUser.id) === String(userId)))
   renderStoreListings()
   storeOverlay.classList.remove('hidden')
   storeOverlay.setAttribute('aria-hidden', 'false')
   document.documentElement.classList.add('lightbox-open')
   const params = new URLSearchParams(window.location.search)
   params.set('store', userId)
-  history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  history.replaceState(history.state, '', `${window.location.pathname}?${params.toString()}`)
 }
 
 function closeStore() {
@@ -2881,13 +3168,13 @@ function closeStore() {
   if (params.has('store')) {
     params.delete('store')
     const query = params.toString()
-    history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''))
+    history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : ''))
   }
 }
 
 storeClose?.addEventListener('click', closeStore)
 storeShareBtn?.addEventListener('click', shareActiveStore)
-storeEditBtn?.addEventListener('click', () => { closeStore(); openStoreManage() })
+storeEditBtn?.addEventListener('click', () => openStoreManage())
 storeOverlay?.addEventListener('click', (ev) => {
   if (ev.target === storeOverlay) closeStore()
 })
@@ -2992,6 +3279,11 @@ const storeManageIntro = document.getElementById('store-manage-intro')
 const storeManageName = document.getElementById('store-manage-name')
 const storeManageCategory = document.getElementById('store-manage-category')
 const storeManagePhone = document.getElementById('store-manage-phone')
+const storeManageType = document.getElementById('store-manage-type')
+const storeManageTagline = document.getElementById('store-manage-tagline')
+const storeManageWebsite = document.getElementById('store-manage-website')
+const storeManageWhatsapp = document.getElementById('store-manage-whatsapp')
+const storeManageInstagram = document.getElementById('store-manage-instagram')
 const storeManageLocation = document.getElementById('store-manage-location')
 const storeManageAddress = document.getElementById('store-manage-address')
 const storeManageBio = document.getElementById('store-manage-bio')
@@ -3006,6 +3298,8 @@ const storeManageMsg = document.getElementById('store-manage-msg')
 const storeManageViewBtn = document.getElementById('store-manage-view')
 const storeManageSave = document.getElementById('store-manage-save')
 const storeManageDeleteBtn = document.getElementById('store-manage-delete')
+const storeManageShareBtn = document.getElementById('store-manage-share')
+const storeUseAccountNameBtn = document.getElementById('store-use-account-name')
 
 function openStoreManage() {
   if (!storeManageOverlay || !currentUser) return
@@ -3016,7 +3310,12 @@ function openStoreManage() {
     : "You do not need your own website. Open a free LinkHub storefront, add your products as listings, and share one link with customers."
   storeManageName.value = mine?.name || ''
   storeManageCategory.value = mine?.category || ''
+  storeManageType.value = mine?.business_type || ''
+  storeManageTagline.value = mine?.tagline || ''
   storeManagePhone.value = mine?.phone || ''
+  storeManageWebsite.value = mine?.website_url || ''
+  storeManageWhatsapp.value = mine?.whatsapp || ''
+  storeManageInstagram.value = mine?.instagram_url || ''
   storeManageLocation.value = mine?.location || ''
   storeManageAddress.value = mine?.address || ''
   storeManageBio.value = mine?.bio || ''
@@ -3039,7 +3338,10 @@ function openStoreManage() {
     storeManageBannerPreview.classList.add('hidden')
   }
   storeManageMsg.textContent = ''
+  populateStoreDesignForm()
+  if(!mine?.name && restoreStoreDraft()){ storeManageMsg.textContent='Your unfinished store setup was restored.'; window.linkhubRefreshStoreUx?.(); renderDesignPreview() }
   storeManageViewBtn.style.display = mine?.name ? '' : 'none'
+  storeManageShareBtn?.classList.toggle('hidden', !mine?.name)
   storeManageDeleteBtn?.classList.toggle('hidden', !mine?.name)
   window.linkhubRefreshStoreUx?.()
   storeManageOverlay.classList.remove('hidden')
@@ -3052,6 +3354,10 @@ function closeStoreManage() {
   storeManageOverlay.classList.add('hidden')
   storeManageOverlay.setAttribute('aria-hidden', 'true')
   document.documentElement.classList.remove('lightbox-open')
+  // The store page can still be open underneath (Edit store): refresh it so it shows what was just saved.
+  if (currentUser && activeStoreUserId && String(activeStoreUserId) === String(currentUser.id) && storeOverlay && !storeOverlay.classList.contains('hidden')) {
+    openStore(activeStoreUserId)
+  }
 }
 
 const businessStoreOpenBtn = document.getElementById('business-store-open')
@@ -3076,13 +3382,21 @@ async function saveStoreManage(event) {
   storeManageMsg.textContent = ''
   const name = storeManageName.value.trim()
   const category = storeManageCategory.value.trim()
+  const business_type = storeManageType.value
+  const tagline = storeManageTagline.value.trim()
   const phone = storeManagePhone.value.trim()
+  const website_url = storeManageWebsite.value.trim()
+  const whatsapp = storeManageWhatsapp.value.trim()
+  const instagram_url = storeManageInstagram.value.trim()
   const location = storeManageLocation.value.trim()
   const address = storeManageAddress.value.trim()
   const bio = storeManageBio.value.trim()
   const opening_hours = storeManageHours.value.trim()
   const fulfilment = storeManageFulfilment.value
   if (!name) { storeManageMsg.textContent = 'Please enter a store name.'; return }
+  const normalizeUrl = (value) => value ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : null
+  const websiteValue = normalizeUrl(website_url)
+  const instagramValue = normalizeUrl(instagram_url)
   if (!useSupabase) { storeManageMsg.textContent = 'Stores need a live Supabase connection to save.'; return }
 
   storeManageMsg.textContent = 'Saving…'
@@ -3124,15 +3438,22 @@ async function saveStoreManage(event) {
     return
   }
   try {
-    let payload = { id: currentUser.id, name, category, phone, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
+    let payload = { id: currentUser.id, name, category, business_type, tagline, phone, website_url: websiteValue, whatsapp, instagram_url: instagramValue, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
     let { error: storeErr } = await db.from('stores').upsert(payload)
 
     // Some existing stores-table SQL schemas use user_id instead of id.
     // Keep the existing SQL untouched and support either frontend shape.
-    if (storeErr && /column.*id|not.?null.*id|user_id|duplicate key/i.test(storeErr.message || '')) {
-      payload = { user_id: currentUser.id, name, category, phone, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
+    if (storeErr && /column.*(id|business_type|tagline|website_url|whatsapp|instagram_url)|not.?null.*id|user_id|duplicate key|schema cache/i.test(storeErr.message || '')) {
+      // Backwards compatibility for older stores-table schemas that do not yet
+      // have the new business profile columns.
+      payload = { id: currentUser.id, name, category, phone, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
       const retry = await db.from('stores').upsert(payload)
       storeErr = retry.error
+      if (storeErr && /column.*id|user_id|not.?null.*id/i.test(storeErr.message || '')) {
+        payload = { user_id: currentUser.id, name, category, phone, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
+        const retryLegacy = await db.from('stores').upsert(payload)
+        storeErr = retryLegacy.error
+      }
     }
     if (storeErr) throw storeErr
 
@@ -3148,8 +3469,11 @@ async function saveStoreManage(event) {
       try { await storage.remove([...new Set(replacedPaths)]) }
       catch (cleanupErr) { console.warn('Could not remove replaced store images', cleanupErr) }
     }
-    storeManageMsg.textContent = 'Your store is live. You can now add listings and share your store link with customers.'
+    const designNote = await saveStoreDesign()
+    try{localStorage.removeItem(storeDraftKey())}catch{}
+    storeManageMsg.textContent = 'Your store is live. You can now add listings and share your store link with customers.' + designNote
     storeManageViewBtn.style.display = ''
+    storeManageShareBtn?.classList.remove('hidden')
     storeManageHeading.textContent = 'My Store'
     await handleAuthChange()
     renderFilteredListings()
@@ -3168,6 +3492,10 @@ async function saveStoreManage(event) {
 
 storeManageForm?.addEventListener('submit', saveStoreManage)
 storeManageClose?.addEventListener('click', closeStoreManage)
+function storeDraftKey(){return `linkhub-store-draft-${currentUser?.id||'guest'}`}
+function saveStoreDraft(){if(!currentUser||!storeManageOverlay||storeManageOverlay.classList.contains('hidden'))return;try{localStorage.setItem(storeDraftKey(),JSON.stringify({name:storeManageName?.value||'',category:storeManageCategory?.value||'',business_type:storeManageType?.value||'',tagline:storeManageTagline?.value||'',phone:storeManagePhone?.value||'',website_url:storeManageWebsite?.value||'',whatsapp:storeManageWhatsapp?.value||'',instagram_url:storeManageInstagram?.value||'',location:storeManageLocation?.value||'',address:storeManageAddress?.value||'',bio:storeManageBio?.value||'',opening_hours:storeManageHours?.value||'',fulfilment:storeManageFulfilment?.value||'',announcement:document.getElementById('store-design-announcement')?.value||''}))}catch{}}
+function restoreStoreDraft(){if(!currentUser)return false;try{const d=JSON.parse(localStorage.getItem(storeDraftKey())||'null');if(!d||!Object.values(d).some(v=>String(v||'').trim()))return false;const set=(e,v)=>{if(e&&v!=null)e.value=v};set(storeManageName,d.name);set(storeManageCategory,d.category);set(storeManageType,d.business_type);set(storeManageTagline,d.tagline);set(storeManagePhone,d.phone);set(storeManageWebsite,d.website_url);set(storeManageWhatsapp,d.whatsapp);set(storeManageInstagram,d.instagram_url);set(storeManageLocation,d.location);set(storeManageAddress,d.address);set(storeManageBio,d.bio);set(storeManageHours,d.opening_hours);set(storeManageFulfilment,d.fulfilment);const a=document.getElementById('store-design-announcement');if(a)a.value=d.announcement||'';return true}catch{return false}}
+[storeManageName,storeManageCategory,storeManageType,storeManageTagline,storeManagePhone,storeManageWebsite,storeManageWhatsapp,storeManageInstagram,storeManageLocation,storeManageAddress,storeManageBio,storeManageHours,storeManageFulfilment].forEach(el=>el?.addEventListener('input',saveStoreDraft));document.getElementById('store-design-announcement')?.addEventListener('input',saveStoreDraft)
 storeManageOverlay?.addEventListener('click', (ev) => {
   if (ev.target === storeManageOverlay) closeStoreManage()
 })
@@ -3176,6 +3504,8 @@ storeManageViewBtn?.addEventListener('click', () => {
   closeStoreManage()
   openStore(currentUser.id)
 })
+storeUseAccountNameBtn?.addEventListener('click', () => { const fullName=String(currentUser?.user_metadata?.full_name||'').trim(); if(!fullName){storeManageMsg.textContent='Your account does not have a saved name yet.';return} storeManageName.value=fullName; storeManageName.dispatchEvent(new Event('input',{bubbles:true})); window.linkhubRefreshStoreUx?.(); renderDesignPreview() })
+storeManageShareBtn?.addEventListener('click', shareMyStoreLink)
 
 async function deleteMyStore() {
   if (!currentUser || !useSupabase) return
@@ -3358,6 +3688,8 @@ function renderSkeletons(count = 6) {
 }
 
 let ratingsByListing = {}
+let sellerRatingsById = {}
+let storeDesignsById = {}
 let myRatingsByListing = {}
 
 // Housekeeping rules: unsold listings auto-expire after 62 days, and sold
@@ -3461,22 +3793,7 @@ async function fetchAndRenderListings() {
     }
     renderCategoryChips()
     window.linkhubApplyStoreDefaults?.()
-    try {
-      const { data: ratingRows, error: ratingErr } = await db.from('ratings').select('listing_id, rating, rater_id')
-      if (!ratingErr) {
-        ratingsByListing = {}
-        myRatingsByListing = {}
-        for (const r of ratingRows || []) {
-          const key = String(r.listing_id)
-          if (!ratingsByListing[key]) ratingsByListing[key] = { sum: 0, count: 0 }
-          ratingsByListing[key].sum += Number(r.rating) || 0
-          ratingsByListing[key].count += 1
-          if (currentUser && String(r.rater_id) === String(currentUser.id)) myRatingsByListing[key] = Number(r.rating)
-        }
-      }
-    } catch (e) {
-      console.warn('Loading ratings failed (has the ratings table been created?)', e)
-    }
+    await loadRatingsAndDesigns()
     await runListingCleanup()
     renderFilteredListings()
     renderBusinessExploreGrid()
@@ -3906,7 +4223,14 @@ function ensureCartyChatStyle() {
     .carty-chat-bubble{max-width:88%;padding:9px 11px;border-radius:14px;line-height:1.38;white-space:pre-wrap;word-break:break-word}
     .carty-chat-row.user .carty-chat-bubble{background:rgba(255,255,255,.10)}
     .carty-chat-row.assistant .carty-chat-bubble{background:rgba(255,196,0,.10)}
-    .carty-chat-typing{opacity:.68;font-style:italic}
+    .carty-chat-typing{opacity:.78;font-style:normal;display:inline-flex;align-items:center;gap:7px;min-width:72px}
+    .carty-thinking-label{font-size:.82rem;color:rgba(255,255,255,.72)}
+    .carty-thinking-dots{display:inline-flex;gap:3px;align-items:center;height:10px}
+    .carty-thinking-dots i{display:block;width:4px;height:4px;border-radius:50%;background:#71b9ff;opacity:.25;animation:carty-thinking-dot 1.05s ease-in-out infinite}
+    .carty-thinking-dots i:nth-child(2){animation-delay:.14s}
+    .carty-thinking-dots i:nth-child(3){animation-delay:.28s}
+    @keyframes carty-thinking-dot{0%,70%,100%{opacity:.24;transform:translateY(0) scale(.85)}35%{opacity:1;transform:translateY(-2px) scale(1)}}
+    @media (prefers-reduced-motion:reduce){.carty-thinking-dots i{animation:none;opacity:.8}}
   `
   document.head.appendChild(style)
 }
@@ -3957,7 +4281,17 @@ function setCartyTyping(visible) {
   row.className = 'carty-chat-row assistant'
   const bubble = document.createElement('div')
   bubble.className = 'carty-chat-bubble carty-chat-typing carty-typing-bubble'
-  bubble.textContent = 'Thinking…'
+  const label = document.createElement('span')
+  label.className = 'carty-thinking-label'
+  label.textContent = 'Thinking'
+  const dots = document.createElement('span')
+  dots.className = 'carty-thinking-dots'
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('i')
+    dot.setAttribute('aria-hidden', 'true')
+    dots.appendChild(dot)
+  }
+  bubble.append(label, dots)
   row.appendChild(bubble)
   cartyMessage.appendChild(row)
   cartyMessage.scrollTop = cartyMessage.scrollHeight
@@ -4386,13 +4720,16 @@ listingOverlay.className = 'lightbox-overlay hidden'
 listingOverlay.setAttribute('aria-hidden', 'true')
 listingOverlay.innerHTML = `
   <div class="listing-overlay-panel">
-    <button type="button" class="lightbox-close" data-close-listing-overlay aria-label="Close listing">&times;</button>
+    <div class="listing-overlay-topbar">
+      <span class="listing-overlay-topbar-title">Listing details</span>
+      <button type="button" class="lightbox-close" data-close-listing-overlay aria-label="Close listing">&times;</button>
+    </div>
     <div id="listing-overlay-content" class="listing-overlay-content"></div>
   </div>
 `
 document.body.appendChild(listingOverlay)
 
-function openListingOverlay(item) {
+function openListingOverlay(item, opts = {}) {
   if (!item || !listingOverlay) return
   const content = document.getElementById('listing-overlay-content')
   if (!content) return
@@ -4423,16 +4760,6 @@ function openListingOverlay(item) {
   if (item.contact_method) metaParts.push(`<div><strong>Contact method</strong><span>${escapeHtml(item.contact_method)}</span></div>`)
   const meta = metaParts.length ? `<div class="listing-overlay-meta">${metaParts.join('')}</div>` : ''
 
-  const ratingInfo = ratingsByListing[String(item.id)]
-  const ratingHtml = ratingInfo && ratingInfo.count > 0
-    ? (() => {
-        const avg = ratingInfo.sum / ratingInfo.count
-        const full = Math.round(avg)
-        const stars = ICON_STAR_FILLED.repeat(full) + ICON_STAR_OUTLINE.repeat(5 - full)
-        return `<div class="listing-rating listing-overlay-rating"><span class="listing-rating-stars">${stars}</span><span class="listing-rating-count">${avg.toFixed(1)} (${ratingInfo.count})</span></div>`
-      })()
-    : ''
-
   let postedHtml = ''
   if (item.created_at) {
     try {
@@ -4451,7 +4778,7 @@ function openListingOverlay(item) {
         <span class="eyebrow">${escapeHtml(eyebrowLabel)}</span>
         <h2>${escapeHtml(item.title || 'Untitled listing')}</h2>
       </div>
-      ${ratingHtml}
+      ${overlayRatingHtml(item)}
       ${price}
       ${meta}
       ${item.description ? `<p class="listing-overlay-description">${escapeHtml(item.description)}</p>` : ''}
@@ -4460,6 +4787,12 @@ function openListingOverlay(item) {
         <button type="button" class="hero-btn hero-btn-primary" data-overlay-contact-id="${escapeHtml(item.id)}">Contact seller</button>
         <button type="button" class="muted-btn" data-close-listing-overlay>Close</button>
       </div>
+      ${item.user_id ? `<div class="seller-review-quick">${sellerRatingQuickHtml(item.user_id)}<button type="button" class="seller-review-open" data-goto-seller-reviews>Rate seller</button></div>` : ""}
+      <section id="listing-reviews" class="reviews-section" data-item-id="${escapeHtml(item.id)}" aria-label="Ratings and reviews">
+        <h3 class="reviews-heading">Ratings &amp; reviews</h3>
+        <div class="reviews-mount"></div>
+      </section>
+      ${item.user_id ? `<section id="listing-seller-reviews" class="reviews-section seller-reviews-section" data-seller-id="${escapeHtml(item.user_id)}" aria-label="Seller rating"><h3 class="reviews-heading">Seller rating</h3><p class="muted seller-review-help">Review the person you dealt with. A LinkHub store is not required.</p><div class="reviews-mount"></div></section>` : ''}
       <section id="listing-overlay-similar" class="listing-overlay-similar hidden" data-item-id="${escapeHtml(item.id)}" aria-label="You might also like">
         <div class="strip-header">
           <h3 class="strip-title">
@@ -4506,6 +4839,10 @@ function openListingOverlay(item) {
   document.documentElement.classList.add('lightbox-open')
   rememberRecentlyViewed(item.id)
   renderSimilarListings(item)
+  mountReviews(content.querySelector('#listing-reviews .reviews-mount'), { kind: 'listing', targetId: item.id, ownerId: item.user_id })
+  const sellerReviewMount = content.querySelector('#listing-seller-reviews .reviews-mount')
+  if (sellerReviewMount && item.user_id) mountReviews(sellerReviewMount, { kind: 'seller', targetId: item.user_id, ownerId: item.user_id })
+  if (opts.focus === 'reviews') setTimeout(() => content.querySelector('#listing-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
 }
 
 function closeListingOverlay() {
@@ -4611,13 +4948,8 @@ function renderListing(l, container = listingsContainer) {
       <button class="share-btn" data-id="${escapeHtml(l.id)}" type="button">Share</button>
       <button class="report-btn" data-id="${escapeHtml(l.id)}" type="button">Report</button>
     </div>`)
-    if (currentUser) {
-      const myRating = myRatingsByListing[String(l.id)]
-      parts.push(`<div class="rate-row" data-rate-id="${escapeHtml(l.id)}">
-        <span class="rate-label">${myRating ? 'Your rating:' : 'Rate this:'}</span>
-        ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="rate-star${myRating >= n ? ' active' : ''}" data-id="${escapeHtml(l.id)}" data-value="${n}" aria-label="Rate ${n} star${n === 1 ? '' : 's'}">${myRating >= n ? ICON_STAR_FILLED : ICON_STAR_OUTLINE}</button>`).join('')}
-      </div>`)
-    }
+    const myRating = myRatingsByListing[String(l.id)]
+    parts.push(`<button type="button" class="review-link" data-review-id="${escapeHtml(l.id)}">${myRating ? 'Edit your review' : 'Write a review'}</button>`)
     if (isSiteOwner) {
       parts.push(`<button class="delete-btn admin-delete-btn" data-id="${escapeHtml(l.id)}" type="button">${ICON_SHIELD} Admin: Delete Listing</button>`)
     }
@@ -4626,7 +4958,7 @@ function renderListing(l, container = listingsContainer) {
   if (l.user_id && !isOwner) {
     const s = storesById[String(l.user_id)]
     if (s?.name) {
-      parts.push(`<button class="visit-store-btn" data-store-id="${escapeHtml(l.user_id)}" type="button">${ICON_STORE} Visit Store: ${escapeHtml(s.name)}</button>`)
+      parts.push(`<button class="visit-store-btn" data-store-id="${escapeHtml(l.user_id)}" type="button">${ICON_STORE} Visit Store: ${escapeHtml(s.name)}${sellerRatingInlineHtml(l.user_id)}</button>`)
     }
   }
 
@@ -4703,6 +5035,7 @@ document.body.addEventListener('click', (ev) => {
     if (item) {
       const link = buildContactLink(item.contact_method, item.contact_details)
       if (link?.url) {
+        recordContactTap(item)
         closeListingOverlay()
         window.open(link.url, '_blank', 'noopener,noreferrer')
       } else {
@@ -4714,7 +5047,7 @@ document.body.addEventListener('click', (ev) => {
   const waLink = ev.target.closest('[data-track-view-id]')
   if (waLink) {
     const item = currentListings.find((r) => String(r.id) === String(waLink.dataset.trackViewId))
-    if (item) trackListingView(item)
+    if (item) { trackListingView(item); recordContactTap(item) }
   }
   const mainBtn = ev.target.closest('.gallery-main-btn')
   const thumb = ev.target.closest('.gallery-thumb')
@@ -4755,6 +5088,810 @@ async function trackListingView(item) {
   }
 }
 
+// ===========================================================================
+// Reviews (rating + comment), seller ratings, store design and the seller dashboard.
+// Needs linkhub_v24_reviews_dashboard.sql; without it the app keeps working and shows a hint.
+// ===========================================================================
+const REVIEW_KINDS = {
+  listing: { table: 'ratings', key: 'listing_id', label: 'product', placeholder: 'Share what you liked or didn’t like (optional)' },
+  seller: { table: 'seller_ratings', key: 'seller_id', label: 'seller', placeholder: 'How was dealing with this seller? (optional)' },
+}
+const REVIEW_PREVIEW_COUNT = 4
+const STORE_ACCENTS = ['#1678e8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+const STORE_FONTS = [['modern', 'Modern'], ['classic', 'Classic'], ['friendly', 'Friendly']]
+const STORE_LAYOUTS = [['grid', 'Grid'], ['list', 'List']]
+
+function ratingAverage(info) { return info && info.count > 0 ? info.sum / info.count : 0 }
+function starsHtml(value) {
+  const full = Math.max(0, Math.min(5, Math.round(value)))
+  return ICON_STAR_FILLED.repeat(full) + ICON_STAR_OUTLINE.repeat(5 - full)
+}
+function hexToRgba(hex, alpha) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '')
+  return m ? `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` : ''
+}
+function timeAgo(value) {
+  const t = new Date(value).getTime()
+  if (!Number.isFinite(t)) return ''
+  const mins = Math.round((Date.now() - t) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  return new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+}
+function formatMoney(amount, currency) {
+  const n = Number(amount) || 0
+  const code = String(currency || 'ZAR').toUpperCase()
+  const sym = code === 'ZAR' ? 'R' : code === 'USD' ? '$' : `${code} `
+  return `${sym}${n.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
+}
+function getVisitorKey() {
+  try {
+    let key = localStorage.getItem('linkhub-visitor-key')
+    if (!key || key.length < 8) {
+      key = (window.crypto?.randomUUID?.() || `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`).slice(0, 60)
+      localStorage.setItem('linkhub-visitor-key', key)
+    }
+    return key
+  } catch { return `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}` }
+}
+function requestSignIn() {
+  try { closeListingOverlay() } catch { /* not open */ }
+  try { closeStore() } catch { /* not open */ }
+  closeDashboard()
+  authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// ---------------------------------------------------------------------------
+// Loading ratings + store designs (called after the listings load)
+// ---------------------------------------------------------------------------
+async function loadRatingsAndDesigns() {
+  if (!useSupabase) return
+  await Promise.all([loadListingRatingStats(), loadSellerRatingStats(), loadStoreDesigns()])
+}
+
+async function loadListingRatingStats() {
+  try {
+    const { data, error } = await db.from('listing_rating_stats').select('listing_id,rating_count,rating_sum')
+    if (error) throw error
+    ratingsByListing = {}
+    for (const r of data || []) ratingsByListing[String(r.listing_id)] = { sum: Number(r.rating_sum) || 0, count: Number(r.rating_count) || 0 }
+  } catch (e) {
+    // The summary view is missing (older setup): fall back to reading the ratings themselves.
+    try {
+      const { data: rows, error } = await db.from('ratings').select('listing_id, rating')
+      if (!error) {
+        ratingsByListing = {}
+        for (const r of rows || []) {
+          const key = String(r.listing_id)
+          if (!ratingsByListing[key]) ratingsByListing[key] = { sum: 0, count: 0 }
+          ratingsByListing[key].sum += Number(r.rating) || 0
+          ratingsByListing[key].count += 1
+        }
+      }
+    } catch { /* ratings are optional */ }
+  }
+  myRatingsByListing = {}
+  if (currentUser) {
+    try {
+      const { data } = await db.from('ratings').select('listing_id, rating').eq('rater_id', currentUser.id)
+      for (const r of data || []) myRatingsByListing[String(r.listing_id)] = Number(r.rating)
+    } catch { /* ignore */ }
+  }
+}
+
+async function loadSellerRatingStats() {
+  try {
+    const { data, error } = await db.from('seller_rating_stats').select('seller_id,rating_count,rating_sum')
+    if (error) throw error
+    sellerRatingsById = {}
+    for (const r of data || []) sellerRatingsById[String(r.seller_id)] = { sum: Number(r.rating_sum) || 0, count: Number(r.rating_count) || 0 }
+  } catch { /* seller ratings are optional until the SQL is run */ }
+}
+
+async function loadStoreDesigns() {
+  try {
+    const { data, error } = await db.from('store_designs').select('*')
+    if (error) throw error
+    storeDesignsById = {}
+    for (const row of data || []) storeDesignsById[String(row.owner_id)] = row
+  } catch { /* designs are optional until the SQL is run */ }
+}
+
+// Small "★ 4.8 (12)" text next to the Visit Store button on listing cards.
+function sellerRatingInlineHtml(userId) {
+  const info = sellerRatingsById[String(userId)]
+  if (!info || !info.count) return ''
+  return `<span class="visit-store-rating">${ICON_STAR_FILLED} ${ratingAverage(info).toFixed(1)} <span class="muted">(${info.count})</span></span>`
+}
+
+function sellerRatingQuickHtml(userId) {
+  const info = sellerRatingsById[String(userId)]
+  if (!info || !info.count) return `<span class="seller-review-quick-copy"><strong>Seller rating</strong><span class="muted">No seller ratings yet</span></span>`
+  return `<span class="seller-review-quick-copy"><strong>Seller rating</strong><span class="seller-review-stars">${starsHtml(ratingAverage(info))}</span><span class="muted">${ratingAverage(info).toFixed(1)} · ${info.count} review${info.count === 1 ? '' : 's'}</span></span>`
+}
+
+function overlayRatingHtml(item) {
+  const info = ratingsByListing[String(item.id)]
+  const inner = info && info.count
+    ? `<span class="listing-rating-stars">${starsHtml(ratingAverage(info))}</span><span class="listing-rating-count">${ratingAverage(info).toFixed(1)} (${info.count} review${info.count === 1 ? '' : 's'})</span>`
+    : `<span class="listing-rating-count muted">No reviews yet</span>`
+  return `<button type="button" id="listing-overlay-rating" class="listing-rating listing-overlay-rating overlay-rating-link" data-goto-reviews>${inner}</button>`
+}
+
+
+// ---------------------------------------------------------------------------
+// Reviews component: used for product reviews (listing overlay) and seller reviews (store page)
+// ---------------------------------------------------------------------------
+function reviewFriendlyError(e) {
+  const m = String(e?.message || '')
+  if (/does not exist|schema cache|column|relation|permission denied|violates row-level/i.test(m) && !/own listing/i.test(m)) {
+    return 'Reviews are not switched on yet. Run the latest LinkHub SQL in Supabase, then try again.'
+  }
+  return m || 'Could not save your review. Try again.'
+}
+
+async function fetchReviews(kind, targetId) {
+  const cfg = REVIEW_KINDS[kind]
+  const cols = kind === 'seller'
+    ? 'rater_id,rating,comment,rater_name,verified_contact,created_at,updated_at'
+    : 'rater_id,rating,comment,rater_name,created_at,updated_at'
+  const { data, error } = await db.from(cfg.table).select(cols).eq(cfg.key, targetId).order('created_at', { ascending: false }).limit(200)
+  if (error) throw error
+  return data || []
+}
+
+function reviewIsMine(row) { return !!currentUser && String(row.rater_id) === String(currentUser.id) }
+
+function reviewsHtml(state) {
+  const { kind, rows } = state
+  const cfg = REVIEW_KINDS[kind]
+  const count = rows.length
+  const sum = rows.reduce((a, r) => a + Number(r.rating || 0), 0)
+  const avg = count ? sum / count : 0
+  const dist = [5, 4, 3, 2, 1].map((n) => rows.filter((r) => Number(r.rating) === n).length)
+  const mine = rows.find(reviewIsMine)
+  const isOwner = !!currentUser && String(currentUser.id) === String(state.ownerId)
+
+  const summary = count
+    ? `<div class="reviews-summary">
+        <div class="reviews-score"><strong>${avg.toFixed(1)}</strong><div class="reviews-stars">${starsHtml(avg)}</div><span class="muted">${count} review${count === 1 ? '' : 's'}</span></div>
+        <div class="reviews-bars">${dist.map((n, i) => `<div class="reviews-bar-row"><span>${5 - i}</span><div class="reviews-bar"><i style="width:${Math.round((n / count) * 100)}%"></i></div><span class="muted">${n}</span></div>`).join('')}</div>
+      </div>`
+    : `<p class="reviews-empty muted">No reviews yet${isOwner ? '.' : `. Be the first to review this ${cfg.label}.`}</p>`
+
+  let form
+  if (!currentUser) {
+    form = `<div class="reviews-signin"><span>Sign in to review this ${cfg.label}.</span><button type="button" class="reviews-signin-btn">Sign in</button></div>`
+  } else if (isOwner) {
+    form = `<p class="reviews-note muted">You can’t review your own ${kind === 'seller' ? 'seller profile' : 'listing'}.</p>`
+  } else {
+    const d = state.draftRating || 0
+    form = `<form class="reviews-form" novalidate>
+      <div class="reviews-form-title">${mine ? 'Your review' : 'Write a review'}</div>
+      <div class="reviews-rating-hint muted">${d ? `You selected ${d} star${d === 1 ? '' : 's'}` : 'Choose a rating'}</div>
+      <div class="review-star-input" role="radiogroup" aria-label="Your rating">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="review-star${d >= n ? ' active' : ''}" data-value="${n}" role="radio" aria-checked="${d === n}" aria-label="${n} star${n === 1 ? '' : 's'}">${d >= n ? ICON_STAR_FILLED : ICON_STAR_OUTLINE}</button>`).join('')}</div>
+      <textarea class="reviews-text" maxlength="500" rows="3" placeholder="${escapeHtml(cfg.placeholder)}" aria-label="Your comment">${escapeHtml(state.draftComment || '')}</textarea>
+      <div class="reviews-form-row">
+        <span class="reviews-count muted">${(state.draftComment || '').length}/500</span>
+        <span class="reviews-msg" role="status"></span>
+        ${mine ? '<button type="button" class="reviews-delete">Delete</button>' : ''}
+        <button type="submit" class="reviews-submit">${mine ? 'Update review' : 'Post review'}</button>
+      </div>
+    </form>`
+  }
+
+  const ordered = [...rows.filter(reviewIsMine), ...rows.filter((r) => !reviewIsMine(r))]
+  const shown = state.showAll ? ordered : ordered.slice(0, REVIEW_PREVIEW_COUNT)
+  const list = shown.length
+    ? `<ul class="reviews-list">${shown.map((r) => {
+        const name = r.rater_name || 'LinkHub user'
+        const edited = r.updated_at && r.created_at && new Date(r.updated_at).getTime() - new Date(r.created_at).getTime() > 60000 ? ' · edited' : ''
+        return `<li class="review-item">
+          <span class="review-avatar" style="background:hsl(${avatarHueFromSeed(r.rater_id)} 55% 38%)" aria-hidden="true">${escapeHtml(initialsFromName(name))}</span>
+          <div class="review-body">
+            <div class="review-top"><strong>${escapeHtml(name)}</strong>${reviewIsMine(r) ? '<span class="review-badge review-badge-you">You</span>' : ''}${r.verified_contact ? '<span class="review-badge">Chatted on LinkHub</span>' : ''}<span class="review-date muted">${escapeHtml(timeAgo(r.created_at))}${edited}</span></div>
+            <div class="review-stars">${starsHtml(Number(r.rating))}</div>
+            ${r.comment ? `<p class="review-text">${escapeHtml(r.comment)}</p>` : ''}
+          </div>
+        </li>`
+      }).join('')}</ul>${!state.showAll && ordered.length > REVIEW_PREVIEW_COUNT ? `<button type="button" class="reviews-more">Show all ${ordered.length} reviews</button>` : ''}`
+    : ''
+
+  return `${summary}${form}${list}`
+}
+
+async function saveReview(kind, targetId, rating, comment) {
+  const cfg = REVIEW_KINDS[kind]
+  const row = { [cfg.key]: targetId, rater_id: currentUser.id, rating, comment: comment || null }
+  const { error } = await db.from(cfg.table).upsert(row, { onConflict: `${cfg.key},rater_id` })
+  if (error) throw error
+}
+
+async function deleteReview(kind, targetId) {
+  const cfg = REVIEW_KINDS[kind]
+  const { error } = await db.from(cfg.table).delete().eq(cfg.key, targetId).eq('rater_id', currentUser.id)
+  if (error) throw error
+}
+
+// Keep the numbers on cards, the overlay and the store header in step with what was just saved.
+function applyReviewCache(kind, targetId, rows) {
+  const key = String(targetId)
+  const info = { sum: rows.reduce((a, r) => a + Number(r.rating || 0), 0), count: rows.length }
+  if (kind === 'listing') {
+    ratingsByListing[key] = info
+    const mine = rows.find(reviewIsMine)
+    if (mine) myRatingsByListing[key] = Number(mine.rating)
+    else delete myRatingsByListing[key]
+    const chip = document.getElementById('listing-overlay-rating')
+    if (chip && chip.closest('.listing-overlay-body')?.querySelector('#listing-reviews')?.dataset.itemId === key) chip.outerHTML = overlayRatingHtml({ id: key })
+  } else {
+    sellerRatingsById[key] = info
+    renderStoreRatingChip(key)
+  }
+  try { renderFilteredListings() } catch { /* not ready */ }
+  if (activeStoreUserId) { try { renderStoreListings() } catch { /* not ready */ } }
+}
+
+async function mountReviews(container, opts) {
+  if (!container) return
+  const token = {}
+  container._reviewsToken = token
+  if (!useSupabase) { container.innerHTML = ''; return }
+  container.innerHTML = '<div class="reviews-loading muted">Loading reviews…</div>'
+  const state = { ...opts, rows: [], showAll: false, draftRating: 0, draftComment: '' }
+  try {
+    state.rows = await fetchReviews(opts.kind, opts.targetId)
+  } catch (e) {
+    if (container._reviewsToken === token) container.innerHTML = `<p class="reviews-empty muted">${escapeHtml(reviewFriendlyError(e))}</p>`
+    return
+  }
+  if (container._reviewsToken !== token) return
+  const mine = state.rows.find(reviewIsMine)
+  state.draftRating = mine ? Number(mine.rating) : 0
+  state.draftComment = mine?.comment || ''
+  const render = () => {
+    if (container._reviewsToken !== token) return
+    container.innerHTML = reviewsHtml(state)
+    wireReviews(container, state, render, token)
+  }
+  render()
+}
+
+function wireReviews(container, state, render, token) {
+  const say = (text, bad) => {
+    const el = container.querySelector('.reviews-msg')
+    if (!el) return
+    el.textContent = text
+    el.classList.toggle('is-error', !!bad)
+  }
+  const textarea = container.querySelector('.reviews-text')
+  textarea?.addEventListener('input', () => {
+    state.draftComment = textarea.value
+    const counter = container.querySelector('.reviews-count')
+    if (counter) counter.textContent = `${textarea.value.length}/500`
+  })
+  container.querySelectorAll('.review-star').forEach((btn) => btn.addEventListener('click', () => {
+    state.draftRating = Number(btn.dataset.value)
+    container.querySelectorAll('.review-star').forEach((s) => {
+      const on = Number(s.dataset.value) <= state.draftRating
+      s.classList.toggle('active', on)
+      s.setAttribute('aria-checked', String(Number(s.dataset.value) === state.draftRating))
+      s.innerHTML = on ? ICON_STAR_FILLED : ICON_STAR_OUTLINE
+    })
+    say('')
+  }))
+  container.querySelector('.reviews-signin-btn')?.addEventListener('click', requestSignIn)
+  container.querySelector('.reviews-more')?.addEventListener('click', () => { state.showAll = true; render() })
+
+  const refresh = async () => {
+    state.rows = await fetchReviews(state.kind, state.targetId)
+    if (container._reviewsToken !== token) return false
+    applyReviewCache(state.kind, state.targetId, state.rows)
+    return true
+  }
+
+  container.querySelector('.reviews-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    if (!state.draftRating) { say('Tap a star to choose your rating first.', true); return }
+    const submit = container.querySelector('.reviews-submit')
+    if (submit) submit.disabled = true
+    say('Saving…')
+    try {
+      await saveReview(state.kind, state.targetId, state.draftRating, (state.draftComment || '').trim())
+      if (!(await refresh())) return
+      showUxToast('Thanks, your review is posted.')
+      render()
+    } catch (e) {
+      if (submit) submit.disabled = false
+      say(reviewFriendlyError(e), true)
+    }
+  })
+
+  container.querySelector('.reviews-delete')?.addEventListener('click', async () => {
+    if (!confirm('Delete your review?')) return
+    try {
+      await deleteReview(state.kind, state.targetId)
+      state.draftRating = 0
+      state.draftComment = ''
+      if (!(await refresh())) return
+      render()
+    } catch (e) {
+      say(reviewFriendlyError(e), true)
+    }
+  })
+}
+
+// Card + overlay hooks (delegated, so they work for every listing card)
+document.body.addEventListener('click', (event) => {
+  const reviewBtn = event.target.closest('[data-review-id]')
+  if (reviewBtn) {
+    const item = currentListings.find((r) => String(r.id) === String(reviewBtn.dataset.reviewId))
+    if (item) openListingOverlay(item, { focus: 'reviews' })
+    return
+  }
+  if (event.target.closest('[data-goto-seller-reviews]')) {
+    event.preventDefault()
+    document.getElementById('listing-seller-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  if (event.target.closest('[data-goto-reviews]')) {
+    document.getElementById('listing-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Store page: rating chip, design, announcement, visits
+// ---------------------------------------------------------------------------
+function renderStoreRatingChip(userId) {
+  const chip = document.getElementById('store-rating-chip')
+  if (!chip || String(activeStoreUserId) !== String(userId)) return
+  const info = sellerRatingsById[String(userId)]
+  if (info && info.count) {
+    chip.innerHTML = `${ICON_STAR_FILLED} <strong>${ratingAverage(info).toFixed(1)}</strong> <span>${info.count} rating${info.count === 1 ? '' : 's'}</span>`
+  } else {
+    chip.innerHTML = `${ICON_STAR_OUTLINE} <span>No ratings yet</span>`
+  }
+  chip.classList.remove('hidden')
+}
+
+function applyStoreDesign(userId) {
+  const panel = storeOverlay?.querySelector('.app-overlay-panel')
+  if (!panel) return
+  const d = storeDesignsById[String(userId)]
+  const accent = /^#[0-9a-f]{6}$/i.test(d?.accent || '') ? d.accent : ''
+  if (accent) {
+    panel.style.setProperty('--store-accent', accent)
+    panel.style.setProperty('--store-accent-soft', hexToRgba(accent, 0.16))
+    panel.dataset.storeThemed = '1'
+  } else {
+    panel.style.removeProperty('--store-accent')
+    panel.style.removeProperty('--store-accent-soft')
+    delete panel.dataset.storeThemed
+  }
+  panel.dataset.storeFont = d?.font || 'modern'
+  const note = document.getElementById('store-announcement')
+  if (note) {
+    note.textContent = d?.announcement || ''
+    note.classList.toggle('hidden', !d?.announcement)
+  }
+  storeGrid?.classList.toggle('store-layout-list', d?.layout === 'list')
+}
+
+function recordStoreVisit(storeId) {
+  if (!useSupabase || !storeId) return
+  if (currentUser && String(currentUser.id) === String(storeId)) return
+  const day = new Date().toISOString().slice(0, 10)
+  const marker = `linkhub-store-visit-${storeId}-${day}`
+  try { if (localStorage.getItem(marker)) return; localStorage.setItem(marker, '1') } catch { /* private mode */ }
+  Promise.resolve(db.rpc('record_store_visit', { p_store: storeId, p_visitor_key: getVisitorKey() })).catch(() => {})
+}
+
+function recordContactTap(item) {
+  if (!useSupabase || !item?.id) return
+  if (currentUser && item.user_id && String(currentUser.id) === String(item.user_id)) return
+  Promise.resolve(db.rpc('record_contact_tap', { p_listing: item.id, p_visitor_key: getVisitorKey() })).catch(() => {})
+}
+
+// ---------------------------------------------------------------------------
+// Store editor: "Design your store"
+// ---------------------------------------------------------------------------
+const designState = { accent: STORE_ACCENTS[0], font: 'modern', layout: 'grid', featured: [] }
+
+function renderDesignControls() {
+  const accents = document.getElementById('store-design-accents')
+  if (!accents) return
+  accents.innerHTML = STORE_ACCENTS.map((c) => `<button type="button" class="store-swatch${designState.accent.toLowerCase() === c ? ' active' : ''}" data-color="${c}" style="background:${c}" aria-label="Accent ${c}"></button>`).join('')
+  const custom = document.getElementById('store-design-accent-custom')
+  if (custom) custom.value = designState.accent
+  const choice = (id, list, current, attr) => {
+    const el = document.getElementById(id)
+    if (el) el.innerHTML = list.map(([value, label]) => `<button type="button" class="store-choice-btn${current === value ? ' active' : ''}" data-${attr}="${value}" aria-pressed="${current === value}">${label}</button>`).join('')
+  }
+  choice('store-design-fonts', STORE_FONTS, designState.font, 'font')
+  choice('store-design-layouts', STORE_LAYOUTS, designState.layout, 'layout')
+  const feat = document.getElementById('store-design-featured')
+  if (feat) {
+    const mine = currentUser ? currentListings.filter((l) => String(l.user_id) === String(currentUser.id) && !l.sold) : []
+    const full = designState.featured.length >= 3
+    feat.innerHTML = mine.length
+      ? mine.map((l) => {
+          const on = designState.featured.includes(String(l.id))
+          return `<label class="store-featured-item"><input type="checkbox" value="${escapeHtml(l.id)}"${on ? ' checked' : ''}${full && !on ? ' disabled' : ''}><span>${escapeHtml(l.title || 'Untitled')}</span></label>`
+        }).join('')
+      : '<p class="muted store-design-empty">Post a listing first, then you can feature it at the top of your store.</p>'
+  }
+  renderDesignPreview()
+}
+
+function renderDesignPreview() {
+  const box = document.getElementById('store-design-preview')
+  if (!box) return
+  const name = (storeManageName?.value || '').trim() || 'Your store name'
+  const note = (document.getElementById('store-design-announcement')?.value || '').trim()
+  box.dataset.storeFont = designState.font
+  box.style.setProperty('--store-accent', designState.accent)
+  box.style.setProperty('--store-accent-soft', hexToRgba(designState.accent, 0.16))
+  box.innerHTML = `<div class="store-preview-banner"></div>
+    <div class="store-preview-head"><span class="store-preview-logo">${escapeHtml(initialsFromName(name))}</span><div><strong>${escapeHtml(name)}</strong><small>Preview of your store page</small></div><span class="store-preview-btn">Contact</span></div>
+    ${note ? `<div class="store-preview-note">${escapeHtml(note)}</div>` : ''}
+    <div class="store-preview-grid ${designState.layout === 'list' ? 'is-list' : ''}"><i></i><i></i><i></i><i></i></div>`
+}
+
+function populateStoreDesignForm() {
+  const d = currentUser ? storeDesignsById[String(currentUser.id)] : null
+  designState.accent = /^#[0-9a-f]{6}$/i.test(d?.accent || '') ? d.accent.toLowerCase() : STORE_ACCENTS[0]
+  designState.font = d?.font || 'modern'
+  designState.layout = d?.layout || 'grid'
+  designState.featured = (d?.featured_ids || []).map(String)
+  const note = document.getElementById('store-design-announcement')
+  if (note) note.value = d?.announcement || ''
+  renderDesignControls()
+}
+
+document.getElementById('store-design')?.addEventListener('click', (event) => {
+  const swatch = event.target.closest('.store-swatch')
+  const font = event.target.closest('[data-font]')
+  const layout = event.target.closest('[data-layout]')
+  if (swatch) designState.accent = swatch.dataset.color
+  else if (font) designState.font = font.dataset.font
+  else if (layout) designState.layout = layout.dataset.layout
+  else return
+  renderDesignControls()
+})
+document.getElementById('store-design-accent-custom')?.addEventListener('input', (event) => { designState.accent = event.target.value; renderDesignControls() })
+document.getElementById('store-design-featured')?.addEventListener('change', (event) => {
+  const box = event.target.closest('input[type="checkbox"]')
+  if (!box) return
+  const id = String(box.value)
+  designState.featured = box.checked ? [...new Set([...designState.featured, id])].slice(0, 3) : designState.featured.filter((x) => x !== id)
+  renderDesignControls()
+})
+document.getElementById('store-design-announcement')?.addEventListener('input', renderDesignPreview)
+storeManageName?.addEventListener('input', renderDesignPreview)
+document.querySelectorAll('.store-design-preset').forEach(btn=>btn.addEventListener('click',()=>{const p=btn.dataset.storePreset;if(p==='bold'){designState.accent='#1678e8';designState.font='friendly';designState.layout='grid'}else if(p==='classic'){designState.accent='#c9a25d';designState.font='classic';designState.layout='list'}else{designState.accent='#1678e8';designState.font='modern';designState.layout='grid'}renderDesignControls();document.querySelectorAll('.store-design-preset').forEach(el=>el.classList.toggle('active',el===btn));saveStoreDraft()}))
+
+// Returns '' when saved, or a short message to show under the form.
+async function saveStoreDesign() {
+  if (!useSupabase || !currentUser) return ''
+  const announcement = (document.getElementById('store-design-announcement')?.value || '').trim().slice(0, 140)
+  const row = {
+    owner_id: currentUser.id,
+    accent: designState.accent.toLowerCase(),
+    font: designState.font,
+    layout: designState.layout,
+    announcement: announcement || null,
+    featured_ids: designState.featured.slice(0, 3),
+    updated_at: new Date().toISOString(),
+  }
+  const { error } = await db.from('store_designs').upsert(row, { onConflict: 'owner_id' })
+  if (error) return /does not exist|schema cache|permission denied/i.test(error.message || '') ? ' Your store design was not saved because the latest LinkHub SQL has not been run yet.' : ` Your store design was not saved: ${error.message}`
+  storeDesignsById[String(currentUser.id)] = row
+  return ''
+}
+
+// ---------------------------------------------------------------------------
+// Seller dashboard
+// ---------------------------------------------------------------------------
+const dashboardOverlay = document.getElementById('dashboard-overlay')
+const dashboardBody = document.getElementById('dashboard-body')
+let dashboardDays = 30
+let dashboardRequest = 0
+
+function dashboardIcon() {
+  return '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+}
+
+function openDashboard() {
+  if (!currentUser) { requestSignIn(); return }
+  if (!dashboardOverlay) return
+  dashboardOverlay.classList.remove('hidden')
+  dashboardOverlay.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('lightbox-open')
+  loadDashboard(dashboardDays)
+}
+
+function closeDashboard() {
+  if (!dashboardOverlay || dashboardOverlay.classList.contains('hidden')) return
+  dashboardOverlay.classList.add('hidden')
+  dashboardOverlay.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('lightbox-open')
+}
+
+async function loadDashboard(days) {
+  if (!dashboardBody) return
+  dashboardDays = days
+  const request = ++dashboardRequest
+  dashboardBody.innerHTML = '<div class="dash-loading-state"><span class="dash-loading-spinner" aria-hidden="true"></span><strong>Loading your dashboard…</strong><span class="muted">Pulling your latest store activity.</span></div>'
+  if (!useSupabase) {
+    dashboardBody.innerHTML = '<div class="dash-system-note is-warning"><strong>Supabase is not connected.</strong><span>Connect LinkHub to see live store analytics.</span></div>'
+    return
+  }
+  try {
+    const { data, error } = await db.rpc('store_dashboard', { p_days: days })
+    if (error) throw error
+    if (request !== dashboardRequest) return
+    dashboardBody.innerHTML = dashboardHtml(data || {})
+    wireDashboard()
+  } catch (e) {
+    if (request !== dashboardRequest) return
+    // Do not leave the dashboard looking empty when the RPC is unavailable.
+    // Fall back to data the signed-in seller can already read, while clearly
+    // identifying which analytics need the dashboard SQL function.
+    try {
+      const fallback = await buildDashboardFallback(days)
+      if (request !== dashboardRequest) return
+      dashboardBody.innerHTML = dashboardHtml(fallback, {
+        warning: /does not exist|schema cache|Could not find/i.test(e?.message || '')
+          ? 'Some live analytics are unavailable because the store dashboard SQL function is not active yet.'
+          : 'Live analytics could not be loaded, so the dashboard is showing the information available to your account.'
+      })
+      wireDashboard()
+    } catch (fallbackError) {
+      if (request !== dashboardRequest) return
+      dashboardBody.innerHTML = `<div class="dash-system-note is-warning"><strong>Dashboard data could not be loaded.</strong><span>${escapeHtml(fallbackError?.message || e?.message || 'Please try again.')}</span><button type="button" class="dash-retry-btn">Try again</button></div>`
+      dashboardBody.querySelector('.dash-retry-btn')?.addEventListener('click', () => loadDashboard(dashboardDays))
+    }
+  }
+}
+
+async function buildDashboardFallback(days) {
+  if (!currentUser) throw new Error('Sign in to view your dashboard.')
+  const [listingsRes, sellerRes] = await Promise.all([
+    db.from('listings').select('*').eq('user_id', currentUser.id),
+    db.from('seller_ratings').select('rating').eq('seller_id', currentUser.id)
+  ])
+  if (listingsRes.error) throw listingsRes.error
+  if (sellerRes.error) throw sellerRes.error
+  const listings = listingsRes.data || []
+  let productRatings = []
+  // Query product ratings only when there are listings.
+  if (listings.length) {
+    const ids = listings.map(x => x.id).filter(Boolean)
+    const r = await db.from('ratings').select('rating,listing_id').in('listing_id', ids)
+    if (!r.error) productRatings = r.data || []
+  }
+  const viewsOf = (x) => Number(x?.views ?? x?.view_count ?? 0) || 0
+  const activeListings = listings.filter(x => !Boolean(x?.sold))
+  const totalViews = activeListings.reduce((sum, x) => sum + viewsOf(x), 0)
+  const top = activeListings.map(x => ({ id: x.id, title: x.title, views: viewsOf(x) })).sort((a,b) => b.views-a.views).slice(0,5)
+  const sellerRatings = (sellerRes.data || []).map(x => Number(x.rating)).filter(Number.isFinite)
+  const productRatingValues = productRatings.map(x => Number(x.rating)).filter(Number.isFinite)
+  const sellerAvg = sellerRatings.length ? sellerRatings.reduce((a,b)=>a+b,0) / sellerRatings.length : null
+  const productAvg = productRatingValues.length ? productRatingValues.reduce((a,b)=>a+b,0) / productRatingValues.length : null
+  return {
+    days,
+    visits: { total: 0, unique: 0, series: [] },
+    listing_views: { total: totalViews, top },
+    active_listings: activeListings.length,
+    interest: { contact_taps: 0, chats: 0, offers: 0 },
+    sales: { count: listings.filter(x => Boolean(x?.sold)).length, totals: [], recent: [] },
+    ratings: { seller_avg: sellerAvg, seller_count: sellerRatings.length, product_avg: productAvg, product_count: productRatingValues.length }
+  }
+}
+
+function dashSvgIcon(kind){const p={eye:'M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Zm9.5-2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z',users:'M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20m6-10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6.5 2.5a3.2 3.2 0 0 1 3 3.2V20',message:'M4 5.5h16v10H8l-4 3v-13Z',phone:'M7 3.8 9.7 3l2 4-1.8 1.6a14.5 14.5 0 0 0 5.5 5.5L17 12.3l4 2 0.8 2.7c.2.7-.1 1.4-.8 1.7l-1.8.8C12.9 17.4 6.6 11.1 4.5 4.8l.8-1.8c.3-.7 1-.9 1.7-.7Z',bag:'M5 8h14l1 12H4L5 8Zm3 0a4 4 0 0 1 8 0',star:'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9L12 3Z',store:'M4 9.5h16M6 9.5V20m12-10.5V20M3 20h18M5 9.5 7 4h10l2 5.5M7 14h10'};return `<svg class="dash-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${p[kind]||p.store}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+function visitsChartSvg(series){const pts=Array.isArray(series)?series:[],v=pts.map(p=>Math.max(0,Number(p.visitors)||0));if(!v.length||!v.some(Boolean))return'';const W=1000,H=260,px=26,pt=24,pb=34,pw=W-px*2,ph=H-pt-pb,max=Math.max(1,...v),x=i=>px+(pts.length===1?pw/2:i/(pts.length-1)*pw),y=n=>pt+ph-n/max*ph,line=pts.map((p,i)=>`${x(i).toFixed(1)},${y(v[i]).toFixed(1)}`).join(' '),area=`${px},${pt+ph} ${line} ${px+pw},${pt+ph}`,grid=[0,.25,.5,.75,1].map(r=>{const yy=pt+ph-r*ph;return`<line x1="${px}" y1="${yy}" x2="${px+pw}" y2="${yy}" class="dash-grid-line"/>`}).join(''),points=pts.map((p,i)=>{if(!v[i])return'';const d=new Date(`${p.day}T00:00:00`),l=d.toLocaleDateString([],{day:'numeric',month:'short'});return`<g><title>${escapeHtml(d.toLocaleDateString([],{weekday:'long',day:'numeric',month:'long'}))}: ${v[i]} visitor${v[i]===1?'':'s'}</title><circle cx="${x(i).toFixed(1)}" cy="${y(v[i]).toFixed(1)}" r="3.5" class="dash-point"/><text x="${x(i).toFixed(1)}" y="${H-10}" class="dash-axis-label">${escapeHtml(l)}</text></g>`}).join('');return`<div class="dash-chart-wrap"><svg class="dash-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Store visitors trend"><defs><linearGradient id="dashAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1678e8" stop-opacity=".28"/><stop offset="100%" stop-color="#1678e8" stop-opacity="0"/></linearGradient></defs>${grid}<polygon points="${area}" fill="url(#dashAreaGradient)"/><polyline points="${line}" class="dash-line"/>${points}</svg></div>`}
+function dashCompletionHtml(store){const f=[['Store name',!!store?.name],['Category',!!store?.category],['Phone',!!store?.phone],['Location',!!store?.location],['About',!!store?.bio],['Logo',!!store?.logo_url],['Banner',!!store?.banner_url],['Store design',!!storeDesignsById[String(currentUser?.id)]]],done=f.filter(x=>x[1]).length,pct=Math.round(done/f.length*100),missing=f.filter(x=>!x[1]).map(x=>x[0]);return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Store setup</span><h3>Store profile</h3></div><strong class="dash-completion-pct">${pct}%</strong></div><div class="dash-progress"><i style="width:${pct}%"></i></div><p class="muted dash-completion-copy">${pct===100?'Your storefront is fully filled in.':`Add ${missing.slice(0,2).join(' and ')}${missing.length>2?` + ${missing.length-2} more`:''} to give customers more information.`}</p></section>`}
+function dashFunnelHtml(vis,interest){const s=[['Store visitors',Number(vis.unique||0),'users'],['Contact taps',Number(interest.contact_taps||0),'phone'],['New chats',Number(interest.chats||0),'message'],['Offers',Number(interest.offers||0),'bag']],base=Math.max(1,...s.map(x=>x[1])),vc=s[0][1];return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Engagement</span><h3>Customer activity</h3></div><span class="dash-card-meta">${dashboardDays} days</span></div><div class="dash-funnel">${s.map(([label,val,icon])=>{const pct=vc?Math.round(val/vc*100):0;return`<div class="dash-funnel-row"><div class="dash-funnel-label"><span class="dash-funnel-icon">${dashSvgIcon(icon)}</span><span>${label}</span><strong>${val.toLocaleString()}</strong></div><div class="dash-funnel-track"><i style="width:${Math.max(val?4:0,Math.round(val/base*100))}%"></i></div><small class="muted">${label==='Store visitors'?'starting point':`${pct}% of visitors`}</small></div>`}).join('')}</div></section>`}
+function dashRatingsHtml(r){const sc=Number(r.seller_count||0),sa=sc?Number(r.seller_avg||0):0,pc=Number(r.product_count||0),pa=pc?Number(r.product_avg||0):0,stars=a=>a?`${'★'.repeat(Math.round(a))}${'☆'.repeat(Math.max(0,5-Math.round(a)))}`:'☆☆☆☆☆';return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Trust</span><h3>Ratings</h3></div><span class="dash-card-meta">All time</span></div><div class="dash-rating-grid"><div class="dash-rating-big"><strong>${sc?sa.toFixed(1):'—'}</strong><span class="dash-stars">${stars(sa)}</span><small class="muted">Seller rating · ${sc} review${sc===1?'':'s'}</small></div><div class="dash-rating-big"><strong>${pc?pa.toFixed(1):'—'}</strong><span class="dash-stars">${stars(pa)}</span><small class="muted">Product rating · ${pc} review${pc===1?'':'s'}</small></div></div></section>`}
+function dashSalesHtml(s){const t=Array.isArray(s.totals)?s.totals:[],r=Array.isArray(s.recent)?s.recent:[],m=Math.max(1,...t.map(x=>Number(x.amount)||0));return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Sales</span><h3>Sales performance</h3></div><span class="dash-card-meta">${Number(s.count||0).toLocaleString()} sold</span></div>${t.length?`<div class="dash-sales-total-row">${t.map(x=>`<div><strong>${escapeHtml(formatMoney(x.amount,x.currency))}</strong><span class="muted">${escapeHtml(x.currency||'ZAR')} revenue</span></div>`).join('')}</div><div class="dash-sales-bars">${t.map(x=>`<div class="dash-sales-bar-row"><span>${escapeHtml(x.currency||'ZAR')}</span><div class="dash-top-bar"><i style="width:${Math.max(4,Math.round((Number(x.amount)/m)*100))}%"></i></div><strong>${escapeHtml(formatMoney(x.amount,x.currency))}</strong></div>`).join('')}</div>`:'<p class="muted">Mark a listing as sold and your sales history will appear here.</p>'}${r.length?`<div class="dash-sales-subhead">Recent sales</div><ul class="dash-sales">${r.map(x=>`<li><span>${escapeHtml(x.title||'Item')}</span><span class="muted">${escapeHtml(timeAgo(x.sold_at))}</span><strong>${x.price!=null?escapeHtml(formatMoney(x.price,x.currency)):'—'}</strong></li>`).join('')}</ul>`:''}</section>`}
+function dashboardHtml(d, options={}){const vis=d.visits||{},interest=d.interest||{},sales=d.sales||{},ratings=d.ratings||{},days=d.days||dashboardDays,store=getStoreForUser(currentUser?.id),top=(d.listing_views?.top||[]).filter(x=>Number(x.views)>=0),topMax=Math.max(1,...top.map(x=>Number(x.views)||0)),vc=Number(vis.unique||0),cc=Number(interest.contact_taps||0),ch=Number(interest.chats||0),of=Number(interest.offers||0),sold=Number(sales.count||0),active=Number(d.active_listings||0),lv=Number(d.listing_views?.total||0),avg=active?Math.round(lv/active):0,rate=vc?Math.round(cc/vc*100):0,has=vc||cc||ch||of||sold,sc=Number(ratings.seller_count||0),sr=sc?`${Number(ratings.seller_avg||0).toFixed(1)} ★`:'—',title=store?.name||'Your LinkHub store',range=[7,30,90].map(n=>`<button type="button" class="dash-range-btn${n===days?' active':''}" data-days="${n}">${n} days</button>`).join('');return`${options.warning?`<div class="dash-system-note is-info"><span class="dash-system-note-icon">!</span><div><strong>Analytics status</strong><span>${escapeHtml(options.warning)}</span></div><button type="button" class="dash-retry-btn">Retry</button></div>`:''}<div class="dash-hero"><div class="dash-hero-main"><span class="dash-live-dot"></span><div><span class="dash-eyebrow">${escapeHtml(title)}</span><strong>Store performance</strong><span class="muted">A live view of visitors, products, customer interest, sales and trust.</span></div></div><div class="dash-range" role="group" aria-label="Time range">${range}</div></div><div class="dash-kpis"><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('users')}</span><span class="dash-kpi-label">Visitors</span><strong class="dash-kpi-value">${vc.toLocaleString()}</strong><span class="dash-kpi-sub">unique store visitors · ${days} days</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('eye')}</span><span class="dash-kpi-label">Listing views</span><strong class="dash-kpi-value">${lv.toLocaleString()}</strong><span class="dash-kpi-sub">${active} active listing${active===1?'':'s'} · ${avg} avg each</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('phone')}</span><span class="dash-kpi-label">Contact taps</span><strong class="dash-kpi-value">${cc.toLocaleString()}</strong><span class="dash-kpi-sub">${rate}% of visitors reached out</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('message')}</span><span class="dash-kpi-label">Chats</span><strong class="dash-kpi-value">${ch.toLocaleString()}</strong><span class="dash-kpi-sub">${of} offer${of===1?'':'s'} received</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('bag')}</span><span class="dash-kpi-label">Sold</span><strong class="dash-kpi-value">${sold.toLocaleString()}</strong><span class="dash-kpi-sub">items marked sold · ${days} days</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('star')}</span><span class="dash-kpi-label">Seller rating</span><strong class="dash-kpi-value">${sr}</strong><span class="dash-kpi-sub">${sc} seller review${sc===1?'':'s'}</span></div></div>${!has?`<div class="dash-empty dash-empty-rich"><div class="dash-empty-icon">${dashSvgIcon('store')}</div><div><strong>Your dashboard is ready.</strong><span class="muted">Share your store link and start listing products. The cards below will fill up as people interact with your store.</span></div><button type="button" class="dash-share-btn">Share my store</button></div>`:''}<div class="dash-grid dash-grid-two"><section class="dash-card dash-chart-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Reach</span><h3>Store visitors</h3></div><span class="dash-card-meta">${days} days</span></div>${visitsChartSvg(vis.series)||'<div class="dash-no-chart"><strong>No visitor activity yet</strong><span class="muted">When people open your store, their activity will appear here.</span></div>'}</section>${dashFunnelHtml(vis,interest)}</div><div class="dash-grid dash-grid-two">${dashCompletionHtml(store)}${dashRatingsHtml(ratings)}</div><div class="dash-grid dash-grid-two"><section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Listings</span><h3>Most viewed products</h3></div><span class="dash-card-meta">all time</span></div>${top.length?`<ul class="dash-top">${top.map((x,i)=>`<li><span class="dash-top-rank">${i+1}</span><span class="dash-top-title">${escapeHtml(x.title||'Untitled')}</span><span class="dash-top-bar"><i style="width:${Number(x.views)>0?Math.max(4,Math.round(Number(x.views)/topMax*100)):0}%"></i></span><span class="dash-top-count">${Number(x.views).toLocaleString()}</span></li>`).join('')}</ul>`:'<p class="muted">Your product views will appear here.</p>'}</section>${dashSalesHtml(sales)}</div>`}
+function wireDashboard(){dashboardBody?.querySelectorAll('.dash-range-btn').forEach(btn=>btn.addEventListener('click',()=>loadDashboard(Number(btn.dataset.days))));dashboardBody?.querySelector('.dash-share-btn')?.addEventListener('click',shareMyStoreLink)}
+
+async function shareMyStoreLink() {
+  if (!currentUser) return
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('store', currentUser.id)
+  const name = getStoreForUser(currentUser.id)?.name || 'My LinkHub store'
+  try {
+    if (navigator.share) { await navigator.share({ title: name, text: `${name} on LinkHub`, url: url.toString() }); return }
+  } catch { /* cancelled */ }
+  try { await navigator.clipboard.writeText(url.toString()); showUxToast('Store link copied.') } catch { showUxToast(url.toString()) }
+}
+
+document.getElementById('dashboard-close')?.addEventListener('click', closeDashboard)
+dashboardOverlay?.addEventListener('click', (event) => { if (event.target === dashboardOverlay) closeDashboard() })
+document.getElementById('store-dashboard-btn')?.addEventListener('click', () => openDashboard())
+
+// Retry control for the dashboard status banner.
+dashboardBody?.addEventListener('click', (event) => {
+  if (event.target.closest('.dash-retry-btn')) loadDashboard(dashboardDays)
+})
+
+// ===========================================================================
+// Windows (overlays): the newest one is always on top, closing one goes back to the one underneath,
+// the page scroll position is restored, and the phone/browser Back button closes windows instead of
+// taking people out of LinkHub.
+// (var on purpose: this can be reached before the block below has run once)
+// ===========================================================================
+const LH_OVERLAY_SELECTOR = '.app-overlay, .lightbox-overlay, #nav-drawer, #carty-panel'
+var lhOverlayStack = []
+var lhOverlayWatched = null
+var lhSavedScrollY = 0
+var lhPopSuppress = 0
+var lhPopSuppressTimer = 0
+var lhSyncTimer = 0
+var lhLastRootBack = 0
+var lhScrollIntentAt = 0
+var lhHistoryReady = false
+var lhRawScrollTo = window.scrollTo
+
+function lhIsPlainOverlay(el) { return el.id !== 'nav-drawer' && el.id !== 'carty-panel' }
+function lhOverlayIsOpen(el) { return el.id === 'nav-drawer' ? el.classList.contains('open') : !el.classList.contains('hidden') }
+
+function lhOverlayChanged(el) {
+  const open = lhOverlayIsOpen(el)
+  const at = lhOverlayStack.indexOf(el)
+  if (open && at === -1) {
+    if (!lhOverlayStack.length) lhSavedScrollY = window.scrollY || 0
+    lhOverlayStack.push(el)
+    // Later windows must always sit above earlier ones, whatever their CSS z-index says.
+    if (lhIsPlainOverlay(el)) el.style.zIndex = String(10010 + lhOverlayStack.length * 2)
+  } else if (!open && at !== -1) {
+    lhOverlayStack.splice(at, 1)
+    el.style.zIndex = ''
+    if (!lhOverlayStack.length) lhRestoreScroll()
+  } else {
+    return
+  }
+  // Keep the page behind locked for as long as any window is open (one window closing must not unlock it).
+  document.documentElement.classList.toggle('lightbox-open', lhOverlayStack.some(lhIsPlainOverlay))
+  lhScheduleHistorySync()
+}
+
+function lhWatchOverlay(el) {
+  if (!lhOverlayWatched) lhOverlayWatched = new WeakSet()
+  if (lhOverlayWatched.has(el)) return
+  lhOverlayWatched.add(el)
+  new MutationObserver(() => lhOverlayChanged(el)).observe(el, { attributes: true, attributeFilter: ['class'] })
+  lhOverlayChanged(el)
+}
+
+function lhScanOverlays(root) {
+  const scope = root || document
+  if (scope.matches && scope.matches(LH_OVERLAY_SELECTOR)) lhWatchOverlay(scope)
+  if (scope.querySelectorAll) scope.querySelectorAll(LH_OVERLAY_SELECTOR).forEach(lhWatchOverlay)
+}
+
+function lhCloseOverlayEl(el) {
+  const btn = el.querySelector('[data-close-listing-overlay], .lightbox-close, button[id$="-close"], button[aria-label^="Close"]')
+  if (btn) btn.click()
+  if (lhOverlayIsOpen(el)) el.click() // most windows also close when their dark backdrop is tapped
+  if (lhOverlayIsOpen(el)) { el.classList.add('hidden'); el.setAttribute('aria-hidden', 'true') }
+}
+
+// --- scroll position -------------------------------------------------------
+;['scrollTo', 'scrollBy', 'scroll'].forEach((name) => {
+  const original = window[name]
+  if (typeof original !== 'function') return
+  window[name] = function (...args) { lhScrollIntentAt = Date.now(); return original.apply(this, args) }
+})
+if (window.Element && Element.prototype.scrollIntoView) {
+  const originalScrollIntoView = Element.prototype.scrollIntoView
+  Element.prototype.scrollIntoView = function (...args) { lhScrollIntentAt = Date.now(); return originalScrollIntoView.apply(this, args) }
+}
+;['wheel', 'touchmove'].forEach((name) => window.addEventListener(name, () => { lhScrollIntentAt = Date.now() }, { passive: true }))
+
+// When the last window closes, put the page back where it was. If something scrolled the page on purpose
+// (Browse, edit listing, ...) that wins and nothing is restored.
+function lhRestoreScroll() {
+  const y = lhSavedScrollY
+  const closedAt = Date.now()
+  const check = () => {
+    if (lhOverlayStack.length || lhScrollIntentAt > closedAt - 50) return
+    if (Math.abs((window.scrollY || 0) - y) > 30) lhRawScrollTo.call(window, 0, y)
+  }
+  requestAnimationFrame(check)
+  setTimeout(check, 160)
+  setTimeout(check, 480)
+}
+
+// --- Back button -----------------------------------------------------------
+// History looks like:  [before LinkHub] [root] [guard = depth 0] [window 1 = depth 1] [window 2 = depth 2] ...
+// Back closes the top window. Back from the guard shows "press back again", a second press within 2.5s leaves.
+function lhHistoryDepth() {
+  const s = history.state
+  return s && s.lh ? Number(s.lhDepth) || 0 : 0
+}
+
+function lhScheduleHistorySync(delay = 0) {
+  clearTimeout(lhSyncTimer)
+  lhSyncTimer = setTimeout(lhSyncHistory, delay)
+}
+
+function lhSyncHistory() {
+  if (!lhHistoryReady) return
+  if (lhPopSuppress > 0) { lhScheduleHistorySync(120); return } // a history jump of ours is still in flight
+  const want = lhOverlayStack.length
+  const have = lhHistoryDepth()
+  if (want > have) {
+    for (let d = have + 1; d <= want; d++) history.pushState({ lh: 1, lhDepth: d }, '')
+  } else if (want < have) {
+    lhPopSuppress++
+    clearTimeout(lhPopSuppressTimer)
+    lhPopSuppressTimer = setTimeout(() => { lhPopSuppress = 0 }, 900)
+    history.go(want - have)
+  }
+}
+
+function lhRootBack() {
+  const now = Date.now()
+  if (now - lhLastRootBack < 2500) {
+    lhLastRootBack = 0
+    history.back() // second press: really leave
+    // If LinkHub was the first page of this tab there is nowhere to go and we're still here: put the guard back.
+    setTimeout(() => { if (history.state && history.state.lhRoot) history.pushState({ lh: 1, lhDepth: 0 }, '') }, 500)
+    return
+  }
+  lhLastRootBack = now
+  history.pushState({ lh: 1, lhDepth: 0 }, '') // stay on the page
+  if (typeof showUxToast === 'function') showUxToast('Press back again to leave LinkHub')
+}
+
+window.addEventListener('popstate', (event) => {
+  if (!lhHistoryReady) return
+  if (lhPopSuppress > 0) { lhPopSuppress--; lhScheduleHistorySync(); return }
+  const st = event.state
+  if (st && st.lhRoot) {
+    if (lhOverlayStack.length) {
+      // Landed on the bottom entry while windows are open: close them all and put the guard back.
+      for (let n = lhOverlayStack.length; n > 0; n--) lhCloseOverlayEl(lhOverlayStack[n - 1])
+      history.pushState({ lh: 1, lhDepth: 0 }, '')
+      return
+    }
+    lhRootBack()
+    return
+  }
+  if (!st || !st.lh) return
+  const depth = Number(st.lhDepth) || 0
+  for (let n = lhOverlayStack.length; n > depth; n--) lhCloseOverlayEl(lhOverlayStack[n - 1])
+  lhScheduleHistorySync()
+})
+
+function lhInitWindows() {
+  try {
+    const st = history.state
+    if (!(st && (st.lh || st.lhRoot))) {
+      history.replaceState({ lhRoot: 1 }, '')
+      history.pushState({ lh: 1, lhDepth: 0 }, '')
+    }
+    lhHistoryReady = true
+  } catch { /* History API not available (very old in-app browsers) */ }
+  lhScanOverlays(document)
+  new MutationObserver((mutations) => {
+    mutations.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) lhScanOverlays(n) }))
+  }).observe(document.body, { childList: true })
+  lhScheduleHistorySync()
+}
+lhInitWindows()
+
 // Logo fallback: if a store logo fails to load, swap the broken-image icon for
 // the store's initials on a coloured tile. Images opt in with data-logo-name.
 document.addEventListener('error', (event) => {
@@ -4779,6 +5916,15 @@ document.addEventListener('error', (event) => {
   badge.style.background = `hsl(${avatarHueFromSeed(img.dataset.logoSeed || name)} 55% 38%)`
   img.replaceWith(badge)
 }, true)
+
+// Only real web links may become clickable. A stored value such as "javascript:..." would run code in the
+// visitor's browser when clicked, so anything that isn't http(s) is dropped.
+function safeWebUrl(value) {
+  try {
+    const u = new URL(String(value || '').trim())
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.toString() : ''
+  } catch { return '' }
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -5089,10 +6235,10 @@ window.addEventListener('appinstalled', () => {
       String(storeManagePhone?.value || '').trim()
     ].filter(Boolean)
     if (storeSummaryMeta) storeSummaryMeta.textContent = bits.join(' • ') || 'Add a name and category to get started.'
-    if (storeSummaryComplete) storeSummaryComplete.textContent = `${Math.min(8, [nameDone, !!String(storeManageCategory?.value || '').trim(), !!String(storeManagePhone?.value || '').trim(), !!String(storeManageLocation?.value || '').trim(), !!String(storeManageAddress?.value || '').trim(), !!String(storeManageBio?.value || '').trim(), !!String(storeManageHours?.value || '').trim(), !!String(storeManageFulfilment?.value || '').trim()].filter(Boolean).length)} of 8`
+    const completionFields=[nameDone,!!String(storeManageCategory?.value||'').trim(),!!String(storeManageType?.value||'').trim(),!!String(storeManageTagline?.value||'').trim(),!!String(storeManagePhone?.value||'').trim(),!!String(storeManageLocation?.value||'').trim(),!!String(storeManageBio?.value||'').trim(),!!String(storeManageHours?.value||'').trim(),!!String(storeManageFulfilment?.value||'').trim(),!!(storeManageLogo?.files?.length||storeManageLogoPreview?.src)]; if(storeSummaryComplete) storeSummaryComplete.textContent=`${completionFields.filter(Boolean).length} of ${completionFields.length}`
   }
 
-  ;[storeManageName, storeManageCategory, storeManagePhone, storeManageLocation, storeManageAddress, storeManageBio, storeManageHours, storeManageFulfilment].forEach((el) => el?.addEventListener('input', updateStoreProgress))
+  ;[storeManageName, storeManageCategory, storeManageType, storeManageTagline, storeManagePhone, storeManageWebsite, storeManageWhatsapp, storeManageInstagram, storeManageLocation, storeManageAddress, storeManageBio, storeManageHours, storeManageFulfilment].forEach((el) => el?.addEventListener('input', updateStoreProgress))
   ;[storeManageLogo, storeManageBanner].forEach((el) => el?.addEventListener('change', updateStoreProgress))
 
   window.linkhubRefreshStoreUx = updateStoreProgress
