@@ -201,14 +201,48 @@ const heroCtaSell = document.getElementById('hero-cta-sell')
 const heroCtaBrowse = document.getElementById('hero-cta-browse')
 const heroListingCount = document.getElementById('hero-listing-count')
 
-heroCtaSell?.addEventListener('click', () => {
-  if (currentUser && createListingSection) {
-    createListingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setTimeout(() => focusListingField(titleEl), 350)
-  } else {
+// Mobile: the create-listing card collapses to a slim "+ Post a Listing" bar when nothing is being
+// typed, so it doesn't take up space while someone is just browsing. It opens back up whenever a "Post a
+// Listing" / "Sell" button is tapped, or when editing an existing listing starts.
+const createListingCollapsedBar = document.getElementById('create-listing-collapsed-bar')
+const createListingCollapseBtn = document.getElementById('create-listing-collapse-btn')
+const CREATE_LISTING_MOBILE_WIDTH = 900
+
+function isCreateListingMobile() { return window.innerWidth <= CREATE_LISTING_MOBILE_WIDTH }
+
+function setCreateListingCollapsed(collapsed) {
+  if (!createListingSection) return
+  createListingSection.classList.toggle('listing-collapsed', collapsed)
+  createListingCollapsedBar?.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+}
+
+function openCreateListingSection({ focus = true } = {}) {
+  if (!currentUser || !createListingSection) {
     authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
   }
-})
+  setCreateListingCollapsed(false)
+  createListingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  if (focus) setTimeout(() => focusListingField(titleEl), 350)
+}
+
+// A typed title/price/description means there's something to lose, so a resize or reload never
+// auto-collapses a form someone is partway through — only the actions below do.
+function createListingHasContent() {
+  return !!((titleEl?.value || '').trim() || (priceEl?.value || '').trim() || (descriptionEl?.value || '').trim())
+}
+
+function collapseCreateListingIfIdle() {
+  if (!createListingSection || !isCreateListingMobile()) return
+  if (createListingSection.classList.contains('create-listing-editing')) return
+  if (createListingHasContent()) return
+  setCreateListingCollapsed(true)
+}
+
+createListingCollapsedBar?.addEventListener('click', () => openCreateListingSection())
+createListingCollapseBtn?.addEventListener('click', () => setCreateListingCollapsed(true))
+
+heroCtaSell?.addEventListener('click', () => openCreateListingSection())
 heroCtaBrowse?.addEventListener('click', () => {
   document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
@@ -433,14 +467,7 @@ mobileBottomNav?.addEventListener('click', (event) => {
       document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   } else if (action === 'sell') {
-    requestAnimationFrame(() => {
-      if (currentUser && createListingSection) {
-        createListingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        setTimeout(() => focusListingField(titleEl), 350)
-      } else {
-        authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    })
+    requestAnimationFrame(() => openCreateListingSection())
   } else if (action === 'cart') {
     // Let the drawer's closing transition begin before opening the cart overlay.
     requestAnimationFrame(() => openCart())
@@ -675,7 +702,7 @@ function buildDesktopNav() {
   const store = getStoreForUser(currentUser.id)
   desktopNav.appendChild(desktopButton('Browse', () => document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   desktopNav.appendChild(desktopButtonWithIcon('Cart', ICON_CART, () => openCart()))
-  desktopNav.appendChild(desktopButton('Post a Listing', () => createListingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' }), true))
+  desktopNav.appendChild(desktopButton('Post a Listing', () => openCreateListingSection({ focus: false }), true))
   const menuItems = [
     { label: 'My Listings', icon: 'listings', action: () => openMyListings() },
     { label: store?.name ? 'My Store' : 'Open Store', icon: 'store', action: () => openStoreManage() },
@@ -699,6 +726,16 @@ function buildDesktopNav() {
 }
 
 const createListingSection = document.getElementById('create-listing-section')
+// Leaving the form empty (tapped away, or just scrolled past it) closes it again after a moment — long
+// enough that moving focus between its own fields (title -> price -> ...) doesn't close it by mistake.
+let createListingIdleTimer = 0
+createListingSection?.addEventListener('focusout', () => {
+  clearTimeout(createListingIdleTimer)
+  createListingIdleTimer = setTimeout(() => {
+    if (createListingSection.contains(document.activeElement)) return
+    collapseCreateListingIfIdle()
+  }, 220)
+})
 const containerEl = document.querySelector('.container')
 const desktopSplitter = document.getElementById('desktop-splitter')
 const formColumn = document.getElementById('desktop-form-column')
@@ -1533,7 +1570,7 @@ function enterEditMode() {
   if (formEyebrow) formEyebrow.textContent = 'Editing Listing'
   if (formHeading) formHeading.textContent = 'Update your listing'
   if (editModeBadge) editModeBadge.style.display = 'inline-flex'
-  if (createListingSection) createListingSection.classList.add('create-listing-editing')
+  if (createListingSection) { createListingSection.classList.add('create-listing-editing'); setCreateListingCollapsed(false) }
   if (createListingBtn) createListingBtn.textContent = 'Save Changes'
   if (cancelEditBtn) cancelEditBtn.style.display = ''
 }
@@ -1765,6 +1802,7 @@ async function handleAuthChange() {
   if (user) {
     authSection.style.display = 'none'
     createListingSection.style.display = ''
+    collapseCreateListingIfIdle()
     // Keep the form compact by default and allow expanding via More options
     setFormCompact(true)
     setTimeout(() => window.linkhubApplyStoreDefaults?.(), 0)
@@ -2185,6 +2223,7 @@ createListingBtn.addEventListener('click', async () => {
       showLinkHubResult(true, 'Listing updated', 'Your changes are now live on LinkHub.')
       listingMsg.textContent = 'Listing updated successfully.'
       exitEditMode()
+      collapseCreateListingIfIdle()
       setListingField(titleEl, '')
       priceEl.value = ''
       if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
@@ -2204,6 +2243,7 @@ createListingBtn.addEventListener('click', async () => {
       setListingSubmitState(false)
       showLinkHubResult(true, 'Listing created', 'Your listing is now live on LinkHub.')
       listingMsg.textContent = 'Listing created successfully.'
+      collapseCreateListingIfIdle()
       setListingField(titleEl, '')
       priceEl.value = ''
       if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'

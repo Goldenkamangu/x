@@ -60,7 +60,7 @@ html{scroll-behavior:smooth}
 .drawer-item.danger .icon{color:#ff9c9f}
 .drawer-divider{height:1px;background:rgba(255,255,255,.08);margin:10px 2px}
 .drawer-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-size:.88rem;color:var(--muted);font-weight:600}
-.brand-logo{height:40px;width:auto;display:block}
+.brand-logo{height:30px;width:auto;display:block}
 
 /* Hero */
 .hero{position:relative;margin:0 -24px 56px;min-height:100vh;min-height:100dvh;display:flex;align-items:center;padding:24px;overflow:hidden;background:
@@ -95,8 +95,12 @@ html{scroll-behavior:smooth}
 .loading-glow{display:none}
 .loading-glow-one{width:280px;height:280px;background:rgba(255,255,255,0.06);top:14%;left:12%;animation:loading-float 4.8s ease-in-out infinite}
 .loading-glow-two{width:260px;height:260px;background:rgba(22,120,232,.22);right:8%;bottom:10%;animation:loading-float 5.8s ease-in-out infinite reverse}
-.loading-logo-wrap{position:relative;width:140px;height:140px;display:grid;place-items:center}
-.loading-logo{position:relative;z-index:2;width:92px;height:92px;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.28))}
+.loading-logo-wrap{position:relative;width:190px;height:190px;display:grid;place-items:center}
+.loading-logo{position:relative;z-index:2;width:130px;height:130px;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.28))}
+.loading-shine{position:absolute;inset:0;z-index:3;overflow:hidden;border-radius:50%;pointer-events:none;-webkit-mask-image:url('logo.svg');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('logo.svg');mask-size:contain;mask-repeat:no-repeat;mask-position:center}
+.loading-shine::after{content:'';position:absolute;top:-40%;bottom:-40%;left:-60%;width:22%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);animation:loading-shine-sweep 7s ease-in-out infinite}
+@keyframes loading-shine-sweep{0%,72%{left:-60%}84%,100%{left:130%}}
+@media (prefers-reduced-motion:reduce){.loading-shine{display:none}}
 /* Spinning rings removed. */
 .loading-ring{display:none}
 .loading-ring-one{inset:4px;animation:loading-spin 7s linear infinite}
@@ -2487,3 +2491,23 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
 .drawer-backdrop{touch-action:none;overscroll-behavior:contain}
 .nav-drawer .nav-drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .nav-drawer .nav-drawer-header .lightbox-close{position:static;top:auto;right:auto;width:38px;height:38px;margin:0;flex:0 0 auto;font-size:1.25rem}
+
+/* ===== Mobile: Create Listing collapses to a slim bar when not in use ===== */
+.create-listing-collapsed-bar{display:none}
+@media (max-width:900px){
+  #create-listing-section{padding:0;overflow:hidden;transition:padding .2s ease}
+  #create-listing-section:not(.listing-collapsed){padding:18px}
+  #create-listing-body{overflow:hidden;max-height:4000px;opacity:1;transition:max-height .32s ease,opacity .22s ease .04s}
+  #create-listing-section.listing-collapsed #create-listing-body{max-height:0;opacity:0;transition:max-height .26s ease,opacity .16s ease;pointer-events:none}
+  #create-listing-section.listing-collapsed{padding:0}
+  .create-listing-collapsed-bar{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;margin:0;padding:14px 18px;border:1px dashed rgba(255,255,255,.22);border-radius:var(--r-md);background:rgba(255,255,255,.03);color:var(--text);font-size:.98rem;font-weight:700}
+  .create-listing-collapsed-bar:hover{background:rgba(255,255,255,.06);transform:none}
+  .create-listing-collapsed-icon{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:1.05rem;line-height:1;flex-shrink:0}
+  #create-listing-section:not(.listing-collapsed) .create-listing-collapsed-bar{display:none}
+  .create-listing-collapse-btn{width:34px;height:34px;min-height:0;margin:0 10px 0 0;padding:0;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--muted);display:grid;place-items:center;flex-shrink:0;order:-1}
+  .create-listing-collapse-btn:hover{background:rgba(255,255,255,.1);transform:none}
+}
+@media (min-width:901px){.create-listing-collapse-btn{display:none}}
+
+/* ===== Mobile: the "Post a Listing" card collapses to a slim bar when empty ===== */
+.create-listing-collapse-btn:focus-visible,.create-listing-collapsed-bar:focus-visible{outline:2px solid var(--highlight);outline-offset:2px}
