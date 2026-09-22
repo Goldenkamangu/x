@@ -2972,7 +2972,7 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
 
 /* ===== Create Listing v6: polished collapsed states ===== */
 
-/* Keep the marketplace cards fluid like the original layout. */
+/* Keep the marketplace cards fluid on desktop, but restore the compact two-column mobile layout. */
 #listings.listing-grid{
   grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
   align-items:stretch;
@@ -2981,6 +2981,25 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
   width:auto;
   min-width:0;
   box-sizing:border-box;
+}
+@media (max-width:640px){
+  #listings.listing-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  #listings.listing-grid .listing{
+    width:100%;
+    padding:10px;
+    border-radius:18px;
+  }
+  #listings.listing-grid .listing-img-wrap{
+    margin-bottom:8px;
+    border-radius:14px;
+  }
+  #listings.listing-grid .listing-title{font-size:.86rem;margin-bottom:4px;}
+  #listings.listing-grid .listing-price{font-size:.9rem;margin-bottom:4px;}
+  #listings.listing-grid .listing-meta{font-size:.72rem;gap:1px;margin-bottom:4px;}
+  #listings.listing-grid .listing-desc{font-size:.72rem;line-height:1.35;margin-bottom:6px;}
 }
 
 /* Calm, consistent open/closed motion. */
