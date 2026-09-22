@@ -201,42 +201,96 @@ const heroCtaSell = document.getElementById('hero-cta-sell')
 const heroCtaBrowse = document.getElementById('hero-cta-browse')
 const heroListingCount = document.getElementById('hero-listing-count')
 
-// Mobile: the create-listing card collapses to a slim "+ Post a Listing" bar when nothing is being
-// typed, so it doesn't take up space while someone is just browsing. It opens back up whenever a "Post a
-// Listing" / "Sell" button is tapped, or when editing an existing listing starts.
+// The create-listing card collapses to a compact rail/bar when it is not being used. It opens back up
+// whenever a "Post a Listing" / "Sell" button is tapped, or when editing an existing listing starts.
 const createListingCollapsedBar = document.getElementById('create-listing-collapsed-bar')
 const createListingCollapseBtn = document.getElementById('create-listing-collapse-btn')
 const CREATE_LISTING_MOBILE_WIDTH = 900
+const CREATE_LISTING_PREF_KEY = 'linkhub-create-listing-preferences-v1'
 
 function isCreateListingMobile() { return window.innerWidth <= CREATE_LISTING_MOBILE_WIDTH }
+
+function createListingPrefKey(userId = currentUser?.id) {
+  return userId ? `${CREATE_LISTING_PREF_KEY}:${userId}` : CREATE_LISTING_PREF_KEY
+}
+
+function readCreateListingPrefs() {
+  try {
+    const raw = localStorage.getItem(createListingPrefKey())
+    const parsed = raw ? JSON.parse(raw) : {}
+    return { openCount: Number(parsed?.openCount || 0) || 0, hasPublished: !!parsed?.hasPublished }
+  } catch (_) {
+    return { openCount: 0, hasPublished: false }
+  }
+}
+
+function writeCreateListingPrefs(prefs) {
+  try {
+    localStorage.setItem(createListingPrefKey(), JSON.stringify({
+      openCount: Math.max(0, Number(prefs?.openCount || 0)),
+      hasPublished: !!prefs?.hasPublished
+    }))
+  } catch (_) {}
+}
+
+function noteCreateListingOpen() {
+  const prefs = readCreateListingPrefs()
+  prefs.openCount = Math.min(2, prefs.openCount + 1)
+  writeCreateListingPrefs(prefs)
+}
+
+function markCreateListingPublished() {
+  const prefs = readCreateListingPrefs()
+  prefs.openCount = 2
+  prefs.hasPublished = true
+  writeCreateListingPrefs(prefs)
+}
 
 function setCreateListingCollapsed(collapsed) {
   if (!createListingSection) return
   createListingSection.classList.toggle('listing-collapsed', collapsed)
+  const layout = document.querySelector('.container')
+  layout?.classList.toggle('listing-compose-collapsed', collapsed)
   createListingCollapsedBar?.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
 }
 
-function openCreateListingSection({ focus = true } = {}) {
+function shouldDefaultCreateListingCollapsed() {
+  if (!currentUser) return true
+  const prefs = readCreateListingPrefs()
+  const ownListings = currentListings.filter((item) => String(item?.user_id || '') === String(currentUser.id))
+  return prefs.openCount >= 2 || prefs.hasPublished || ownListings.length > 0
+}
+
+function applyCreateListingDefaultState() {
+  if (!createListingSection || !currentUser) return
+  if (createListingSection.classList.contains('create-listing-editing')) return
+  if (createListingHasContent()) return
+  setCreateListingCollapsed(shouldDefaultCreateListingCollapsed())
+}
+
+function openCreateListingSection({ focus = true, trackOpen = true } = {}) {
   if (!currentUser || !createListingSection) {
     authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     return
   }
+  if (trackOpen) noteCreateListingOpen()
   setCreateListingCollapsed(false)
   createListingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
   if (focus) setTimeout(() => focusListingField(titleEl), 350)
 }
 
 // A typed title/price/description means there's something to lose, so a resize or reload never
-// auto-collapses a form someone is partway through — only the actions below do.
+// auto-collapses a form someone is partway through. The default is collapsed once the user has
+// already used it or opened it a couple of times.
 function createListingHasContent() {
   return !!((titleEl?.value || '').trim() || (priceEl?.value || '').trim() || (descriptionEl?.value || '').trim())
 }
 
 function collapseCreateListingIfIdle() {
-  if (!createListingSection || !isCreateListingMobile()) return
+  if (!createListingSection) return
   if (createListingSection.classList.contains('create-listing-editing')) return
   if (createListingHasContent()) return
-  setCreateListingCollapsed(true)
+  applyCreateListingDefaultState()
 }
 
 createListingCollapsedBar?.addEventListener('click', () => openCreateListingSection())
@@ -1802,8 +1856,7 @@ async function handleAuthChange() {
   if (user) {
     authSection.style.display = 'none'
     createListingSection.style.display = ''
-    collapseCreateListingIfIdle()
-    // Keep the form compact by default and allow expanding via More options
+    // Keep the form compact by default and allow expanding via More options.
     setFormCompact(true)
     setTimeout(() => window.linkhubApplyStoreDefaults?.(), 0)
   } else {
@@ -1813,8 +1866,10 @@ async function handleAuthChange() {
   buildDrawerMenu()
   buildDesktopNav()
   if (user) startGlobalMessageNotifications()
-  // Re-render listings so owner-only actions update visibility
+  // Re-render listings so owner-only actions update visibility and so the create form can
+  // tell whether this account already has listings before choosing its default collapsed state.
   await fetchAndRenderListings()
+  if (user) collapseCreateListingIfIdle()
 }
 
 const togglePasswordBtn = document.getElementById('toggle-password')
@@ -2223,7 +2278,6 @@ createListingBtn.addEventListener('click', async () => {
       showLinkHubResult(true, 'Listing updated', 'Your changes are now live on LinkHub.')
       listingMsg.textContent = 'Listing updated successfully.'
       exitEditMode()
-      collapseCreateListingIfIdle()
       setListingField(titleEl, '')
       priceEl.value = ''
       if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
@@ -2235,7 +2289,9 @@ createListingBtn.addEventListener('click', async () => {
       contactMethodEl.value = ''
       setListingField(contactDetailsEl, '')
       imageEl.value = ''
+      setCreateListingCollapsed(true)
       await fetchAndRenderListings()
+      collapseCreateListingIfIdle()
     } else {
       const { error } = await tryInsert(obj)
       if (error) throw error
@@ -2243,7 +2299,7 @@ createListingBtn.addEventListener('click', async () => {
       setListingSubmitState(false)
       showLinkHubResult(true, 'Listing created', 'Your listing is now live on LinkHub.')
       listingMsg.textContent = 'Listing created successfully.'
-      collapseCreateListingIfIdle()
+      markCreateListingPublished()
       setListingField(titleEl, '')
       priceEl.value = ''
       if (priceCurrencyEl) priceCurrencyEl.value = 'ZAR'
@@ -2256,7 +2312,9 @@ createListingBtn.addEventListener('click', async () => {
       contactMethodEl.value = ''
       setListingField(contactDetailsEl, '')
       imageEl.value = ''
+      setCreateListingCollapsed(true)
       await fetchAndRenderListings()
+      collapseCreateListingIfIdle()
     }
   } catch (err) {
     setListingSubmitState(false)

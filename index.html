@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>LinkHub</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=20260923-business-clean" />
     <link rel="icon" href="Logo2.png" type="image/png" />
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="Logo2.png" />
@@ -394,7 +394,6 @@
     <section id="business-explore" class="card business-explore-section" style="display:none">
       <div class="section-header">
         <div class="business-explore-heading">
-          <span class="eyebrow">Discover</span>
           <h2>
             <svg
               class="section-inline-icon"
@@ -423,7 +422,7 @@
             Explore businesses
           </h2>
           <p class="muted">
-            Discover businesses on LinkHub and browse what they have for sale.
+            Browse businesses on LinkHub and see what they have listed.
           </p>
         </div>
       </div>
@@ -512,16 +511,23 @@
 
         <section id="create-listing-section" class="card" style="display: none">
           <button type="button" id="create-listing-collapsed-bar" class="create-listing-collapsed-bar" aria-expanded="false">
-            <span class="create-listing-collapsed-icon" aria-hidden="true">+</span>
-            <span>Post a Listing</span>
+            <span class="create-listing-collapsed-rail" aria-hidden="true">
+              <span class="create-listing-collapsed-icon">+</span>
+            </span>
+            <span class="create-listing-collapsed-copy">
+              <small>READY TO SELL</small>
+              <strong>Post a listing</strong>
+              <span>Add an item to LinkHub</span>
+            </span>
+            <span class="create-listing-collapsed-arrow" aria-hidden="true">›</span>
           </button>
           <div id="create-listing-body">
           <div class="section-header">
-            <button type="button" id="create-listing-collapse-btn" class="create-listing-collapse-btn" aria-label="Hide the listing form">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <button type="button" id="create-listing-collapse-btn" class="create-listing-collapse-btn" aria-label="Close the listing form" title="Close listing form">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 6 18 18M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span class="create-listing-collapse-label">Close</span>
             </button>
             <div>
-              <span class="eyebrow" id="create-form-eyebrow">New Listing</span>
               <h2 id="create-form-heading">Create a Listing</h2>
             </div>
             <div

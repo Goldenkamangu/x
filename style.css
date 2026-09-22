@@ -96,9 +96,10 @@ html{scroll-behavior:smooth}
 .loading-glow-one{width:280px;height:280px;background:rgba(255,255,255,0.06);top:14%;left:12%;animation:loading-float 4.8s ease-in-out infinite}
 .loading-glow-two{width:260px;height:260px;background:rgba(22,120,232,.22);right:8%;bottom:10%;animation:loading-float 5.8s ease-in-out infinite reverse}
 .loading-logo-wrap{position:relative;width:190px;height:190px;display:grid;place-items:center}
-.loading-logo{position:relative;z-index:2;width:130px;height:130px;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.28))}
-.loading-shine{position:absolute;inset:0;z-index:3;overflow:hidden;border-radius:50%;pointer-events:none;-webkit-mask-image:url('logo.svg');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('logo.svg');mask-size:contain;mask-repeat:no-repeat;mask-position:center}
-.loading-shine::after{content:'';position:absolute;top:-40%;bottom:-40%;left:-60%;width:22%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);animation:loading-shine-sweep 7s ease-in-out infinite}
+.loading-logo{position:relative;z-index:2;width:130px;height:130px;display:block;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.24))}
+/* Shine stays clipped to the original splash-logo footprint; it does not enlarge the logo. */
+.loading-shine{position:absolute;inset:0;z-index:3;overflow:hidden;pointer-events:none;-webkit-mask-image:url('logo.svg');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('logo.svg');mask-size:contain;mask-repeat:no-repeat;mask-position:center}
+.loading-shine::after{content:'';position:absolute;top:-60%;bottom:-60%;left:-60%;width:22%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);animation:loading-shine-sweep 7s ease-in-out infinite}
 @keyframes loading-shine-sweep{0%,72%{left:-60%}84%,100%{left:130%}}
 @media (prefers-reduced-motion:reduce){.loading-shine{display:none}}
 /* Spinning rings removed. */
@@ -2511,3 +2512,726 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
 
 /* ===== Mobile: the "Post a Listing" card collapses to a slim bar when empty ===== */
 .create-listing-collapse-btn:focus-visible,.create-listing-collapsed-bar:focus-visible{outline:2px solid var(--highlight);outline-offset:2px}
+
+/* ===== Create Listing: smooth collapsed rail on desktop + compact card on mobile ===== */
+#create-listing-section{
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  transition:width .38s cubic-bezier(.22,.7,.2,1), padding .28s ease, border-color .28s ease, box-shadow .28s ease, background .28s ease;
+}
+#create-listing-section:not(.listing-collapsed){
+  width:100%;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(47,143,255,.11), transparent 38%),
+    linear-gradient(180deg, rgba(12,12,12,.99), rgba(6,6,6,.98));
+}
+#create-listing-body{
+  max-height:6000px;
+  opacity:1;
+  overflow:hidden;
+  transition:max-height .38s ease, opacity .2s ease, transform .38s cubic-bezier(.22,.7,.2,1);
+  transform:translateY(0);
+}
+#create-listing-section.listing-collapsed{
+  padding:0;
+  border-color:rgba(255,255,255,.08);
+  background:linear-gradient(180deg, rgba(13,13,13,.98), rgba(7,7,7,.98));
+  box-shadow:0 16px 38px rgba(0,0,0,.24);
+}
+#create-listing-section.listing-collapsed #create-listing-body{
+  max-height:0;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(-6px);
+}
+.create-listing-collapsed-bar{
+  display:none;
+  box-sizing:border-box;
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--text);
+  cursor:pointer;
+  box-shadow:0 12px 30px rgba(0,0,0,.22), 0 1px 0 rgba(255,255,255,.04) inset;
+  transition:transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.create-listing-collapsed-bar:hover{
+  border-color:rgba(47,143,255,.38);
+  background:linear-gradient(145deg, rgba(20,20,20,.99), rgba(8,8,8,.99));
+  box-shadow:0 18px 38px rgba(0,0,0,.3), 0 0 0 1px rgba(47,143,255,.05) inset;
+}
+.create-listing-collapsed-rail{
+  position:relative;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  background:linear-gradient(180deg, rgba(47,143,255,.11), rgba(47,143,255,.025));
+}
+.create-listing-collapsed-rail::after{
+  content:'';
+  position:absolute;
+  background:linear-gradient(180deg, var(--highlight), rgba(47,143,255,0));
+  border-radius:999px;
+  opacity:.92;
+}
+.create-listing-collapsed-icon{
+  position:relative;
+  z-index:1;
+  display:grid;
+  place-items:center;
+  width:38px;
+  height:38px;
+  border-radius:13px;
+  background:var(--accent);
+  color:#fff;
+  font-size:1.35rem;
+  line-height:1;
+  font-weight:500;
+  box-shadow:0 10px 22px rgba(22,120,232,.25);
+}
+.create-listing-collapsed-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.create-listing-collapsed-copy small{
+  color:var(--highlight);
+  font-size:.62rem;
+  font-weight:800;
+  letter-spacing:.14em;
+  line-height:1;
+}
+.create-listing-collapsed-copy strong{
+  color:#fff;
+  font-size:1rem;
+  line-height:1.2;
+  font-weight:800;
+}
+.create-listing-collapsed-copy > span{
+  color:var(--muted);
+  font-size:.76rem;
+  line-height:1.35;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.create-listing-collapsed-arrow{
+  display:grid;
+  place-items:center;
+  color:rgba(255,255,255,.6);
+  transition:transform .2s ease, color .2s ease;
+}
+.create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+  color:#fff;
+}
+#create-listing-section:not(.listing-collapsed) .create-listing-collapsed-bar{display:none}
+
+.create-listing-collapse-btn{
+  min-width:72px;
+  width:auto;
+  height:36px;
+  min-height:36px;
+  margin:0;
+  padding:0 10px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.09);
+  color:rgba(255,255,255,.72);
+  cursor:pointer;
+  transition:background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+.create-listing-collapse-btn:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.16);
+  color:#fff;
+  transform:none;
+}
+.create-listing-collapse-label{font-size:.76rem;font-weight:750}
+
+@media (min-width:901px){
+  #create-listing-section:not(.listing-collapsed){padding:20px}
+  #create-listing-section.listing-collapsed{
+    width:92px;
+    min-height:238px;
+    margin-right:auto;
+    border-radius:24px;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:space-between;
+    width:92px;
+    min-height:238px;
+    margin:0;
+    padding:0;
+    border-radius:23px;
+    overflow:hidden;
+    text-align:center;
+    background:linear-gradient(180deg, rgba(18,18,18,.98), rgba(7,7,7,.98));
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover{
+    transform:translateY(-2px);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    width:100%;
+    height:76px;
+    border-bottom:1px solid rgba(255,255,255,.07);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    left:10px;
+    top:10px;
+    right:10px;
+    height:2px;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    flex:1;
+    align-items:center;
+    gap:10px;
+    padding:16px 0;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy small{
+    display:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    font-size:.88rem;
+    letter-spacing:.03em;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{
+    display:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{
+    width:100%;
+    min-height:48px;
+    border-top:1px solid rgba(255,255,255,.06);
+    font-size:1.05rem;
+    transform:rotate(90deg);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+    transform:rotate(90deg) translateX(3px);
+  }
+  #create-listing-section:not(.listing-collapsed) .create-listing-collapsed-bar{display:none}
+  .create-listing-collapse-btn{display:inline-flex}
+}
+
+@media (max-width:900px){
+  #create-listing-section:not(.listing-collapsed){padding:18px}
+  #create-listing-section.listing-collapsed{padding:0;width:100%}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    display:flex;
+    flex-direction:row;
+    align-items:stretch;
+    gap:0;
+    width:100%;
+    min-height:74px;
+    margin:0;
+    padding:0;
+    border-radius:18px;
+    overflow:hidden;
+    text-align:left;
+    background:linear-gradient(145deg, rgba(18,18,18,.98), rgba(7,7,7,.98));
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    width:54px;
+    min-width:54px;
+    background:linear-gradient(180deg, rgba(47,143,255,.11), rgba(47,143,255,.025));
+    border-right:1px solid rgba(255,255,255,.07);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    left:9px;
+    top:11px;
+    bottom:11px;
+    width:2px;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-icon{width:34px;height:34px;border-radius:11px;font-size:1.2rem}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    flex:1;
+    padding:12px 8px 12px 13px;
+    gap:3px;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy small{font-size:.58rem}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{font-size:.92rem}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{font-size:.72rem;white-space:nowrap}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{width:38px;min-width:38px;font-size:1rem}
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{transform:translateX(3px)}
+  .create-listing-collapse-btn{min-width:38px;width:38px;padding:0;border-radius:50%}
+  .create-listing-collapse-label{display:none}
+}
+
+.create-listing-collapsed-bar:focus-visible,
+.create-listing-collapse-btn:focus-visible{
+  outline:2px solid var(--highlight);
+  outline-offset:3px;
+}
+
+@media (prefers-reduced-motion:reduce){
+  #create-listing-section,#create-listing-body,.create-listing-collapsed-bar,.create-listing-collapsed-arrow,.create-listing-collapse-btn{transition:none!important}
+}
+
+
+/* ===== Create Listing v3: use the reclaimed space + polished closed states ===== */
+@media (min-width:901px){
+  .container{
+    transition:grid-template-columns .34s cubic-bezier(.22,.7,.2,1);
+  }
+  .container.listing-compose-collapsed{
+    grid-template-columns:112px 10px minmax(0,1fr);
+  }
+  .container.listing-compose-collapsed .desktop-form-column{
+    min-width:0;
+    align-items:flex-start;
+  }
+  .container.listing-compose-collapsed #create-listing-section{
+    width:112px;
+    max-width:112px;
+    align-self:flex-start;
+    min-width:0;
+    margin:0;
+    padding:0;
+    border-radius:24px;
+    overflow:hidden;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    width:112px;
+    min-height:284px;
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:24px;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(47,143,255,.18), transparent 36%),
+      linear-gradient(180deg, #111214 0%, #090a0c 100%);
+    box-shadow:
+      0 22px 55px rgba(0,0,0,.34),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover{
+    transform:translateY(-2px);
+    border-color:rgba(47,143,255,.34);
+    box-shadow:
+      0 28px 65px rgba(0,0,0,.4),
+      0 0 0 1px rgba(47,143,255,.06) inset;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    position:relative;
+    height:84px;
+    width:100%;
+    border-bottom:1px solid rgba(255,255,255,.075);
+    background:linear-gradient(180deg, rgba(47,143,255,.10), rgba(47,143,255,.025));
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:18px;
+    right:18px;
+    height:2px;
+    border-radius:999px;
+    background:linear-gradient(90deg, transparent, var(--highlight), transparent);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    left:16px;
+    top:auto;
+    right:16px;
+    bottom:10px;
+    height:2px;
+    background:rgba(255,255,255,.06);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-icon{
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    font-size:1.45rem;
+    background:linear-gradient(145deg, #4b63ff, #3450e8);
+    box-shadow:0 12px 25px rgba(52,80,232,.27);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    flex:1;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:18px 0;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy small{
+    display:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    font-size:.87rem;
+    line-height:1;
+    letter-spacing:.02em;
+    color:#f8faff;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{
+    display:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{
+    width:100%;
+    min-height:54px;
+    border-top:1px solid rgba(255,255,255,.065);
+    font-size:1.8rem;
+    color:rgba(255,255,255,.48);
+    line-height:1;
+    transform:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+    transform:translateX(3px);
+    color:#fff;
+  }
+}
+
+@media (max-width:900px){
+  #create-listing-section.listing-collapsed{
+    padding:0;
+    border:none;
+    background:transparent;
+    box-shadow:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    min-height:78px;
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:22px;
+    background:
+      radial-gradient(circle at 0% 50%, rgba(47,143,255,.13), transparent 34%),
+      linear-gradient(145deg, #111214 0%, #090a0c 100%);
+    box-shadow:0 16px 38px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover{
+    transform:translateY(-1px);
+    border-color:rgba(47,143,255,.32);
+    box-shadow:0 20px 44px rgba(0,0,0,.32), 0 0 0 1px rgba(47,143,255,.05) inset;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    position:relative;
+    width:66px;
+    min-width:66px;
+    border-right:1px solid rgba(255,255,255,.07);
+    background:linear-gradient(180deg, rgba(47,143,255,.10), rgba(47,143,255,.02));
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::before{
+    content:'';
+    position:absolute;
+    top:12px;
+    bottom:12px;
+    left:8px;
+    width:2px;
+    border-radius:999px;
+    background:linear-gradient(180deg, var(--highlight), rgba(47,143,255,0));
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    display:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-icon{
+    width:38px;
+    height:38px;
+    border-radius:13px;
+    font-size:1.3rem;
+    background:linear-gradient(145deg, #4b63ff, #3450e8);
+    box-shadow:0 10px 22px rgba(52,80,232,.25);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    padding:12px 8px 12px 15px;
+    gap:3px;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy small{
+    font-size:.58rem;
+    letter-spacing:.13em;
+    color:var(--highlight);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{
+    font-size:.98rem;
+    letter-spacing:-.01em;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{
+    font-size:.73rem;
+    color:rgba(230,238,248,.58);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{
+    width:44px;
+    min-width:44px;
+    margin:11px 10px 11px 0;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    font-size:1.5rem;
+    color:rgba(255,255,255,.55);
+    background:rgba(255,255,255,.035);
+    transition:transform .2s ease, background .2s ease, color .2s ease;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+    transform:translateX(2px);
+    background:rgba(47,143,255,.09);
+    color:#fff;
+  }
+}
+
+/* ===== Create Listing v6: polished collapsed states ===== */
+
+/* Keep the marketplace cards fluid like the original layout. */
+#listings.listing-grid{
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  align-items:stretch;
+}
+#listings.listing-grid .listing{
+  width:auto;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+/* Calm, consistent open/closed motion. */
+#create-listing-section,
+#create-listing-body,
+.create-listing-collapsed-bar,
+.create-listing-collapsed-arrow,
+.create-listing-collapse-btn{
+  will-change:transform;
+}
+#create-listing-section{
+  transition:width .42s cubic-bezier(.22,.8,.2,1), padding .35s cubic-bezier(.22,.8,.2,1), border-color .28s ease, box-shadow .28s ease, background .28s ease;
+}
+#create-listing-body{
+  transition:max-height .42s cubic-bezier(.22,.8,.2,1), opacity .26s ease, transform .42s cubic-bezier(.22,.8,.2,1);
+}
+
+/* Desktop: a slim vertical rail that feels intentional, not like an empty column. */
+@media (min-width:901px){
+  .container{
+    transition:grid-template-columns .44s cubic-bezier(.22,.8,.2,1);
+  }
+  .container.listing-compose-collapsed{
+    grid-template-columns:88px 12px minmax(0,1fr);
+  }
+  .container.listing-compose-collapsed .desktop-form-column{
+    min-width:0;
+    align-items:flex-start;
+  }
+  .container.listing-compose-collapsed #create-listing-section{
+    width:88px;
+    max-width:88px;
+    min-width:88px;
+    align-self:flex-start;
+    margin:0;
+    padding:0;
+    border-radius:22px;
+    overflow:hidden;
+    background:transparent;
+    border:0;
+    box-shadow:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    display:flex;
+    width:88px;
+    min-height:252px;
+    margin:0;
+    padding:0;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:space-between;
+    overflow:hidden;
+    text-align:center;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:22px;
+    background:
+      linear-gradient(180deg, rgba(16,17,19,.98), rgba(8,9,11,.98));
+    box-shadow:
+      0 16px 38px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.045);
+    transition:transform .32s cubic-bezier(.22,.8,.2,1), border-color .24s ease, box-shadow .24s ease;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover{
+    transform:translateY(-2px);
+    border-color:rgba(47,143,255,.30);
+    box-shadow:
+      0 20px 44px rgba(0,0,0,.34),
+      inset 0 1px 0 rgba(255,255,255,.05),
+      0 0 0 1px rgba(47,143,255,.035);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    position:relative;
+    width:100%;
+    height:68px;
+    min-height:68px;
+    border-bottom:1px solid rgba(255,255,255,.07);
+    background:rgba(255,255,255,.018);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail::before{
+    content:'';
+    position:absolute;
+    left:17px;
+    right:17px;
+    top:0;
+    height:2px;
+    border-radius:999px;
+    background:var(--highlight);
+    opacity:.9;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    display:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-icon{
+    width:36px;
+    height:36px;
+    border-radius:12px;
+    background:var(--accent) !important;
+    color:#fff;
+    font-size:1.18rem;
+    line-height:1;
+    font-weight:500;
+    box-shadow:0 8px 18px rgba(22,120,232,.20);
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    flex:1;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    padding:12px 0;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy small,
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{
+    display:none;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    font-size:.80rem;
+    font-weight:800;
+    line-height:1;
+    letter-spacing:.02em;
+    color:#f8faff;
+    white-space:nowrap;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{
+    width:100%;
+    min-height:44px;
+    border-top:1px solid rgba(255,255,255,.065);
+    display:grid;
+    place-items:center;
+    font-size:1.25rem;
+    line-height:1;
+    color:rgba(255,255,255,.46);
+    background:rgba(255,255,255,.012);
+    transform:none;
+    transition:color .22s ease, background .22s ease;
+  }
+  .container.listing-compose-collapsed #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+    color:#fff;
+    background:rgba(47,143,255,.045);
+    transform:none;
+  }
+}
+
+/* Mobile: compact action card, thin enough to sit naturally above the listings. */
+@media (max-width:900px){
+  #create-listing-section.listing-collapsed{
+    width:100%;
+    padding:0;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar{
+    display:flex;
+    width:100%;
+    min-height:68px;
+    margin:0;
+    padding:0;
+    flex-direction:row;
+    align-items:stretch;
+    gap:0;
+    overflow:hidden;
+    text-align:left;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;
+    background:linear-gradient(145deg, rgba(16,17,19,.98), rgba(8,9,11,.98));
+    box-shadow:0 12px 30px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.045);
+    transition:transform .28s cubic-bezier(.22,.8,.2,1), border-color .24s ease, box-shadow .24s ease;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover{
+    transform:translateY(-1px);
+    border-color:rgba(47,143,255,.28);
+    box-shadow:0 16px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail{
+    position:relative;
+    width:58px;
+    min-width:58px;
+    border-right:1px solid rgba(255,255,255,.07);
+    background:rgba(255,255,255,.018);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::before{
+    content:'';
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    width:2px;
+    border-radius:999px;
+    background:var(--highlight);
+    opacity:.9;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-rail::after{
+    display:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-icon{
+    width:34px;
+    height:34px;
+    border-radius:11px;
+    background:var(--accent) !important;
+    color:#fff;
+    font-size:1.12rem;
+    box-shadow:0 8px 18px rgba(22,120,232,.20);
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy{
+    flex:1;
+    min-width:0;
+    padding:9px 10px 9px 14px;
+    gap:2px;
+    justify-content:center;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy small{
+    display:none;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy strong{
+    font-size:.94rem;
+    font-weight:800;
+    line-height:1.1;
+    letter-spacing:-.01em;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-copy > span{
+    display:block;
+    font-size:.70rem;
+    line-height:1.15;
+    color:rgba(230,238,248,.48);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-arrow{
+    width:36px;
+    min-width:36px;
+    height:36px;
+    align-self:center;
+    margin:0 10px 0 0;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:11px;
+    font-size:1.2rem;
+    line-height:1;
+    color:rgba(255,255,255,.45);
+    background:rgba(255,255,255,.025);
+    transform:none;
+    transition:transform .22s ease, color .22s ease, border-color .22s ease, background .22s ease;
+  }
+  #create-listing-section.listing-collapsed .create-listing-collapsed-bar:hover .create-listing-collapsed-arrow{
+    transform:translateX(2px);
+    background:rgba(47,143,255,.06);
+    border-color:rgba(47,143,255,.18);
+    color:#fff;
+  }
+}
