@@ -46,7 +46,7 @@ html{scroll-behavior:smooth}
 .hamburger-btn.drawer-is-open{opacity:0;pointer-events:none}
 .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);z-index:900;opacity:0;transition:opacity .2s ease}
 .drawer-backdrop.hidden{display:none}
-.nav-drawer{position:fixed;top:0;right:0;bottom:0;width:min(340px,86vw);background:linear-gradient(180deg,rgba(18,18,18,.99),rgba(8,8,8,.99));border-left:1px solid rgba(255,255,255,0.11);box-shadow:-30px 0 60px rgba(0,0,0,.5);z-index:901;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .26s ease;padding:20px 18px 24px;overflow-y:auto}
+.nav-drawer{position:fixed;top:0;right:0;bottom:0;width:min(340px,86vw);background:linear-gradient(180deg,rgba(18,18,18,.99),rgba(8,8,8,.99));border-left:1px solid rgba(255,255,255,0.11);box-shadow:-30px 0 60px rgba(0,0,0,.5);z-index:901;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .26s ease;padding:calc(20px + env(safe-area-inset-top, 0px)) calc(18px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) 18px;overflow-y:auto}
 .nav-drawer.open{transform:translateX(0)}
 .nav-drawer-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .nav-drawer-header .lightbox-close{width:34px;height:34px}
@@ -91,36 +91,24 @@ html{scroll-behavior:smooth}
 .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100dvh;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#000;z-index:999999;opacity:1;visibility:visible;transition:opacity .42s ease,visibility .42s ease;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box}
 .loading-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .loading-inner{position:relative;width:100%;height:100%;padding:0;background:none;border:none;box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px;overflow:hidden}
-.loading-glow{position:absolute;border-radius:50%;filter:blur(60px);opacity:.4;pointer-events:none}
+/* Background glow blobs removed. */
+.loading-glow{display:none}
 .loading-glow-one{width:280px;height:280px;background:rgba(255,255,255,0.06);top:14%;left:12%;animation:loading-float 4.8s ease-in-out infinite}
 .loading-glow-two{width:260px;height:260px;background:rgba(22,120,232,.22);right:8%;bottom:10%;animation:loading-float 5.8s ease-in-out infinite reverse}
 .loading-logo-wrap{position:relative;width:140px;height:140px;display:grid;place-items:center}
-.loading-logo{position:relative;z-index:2;width:92px;height:92px;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.28));animation:loading-breathe 2.2s ease-in-out infinite}
-.loading-ring{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,0.11)}
+.loading-logo{position:relative;z-index:2;width:92px;height:92px;filter:drop-shadow(0 10px 24px rgba(22,120,232,0.28))}
+/* Spinning rings removed. */
+.loading-ring{display:none}
 .loading-ring-one{inset:4px;animation:loading-spin 7s linear infinite}
 .loading-ring-two{inset:16px;border-color:rgba(47,143,255,.25);border-top-color:rgba(47,143,255,0.55);border-bottom-color:rgba(255,255,255,0.14);animation:loading-spin-reverse 3.5s linear infinite}
 .loading-heading{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px}
 .loading-brand{margin:0;color:#fff;font-size:1.9rem;font-weight:850;letter-spacing:.01em}
 .loading-copy{margin:0;color:rgba(255,255,255,.7);font-size:.98rem;font-weight:500;letter-spacing:.01em;max-width:280px}
-.loading-progress{position:absolute;left:50%;bottom:calc(18% + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(220px,60vw);height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
-.loading-progress-bar{display:block;height:100%;width:42%;border-radius:inherit;background:linear-gradient(90deg,rgba(255,255,255,0.1),var(--accent),#2f8fff);box-shadow:0 0 18px rgba(22,120,232,0.4);animation:loading-progress 1.45s cubic-bezier(.4,0,.2,1) infinite}
-.loading-status{position:absolute;left:50%;bottom:calc(12% + env(safe-area-inset-bottom));transform:translateX(-50%);margin:0;color:rgba(255,255,255,.55);font-size:.82rem;line-height:1.5;letter-spacing:.02em;white-space:nowrap}
-.loading-dots{display:inline-flex;min-width:20px;justify-content:flex-start;margin-left:2px}
-.loading-dots span{opacity:.22;animation:loading-dot 1.2s ease-in-out infinite}
-.loading-dots span:nth-child(2){animation-delay:.18s}
-.loading-dots span:nth-child(3){animation-delay:.36s}
-@media (max-width:600px){
-  .loading-progress{bottom:calc(22% + env(safe-area-inset-bottom))}
-  .loading-status{bottom:calc(15% + env(safe-area-inset-bottom))}
-}
 @keyframes loading-spin{to{transform:rotate(360deg)}}
 @keyframes loading-spin-reverse{to{transform:rotate(-360deg)}}
 @keyframes loading-breathe{0%,100%{transform:scale(.97)}50%{transform:scale(1.04)}}
-@keyframes loading-progress{0%{transform:translateX(-130%) scaleX(.65)}50%{transform:translateX(45%) scaleX(1)}100%{transform:translateX(210%) scaleX(.65)}}
-@keyframes loading-dot{0%,100%{opacity:.2;transform:translateY(0)}50%{opacity:1;transform:translateY(-1px)}}
 @keyframes loading-sheen{0%,42%{transform:translateX(-120%)}70%,100%{transform:translateX(120%)}}
 @keyframes loading-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-12px,0)}}
-@media (prefers-reduced-motion:reduce){.loading-ring-one,.loading-ring-two,.loading-logo,.loading-progress-bar,.loading-inner::before,.loading-glow-one,.loading-glow-two,.loading-dots span{animation:none}.loading-progress-bar{width:65%;opacity:.7}}
 .password-field{position:relative}
 .password-field input{width:100%;padding-right:52px}
 .password-toggle{position:absolute;top:35%;right:14px;transform:translateY(-50%);border:none;background:rgba(255,255,255,0.08);color:var(--text);width:38px;height:38px;padding:0;border-radius:50%;cursor:pointer;transition:background 0.18s ease,font-size 0.12s ease;line-height:1;display:flex;align-items:center;justify-content:center}
@@ -316,7 +304,7 @@ a,input,textarea,select,.listing-img-wrap,.password-toggle{-webkit-tap-highlight
 .lightbox-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.9);backdrop-filter:blur(8px);padding:48px;opacity:1;visibility:visible;transition:opacity 0.22s ease,visibility 0.22s ease}
 .lightbox-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .lightbox-img{max-width:min(92vw,920px);max-height:88vh;width:auto;height:auto;object-fit:contain;border-radius:14px;box-shadow:0 40px 100px rgba(0,0,0,0.6);background:rgba(255,255,255,0.02)}
-.lightbox-close{position:absolute;top:20px;right:24px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:1.5rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.18s ease,transform 0.18s ease}
+.lightbox-close{position:absolute;top:calc(20px + env(safe-area-inset-top, 0px));right:calc(24px + env(safe-area-inset-right, 0px));width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:1.5rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.18s ease,transform 0.18s ease}
 .lightbox-close:hover{background:rgba(255,255,255,0.2);transform:translateY(-1px)}
 .listing-overlay-panel{position:relative;width:min(1200px,94vw);height:min(760px,90vh);max-height:90vh;display:flex;flex-direction:column;border-radius:32px;border:1px solid rgba(255,255,255,0.06);background:#080808;box-shadow:0 50px 140px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);overflow:hidden}
 .listing-overlay-panel > .lightbox-close{position:fixed}
@@ -373,7 +361,7 @@ a,input,textarea,select,.listing-img-wrap,.password-toggle{-webkit-tap-highlight
 .carty-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 16px 36px rgba(255,255,255,0.16)}
 .icon{display:block;flex-shrink:0}
 .carty-fab-icon,.carty-ai-svg{color:#fff;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))}
-.carty-fab::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,0.16);animation:carty-pulse 2.2s ease-out infinite;pointer-events:none}
+/* Pulsing ring removed: it drew a moving circle around the button and covered nearby text on small screens. */
 @keyframes carty-pulse{0%{transform:scale(0.9);opacity:0.9}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
 
 .carty-panel{position:fixed;bottom:96px;right:24px;width:320px;max-width:calc(100vw - 32px);background:linear-gradient(180deg,rgba(4,22,50,0.98),rgba(1,10,24,0.97));border:1px solid rgba(255,255,255,0.11);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,0.5);z-index:9999;overflow:hidden;transform-origin:bottom right;transform:scale(1) translateY(0);opacity:1;transition:transform 0.22s ease,opacity 0.22s ease}
@@ -2157,8 +2145,6 @@ input[type=file],
    (before, the bar and text were pinned near the bottom). */
 .loading-inner{gap:0}
 .loading-progress,.loading-status{position:static;left:auto;bottom:auto;transform:none}
-.loading-progress{margin-top:30px}
-.loading-status{margin-top:14px}
 
 /* ===== Reviews, seller ratings, store design and dashboard ===== */
 .reviews-section{flex-shrink:0;min-width:0;margin-top:22px;padding:18px 0 10px;border-top:1px solid rgba(255,255,255,.08);scroll-margin-top:18px}
@@ -2485,3 +2471,19 @@ html.linkhub-action-open,html.linkhub-action-open body{overflow:hidden}
   .site-nav-actions{margin-right:-12px}
   .desktop-nav{flex:0 1 auto}
 }
+
+/* ===== Loading screen: friendly message instead of spinning forever (offline / failed to load) ===== */
+.loading-error{display:none}
+.loading-overlay.has-error .loading-progress,.loading-overlay.has-error .loading-status{display:none}
+.loading-overlay.has-error .loading-error{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:300px;margin-top:26px;text-align:center}
+.loading-error-title{font-size:1.1rem;color:#fff}
+.loading-error-copy{margin:0;font-size:.9rem;line-height:1.45;color:rgba(255,255,255,.7)}
+.loading-overlay .loading-error-btn{width:auto;min-height:0;margin:10px 0 0;padding:11px 24px;border-radius:999px;font-size:.92rem;font-weight:700}
+
+/* ===== Mobile menu: page behind must not scroll, close button sits in the header row ===== */
+html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
+.nav-drawer{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.nav-drawer-menu{overscroll-behavior:contain}
+.drawer-backdrop{touch-action:none;overscroll-behavior:contain}
+.nav-drawer .nav-drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.nav-drawer .nav-drawer-header .lightbox-close{position:static;top:auto;right:auto;width:38px;height:38px;margin:0;flex:0 0 auto;font-size:1.25rem}

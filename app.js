@@ -1,4 +1,11 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// database-connector.js is a saved copy of the official Supabase library: the code that lets this app talk to
+// the Supabase database (log in, listings, photos, chats, live updates). It is our own file instead of a
+// download from the internet, so the app can start with no connection once it has been opened before.
+// Keep database-connector.js in the same folder as this file. See DATABASE-CONNECTOR-README.md.
+import { createClient } from './database-connector.js'
+
+// Tells the loading screen's safety net (in index.html) that this file really started.
+window.__linkhubBooted = true
 
 function loadStoredJSON(key, fallback) {
   try {
@@ -1954,6 +1961,12 @@ linkhubActionClose?.addEventListener('click', () => {
   }
 })
 linkhubActionFix?.addEventListener('click', () => linkhubActionClose?.click())
+// Tap outside the card to dismiss it (not while it's busy saving).
+linkhubActionModal?.addEventListener('click', (event) => {
+  if (event.target.closest('.linkhub-action-card')) return
+  if (linkhubActionModal.classList.contains('is-warning')) linkhubActionClose?.click()
+  else if (linkhubActionModal.classList.contains('is-complete')) closeLinkHubActionModal()
+})
 
 createListingBtn.addEventListener('click', async () => {
   listingMsg.textContent = ''
@@ -4502,6 +4515,12 @@ cartyToggle?.addEventListener('click', () => {
   else closeCarty()
 })
 cartyClose?.addEventListener('click', closeCarty)
+// Tap anywhere outside the chat window to close it.
+document.addEventListener('click', (ev) => {
+  if (!cartyPanel || cartyPanel.classList.contains('hidden')) return
+  if (ev.target.closest('#carty-panel, #carty-toggle, .carty-fab')) return
+  closeCarty()
+})
 
 cartyForm?.addEventListener('submit', async ev => {
   ev.preventDefault()
@@ -5762,7 +5781,8 @@ function lhOverlayChanged(el) {
     return
   }
   // Keep the page behind locked for as long as any window is open (one window closing must not unlock it).
-  document.documentElement.classList.toggle('lightbox-open', lhOverlayStack.some(lhIsPlainOverlay))
+  // (the mobile menu counts too: without this, scrolling inside the menu scrolled the page behind it)
+  document.documentElement.classList.toggle('lightbox-open', lhOverlayStack.some((o) => lhIsPlainOverlay(o) || o.id === 'nav-drawer'))
   lhScheduleHistorySync()
 }
 
@@ -5845,9 +5865,13 @@ function lhRootBack() {
   const now = Date.now()
   if (now - lhLastRootBack < 2500) {
     lhLastRootBack = 0
-    history.back() // second press: really leave
-    // If LinkHub was the first page of this tab there is nowhere to go and we're still here: put the guard back.
-    setTimeout(() => { if (history.state && history.state.lhRoot) history.pushState({ lh: 1, lhDepth: 0 }, '') }, 500)
+    // Second press: let the browser take over so LinkHub really closes.
+    lhHistoryReady = false
+    history.back() // leaves LinkHub when there is a page before it
+    // When LinkHub is the first page of the tab or the installed app there is nothing before it. We stay on the
+    // bottom entry, and the next Back press is the browser's own, which closes the tab/app. Our handling comes
+    // back for when the page is used again.
+    setTimeout(() => { lhHistoryReady = true }, 800)
     return
   }
   lhLastRootBack = now
@@ -5881,6 +5905,8 @@ function lhInitWindows() {
     if (!(st && (st.lh || st.lhRoot))) {
       history.replaceState({ lhRoot: 1 }, '')
       history.pushState({ lh: 1, lhDepth: 0 }, '')
+    } else if (st.lhRoot) {
+      history.pushState({ lh: 1, lhDepth: 0 }, '') // reloaded on the bottom entry: put the guard back
     }
     lhHistoryReady = true
   } catch { /* History API not available (very old in-app browsers) */ }
@@ -5979,6 +6005,10 @@ fetchAndRenderListings().then(openLinkedListingFromUrl)
 // copy of sw.js itself (GitHub Pages doesn't send strong no-cache headers, so
 // without this a phone can keep running an old worker for a long time,
 // which can make Chrome/Safari decide the site isn't installable at all).
+window.addEventListener('offline', () => showUxToast('You’re offline. Some things won’t work until you’re back online.'))
+window.addEventListener('online', () => showUxToast('Back online.'))
+if (navigator.onLine === false) setTimeout(() => showUxToast('You’re offline. Some things won’t work until you’re back online.'), 2600)
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' })

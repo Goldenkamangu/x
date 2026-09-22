@@ -326,16 +326,48 @@
           <span class="loading-ring loading-ring-two" aria-hidden="true"></span>
           <img src="logo.svg" alt="LinkHub" class="loading-logo" />
         </div>
-        <div class="loading-progress" aria-hidden="true">
-          <span class="loading-progress-bar"></span>
+        <div class="loading-error" role="alert">
+          <strong class="loading-error-title">You’re offline</strong>
+          <p class="loading-error-copy">LinkHub needs an internet connection to load. Check your connection and try again.</p>
+          <button type="button" id="loading-retry" class="loading-error-btn">Try again</button>
         </div>
-        <p class="loading-status">
-          Loading<span class="loading-dots"
-            ><span>.</span><span>.</span><span>.</span></span
-          >
-        </p>
       </div>
     </div>
+    <script>
+      // Safety net for the loading screen. It runs on its own, so it still works when app.js can't start
+      // (for example the first visit with no internet) or crashes half way.
+      (function () {
+        window.__linkhubSplashShownAt = performance.now();
+        var splash = document.getElementById('loading-screen');
+        if (!splash) return;
+        var failed = false;
+        function showFailure() {
+          if (window.__linkhubBooted || failed) return;
+          failed = true;
+          var offline = navigator.onLine === false;
+          splash.querySelector('.loading-error-title').textContent = offline ? 'You’re offline' : 'LinkHub couldn’t load';
+          splash.querySelector('.loading-error-copy').textContent = offline
+            ? 'LinkHub needs an internet connection to load. Check your connection and try again.'
+            : 'Something went wrong while loading. Check your connection and try again.';
+          splash.classList.add('has-error');
+        }
+        function forceHide() {
+          if (splash.classList.contains('hidden')) return;
+          window.__linkhubLoadingHidden = true;
+          splash.classList.add('hidden');
+          document.body.classList.add('app-ready');
+        }
+        // A script (app.js or the file it imports) failed to download.
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (t && t.tagName === 'SCRIPT') showFailure();
+        }, true);
+        setTimeout(showFailure, 9000); // app.js still hasn't started after 9 seconds
+        setTimeout(function () { if (window.__linkhubBooted) forceHide(); }, 12000); // started, but never cleared the screen
+        document.getElementById('loading-retry').addEventListener('click', function () { location.reload(); });
+        window.addEventListener('online', function () { if (failed && !window.__linkhubBooted) location.reload(); });
+      })();
+    </script>
     <div id="linkhub-action-modal" class="linkhub-action-modal hidden" aria-hidden="true">
       <div class="linkhub-action-backdrop"></div>
       <section class="linkhub-action-card" role="dialog" aria-modal="true" aria-labelledby="linkhub-action-title">
@@ -1547,12 +1579,19 @@
           Hey! 👋 I’m Carty 🛒 Here to help! What are you looking for? 😊
         </div>
       </div>
-      <form id="carty-form" class="carty-form">
+      <form id="carty-form" class="carty-form" autocomplete="off">
         <input
           id="carty-input"
-          type="text"
+          type="search"
+          name="carty-message"
           placeholder="e.g. cheap phone under 200, good condition"
           autocomplete="off"
+          autocapitalize="sentences"
+          autocorrect="off"
+          spellcheck="false"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="other"
         />
         <button
           id="carty-mic"
@@ -1610,6 +1649,6 @@
       </form>
     </div>
 
-    <script type="module" src="app.js?v=20260921-windows-back"></script>
+    <script type="module" src="app.js?v=20260922-splash-plain"></script>
   </body>
 </html>
