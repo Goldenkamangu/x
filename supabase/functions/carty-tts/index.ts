@@ -16,7 +16,7 @@ const corsHeaders = {
 
 const MAX_TEXT_LENGTH = 1800;
 const MODEL = "gpt-4o-mini-tts";
-const VOICE = "marin";
+const VOICE = "onyx";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -61,9 +61,10 @@ Deno.serve(async (req: Request) => {
         voice: VOICE,
         input: text,
         instructions:
-          "Speak as Carty, a friendly and confident shopping assistant. " +
-          "Use natural conversational pacing, clear pronunciation, gentle emphasis, " +
-          "and a warm modern tone. Do not sound robotic or overly formal.",
+          "Speak as Carty, a friendly and confident male shopping assistant. " +
+          "Use a natural, warm, deeper masculine vocal character with relaxed pacing, " +
+          "clear pronunciation, gentle emphasis, and a modern conversational tone. " +
+          "Do not sound robotic or overly formal.",
         response_format: "mp3",
         speed: 0.98,
       }),
