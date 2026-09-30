@@ -166,8 +166,10 @@ const localDb = {
 const SUPABASE_URL = 'https://izdwacnhqrtsgngmsigu.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHdhY25ocXJ0c2duZ21zaWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDk4MjksImV4cCI6MjEwMTUyNTgyOX0.coV2SWeECtgXNeLtHOJ2T6_ekmV7Ynya35Ewl8oH7GI'
 const useSupabase = SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'SUPABASE_URL'
-// AI search Edge Function — deploy this function (see ai-search-function.ts) then leave as-is
+// AI search Edge Function — existing Carty brain/search endpoint
 const AI_SEARCH_URL = `${SUPABASE_URL}/functions/v1/LinkHub-Carty`
+// Separate Carty voice endpoint. The OpenAI key stays server-side in Supabase.
+const AI_TTS_URL = `${SUPABASE_URL}/functions/v1/carty-tts`
 
 const db = useSupabase
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -4544,16 +4546,101 @@ function updateCartyVoiceToggleUI() {
 }
 updateCartyVoiceToggleUI()
 
-function speakCarty(text) {
-  if (!cartyVoiceEnabled || !text || !('speechSynthesis' in window)) return
+let currentCartyAudio = null
+let cartyVoiceBusy = false
+const CARTY_VOICE_LIMIT = 20
+const CARTY_VOICE_WINDOW_MS = 60 * 60 * 1000
+
+function getCartyVoiceUsage() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('carty-voice-usage-v1') || '{"start":0,"count":0}')
+    const now = Date.now()
+    if (!raw.start || now - raw.start >= CARTY_VOICE_WINDOW_MS) return { start: now, count: 0 }
+    return { start: Number(raw.start), count: Number(raw.count) || 0 }
+  } catch {
+    return { start: Date.now(), count: 0 }
+  }
+}
+
+function saveCartyVoiceUsage(usage) {
+  try { localStorage.setItem('carty-voice-usage-v1', JSON.stringify(usage)) } catch {}
+}
+
+function stopCartyVoice() {
+  try { window.speechSynthesis?.cancel() } catch {}
+  if (currentCartyAudio) {
+    try {
+      currentCartyAudio.pause()
+      currentCartyAudio.currentTime = 0
+    } catch {}
+    currentCartyAudio = null
+  }
+  cartyVoiceBusy = false
+}
+
+function speakCartyFallback(text) {
+  if (!text || !('speechSynthesis' in window)) return
   try {
     window.speechSynthesis.cancel()
     const utter = new SpeechSynthesisUtterance(text)
-    utter.rate = 1.02
-    utter.pitch = 1.05
+    utter.lang = 'en-ZA'
+    utter.rate = 0.98
+    utter.pitch = 1
     window.speechSynthesis.speak(utter)
   } catch (e) {
-    console.warn('Speech synthesis failed', e)
+    console.warn('Carty fallback speech failed', e)
+  }
+}
+
+async function speakCarty(text) {
+  if (!cartyVoiceEnabled || !text) return
+  if (cartyVoiceBusy) stopCartyVoice()
+
+  const usage = getCartyVoiceUsage()
+  if (usage.count >= CARTY_VOICE_LIMIT) {
+    console.warn('Carty voice hourly limit reached; using local browser voice.')
+    speakCartyFallback(text)
+    return
+  }
+
+  cartyVoiceBusy = true
+  try {
+    const res = await fetch(AI_TTS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ text: String(text).slice(0, 1800) })
+    })
+
+    if (!res.ok) throw new Error(`TTS request failed (${res.status})`)
+    const data = await res.json()
+    if (!data?.audio_base64) throw new Error('TTS response did not contain audio')
+
+    const audio = new Audio(`data:audio/mpeg;base64,${data.audio_base64}`)
+    currentCartyAudio = audio
+    audio.volume = 1
+    usage.count += 1
+    saveCartyVoiceUsage(usage)
+
+    audio.addEventListener('ended', () => {
+      if (currentCartyAudio === audio) currentCartyAudio = null
+      cartyVoiceBusy = false
+    }, { once: true })
+
+    audio.addEventListener('error', () => {
+      if (currentCartyAudio === audio) currentCartyAudio = null
+      cartyVoiceBusy = false
+      speakCartyFallback(text)
+    }, { once: true })
+
+    await audio.play()
+  } catch (e) {
+    console.warn('Carty natural voice failed:', e)
+    cartyVoiceBusy = false
+    speakCartyFallback(text)
   }
 }
 
