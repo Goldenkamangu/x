@@ -3307,15 +3307,14 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
 #store-progress.hidden,#store-manage-form.hidden{display:none}
 .admin-billing-heading{margin:18px 0 4px;font-size:1rem}
 @media (max-width:720px){
-  .store-plan-picker{display:flex;grid-template-columns:none;gap:9px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:2px 2px 9px;scrollbar-width:thin}
-  .store-plan-card{flex:0 0 min(78vw,250px);min-height:0;gap:6px;padding:12px 30px 12px 12px;scroll-snap-align:start}
-  .store-plan-card-boost{padding:12px}
-  .store-plan-card-name{font-size:.7rem}
-  .store-plan-card-price{font-size:1.25rem}
-  .store-plan-card-summary{font-size:.7rem;line-height:1.35}
-  .store-plan-card:not(.store-plan-card-boost) .store-plan-card-summary{display:none}
-  .store-plan-card-feature{font-size:.68rem;line-height:1.3}
-  .store-plan-card-note{font-size:.68rem}
+  .store-plan-picker{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;overflow:visible;padding:2px 0;scroll-snap-type:none}
+  .store-plan-card{width:100%;box-sizing:border-box;min-height:0;gap:8px;padding:14px 42px 14px 14px}
+  .store-plan-card-boost{padding:14px}
+  .store-plan-card-name{font-size:.76rem}
+  .store-plan-card-price{font-size:1.3rem}
+  .store-plan-card-summary{display:block;font-size:.76rem;line-height:1.4}
+  .store-plan-card-feature{font-size:.72rem;line-height:1.35}
+  .store-plan-card-note{font-size:.7rem}
 }
 @media (max-width:640px){.store-billing-payment-row{flex-direction:column;align-items:stretch}.store-billing-paystack-btn{width:100%}}
 
@@ -3425,7 +3424,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--highlight);box-shadow
 .brand-logo{height:34px}
 .desktop-nav .nav-action{border-radius:9px}
 .hero{
-  min-height:clamp(540px,74vh,740px);
+  min-height:calc(100svh - 64px);
+  min-height:calc(100dvh - 64px);
   margin-bottom:36px;
   background-color:#0b1118;
   background-image:linear-gradient(180deg,rgba(8,13,19,.36),rgba(8,13,19,.72)),repeating-linear-gradient(0deg,transparent 0 39px,rgba(180,205,230,.035) 40px),repeating-linear-gradient(90deg,transparent 0 39px,rgba(180,205,230,.035) 40px) !important;
@@ -3547,7 +3547,7 @@ body.app-ready .hero-copy{animation:lh-content-arrive .36s ease-out both}
 }
 @media(max-width:900px){
   body{padding:18px}
-  .hero{min-height:min(680px,calc(100svh - 64px));margin-inline:-18px;padding:18px}
+  .hero{min-height:calc(100svh - 64px);min-height:calc(100dvh - 64px);margin-inline:-18px;padding:18px}
   .hero-title{font-size:2.8rem}
   .business-store-cta.card{width:calc(100% + 36px);margin:0 -18px 22px;padding:24px 22px;grid-template-columns:1fr}
   .container{grid-template-columns:minmax(0,1fr);gap:14px}
@@ -3569,7 +3569,7 @@ body.app-ready .hero-copy{animation:lh-content-arrive .36s ease-out both}
   .dash-range{width:100%;justify-content:flex-start}
 }
 @media(max-width:600px){
-  .hero{min-height:min(620px,calc(100svh - 58px));margin-bottom:22px}
+  .hero{min-height:calc(100svh - 56px);min-height:calc(100dvh - 56px);margin-bottom:22px}
   .hero-title{font-size:2.5rem;line-height:1.08;margin:15px auto}
   .hero-sub{font-size:.92rem;line-height:1.55;margin-bottom:22px}
   .hero-actions{gap:8px}
@@ -3858,11 +3858,10 @@ html[data-theme="dark"]:not(.light-theme) .settings-theme-option.active{backgrou
   #store-overlay #store-grid>.listing:not(:has(.listing-gallery)) .listing-title{grid-column:1/-1}
 }
 @media(max-width:720px){
-  .store-plan-picker .store-plan-card{gap:4px;padding:10px 28px 10px 10px}
-  .store-plan-picker .store-plan-card-name{font-size:.66rem;line-height:1.2}
-  .store-plan-picker .store-plan-card-price{font-size:1.1rem;line-height:1.1}
-  .store-plan-picker .store-plan-card-summary{font-size:.66rem;line-height:1.25}
-  .store-plan-picker .store-plan-card:not(.store-plan-card-boost) .store-plan-card-summary{display:none}
-  .store-plan-picker .store-plan-card-feature{font-size:.64rem;line-height:1.22}
-  .store-plan-picker .store-plan-card-note{font-size:.64rem;line-height:1.2}
+  .store-plan-picker .store-plan-card{gap:8px;padding:14px 42px 14px 14px}
+  .store-plan-picker .store-plan-card-name{font-size:.76rem;line-height:1.3}
+  .store-plan-picker .store-plan-card-price{font-size:1.3rem;line-height:1.2}
+  .store-plan-picker .store-plan-card-summary{display:block;font-size:.76rem;line-height:1.4}
+  .store-plan-picker .store-plan-card-feature{font-size:.72rem;line-height:1.35}
+  .store-plan-picker .store-plan-card-note{font-size:.7rem;line-height:1.35}
 }

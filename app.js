@@ -283,7 +283,7 @@ function openCreateListingSection({ focus = true, trackOpen = true } = {}) {
 // auto-collapses a form someone is partway through. The default is collapsed once the user has
 // already used it or opened it a couple of times.
 function createListingHasContent() {
-  return !!((titleEl?.value || '').trim() || (priceEl?.value || '').trim() || (descriptionEl?.value || '').trim())
+  return !!((titleEl?.value || '').trim() || (priceEl?.value || '').trim() || (descEl?.value || '').trim())
 }
 
 function collapseCreateListingIfIdle() {
@@ -2175,8 +2175,14 @@ function showLinkHubMissing(fields, focusField = null) {
     linkhubActionMissing.classList.remove('hidden')
   }
   linkhubActionProgressWrap?.classList.add('hidden')
-  linkhubActionClose?.classList.remove('hidden')
-  linkhubActionFix?.classList.remove('hidden')
+  if (linkhubActionClose) {
+    linkhubActionClose.textContent = 'Back to listing'
+    linkhubActionClose.classList.remove('hidden')
+  }
+  if (linkhubActionFix) {
+    linkhubActionFix.textContent = 'Fix missing details'
+    linkhubActionFix.classList.remove('hidden')
+  }
 }
 
 function showLinkHubResult(success, title, detail) {
@@ -3612,13 +3618,51 @@ let pendingTrialPlan = null
 // store row is created.
 let pendingPayNow = false
 
+function showStorePlanRequired(detail) {
+  if (!linkhubActionModal) {
+    showUxToast(detail, 'error')
+    return
+  }
+  clearTimeout(linkhubActionTimer)
+  linkhubActionFocusField = document.querySelector('input[name="store-plan-choice"]')
+  linkhubActionModal.className = 'linkhub-action-modal is-warning'
+  linkhubActionModal.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('linkhub-action-open')
+  setLinkHubActionIcon('warning')
+  if (linkhubActionTitle) linkhubActionTitle.textContent = 'Choose a store plan'
+  if (linkhubActionDetail) linkhubActionDetail.textContent = detail
+  if (linkhubActionMissing) {
+    linkhubActionMissing.innerHTML = `
+      <div class="linkhub-missing-summary">
+        <span class="linkhub-missing-count" aria-hidden="true">!</span>
+        <div>
+          <strong>A plan is required</strong>
+          <span>Choose LinkHub Store or LinkHub Business to unlock store setup.</span>
+        </div>
+      </div>`
+    linkhubActionMissing.classList.remove('hidden')
+  }
+  linkhubActionProgressWrap?.classList.add('hidden')
+  if (linkhubActionClose) {
+    linkhubActionClose.textContent = 'Close'
+    linkhubActionClose.classList.remove('hidden')
+    linkhubActionClose.focus()
+  }
+  if (linkhubActionFix) {
+    linkhubActionFix.textContent = 'Choose a plan'
+    linkhubActionFix.classList.remove('hidden')
+  }
+}
+
 // Shows only the plan-picker (hides the step progress + the store form)
 // until the person has either started a trial or chosen to pay now — so
 // nobody sees the store-setup wizard before they've picked something.
 // Existing stores (already have a name) always show the full form.
 function updateStoreManageGate() {
   const mine = getStoreForUser(currentUser?.id)
-  const committed = !!mine?.name || !!pendingTrialPlan
+  const needsPlanChoice = isLegacyUnmigratedStore(mine)
+  const committed = (!!mine?.name && !needsPlanChoice) || !!pendingTrialPlan
+  document.getElementById('store-billing-panel')?.classList.toggle('hidden', !mine?.name && !!pendingTrialPlan)
   document.getElementById('store-progress')?.classList.toggle('hidden', !committed)
   document.getElementById('store-manage-form')?.classList.toggle('hidden', !committed)
 }
@@ -3803,7 +3847,7 @@ function renderStoreBillingPanel() {
           ? `<strong>Your store needs a plan.</strong> Start a free 31-day trial, pay now if you're ready, or delete your store. Boost is never included in the trial.`
           : `Pick a plan below. Start with a free 31-day trial, or skip it and pay now — the trial is optional.`}
       </div>
-      ${storePlanPickerHtml(store?.plan || 'store')}
+      ${storePlanPickerHtml(BILLING_PLANS[store?.plan] ? store.plan : '')}
       <div class="account-actions">
         <button type="button" id="store-start-trial-btn" class="muted-btn">Start my free 31-day trial</button>
         <button type="button" id="store-pay-now-btn" class="store-billing-paynow-btn">Skip trial — pay now</button>
@@ -3877,7 +3921,11 @@ document.getElementById('store-billing-panel')?.addEventListener('click', async 
   }
   if (ev.target.id === 'store-start-trial-btn') {
     const chosen = document.querySelector('input[name="store-plan-choice"]:checked')?.value
-    if (!chosen || !BILLING_PLANS[chosen]) { storeManageMsg.textContent = 'Please choose a plan first.'; return }
+    if (!chosen || !BILLING_PLANS[chosen]) {
+      storeManageMsg.textContent = 'Please choose a plan first.'
+      showStorePlanRequired('Pick LinkHub Store or LinkHub Business before starting your trial.')
+      return
+    }
     const p = BILLING_PLANS[chosen]
     const confirmed = window.confirm(`Start your free 31-day trial of ${p.label}?\n\nYou won't be charged anything now. After 31 days you'll need to pay R${p.price}/month to keep your storefront visible to buyers — it never renews automatically.`)
     if (!confirmed) return
@@ -3902,7 +3950,11 @@ document.getElementById('store-billing-panel')?.addEventListener('click', async 
   }
   if (ev.target.id === 'store-pay-now-btn') {
     const chosen = document.querySelector('input[name="store-plan-choice"]:checked')?.value
-    if (!chosen || !BILLING_PLANS[chosen]) { storeManageMsg.textContent = 'Please choose a plan first.'; return }
+    if (!chosen || !BILLING_PLANS[chosen]) {
+      storeManageMsg.textContent = 'Please choose a plan first.'
+      showStorePlanRequired('Pick LinkHub Store or LinkHub Business before continuing to payment.')
+      return
+    }
     const existingStore = getStoreForUser(currentUser.id)
     if (existingStore?.name) {
       // Store already exists (e.g. a legacy store) — just pay immediately.
@@ -4081,11 +4133,17 @@ async function saveStoreManage(event) {
   if (!useSupabase) { storeManageMsg.textContent = 'Stores need a live Supabase connection to save.'; return }
 
   const existingStore = getStoreForUser(currentUser.id)
+  if (isLegacyUnmigratedStore(existingStore)) {
+    storeManageMsg.textContent = 'Choose a plan above before editing your store.'
+    showStorePlanRequired('Choose a plan before editing your existing store.')
+    return
+  }
   let billingFields = {}
   const payNowAfterSave = !existingStore?.name && pendingPayNow
   if (!existingStore?.name) {
     if (!pendingTrialPlan || !BILLING_PLANS[pendingTrialPlan]) {
       storeManageMsg.textContent = 'Choose a plan above before saving — start a trial or pay now.'
+      showStorePlanRequired('Choose a plan and select Start trial or Pay now before saving your store.')
       return
     }
     billingFields = pendingPayNow
