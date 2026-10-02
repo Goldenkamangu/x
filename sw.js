@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v7'; // v7: offline start (own database-connector.js), slow-network fallback
+const CACHE_NAME = 'linkhub-shell-v9'; // v9: Web Push alerts (works with the site closed)
 const APP_SHELL = [
   './',
   './index.html',
@@ -85,4 +85,54 @@ self.addEventListener('fetch', (event) => {
       .then((response) => response || fromCache())
       .then((response) => response || network) // nothing saved yet: wait for the network after all
   );
+});
+
+// ---------------------------------------------------------------------------
+// Web Push: alerts for new messages and offers, even when LinkHub is closed.
+// The server (send-push Edge Function) sends { title, body, tag, url }.
+// ---------------------------------------------------------------------------
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'LinkHub';
+  const options = {
+    body: data.body || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: data.tag || 'linkhub-message',
+    data: { url: data.url || './?open=notifications' },
+  };
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // If LinkHub is open and on screen, the app already shows its own alert,
+    // so a second one would just be noise. Apple's browsers require every push
+    // to show something, so they always show it.
+    const isApple = /iPhone|iPad|iPod|Macintosh/.test(self.navigator.userAgent || '');
+    const appIsVisible = windows.some((client) => client.visibilityState === 'visible');
+    if (appIsVisible && !isApple) return;
+    await self.registration.showNotification(title, options);
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || './?open=notifications', self.registration.scope).href;
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
+        await client.focus();
+        client.postMessage({ type: 'open-notifications' });
+        return;
+      }
+    }
+    await self.clients.openWindow(target);
+  })());
 });

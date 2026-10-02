@@ -839,40 +839,11 @@
           <div class="theme-toggle-row">
             <span>Appearance</span>
             <button
-              id="theme-toggle-btn"
+              id="open-settings-from-account"
               type="button"
               class="theme-toggle-btn"
             >
-              <svg
-                class="icon theme-icon-moon"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-                width="15"
-                height="15"
-              >
-                <path
-                  d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"
-                  fill="currentColor"
-                />
-              </svg>
-              <svg
-                class="icon theme-icon-sun"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-                width="15"
-                height="15"
-              >
-                <circle cx="12" cy="12" r="4.3" fill="currentColor" />
-                <path
-                  d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span class="theme-toggle-label">Dark</span>
+              Choose theme
             </button>
           </div>
 
@@ -962,6 +933,38 @@
       </div>
     </div>
 
+    <div id="settings-overlay" class="app-overlay hidden" aria-hidden="true">
+      <section class="app-overlay-panel settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="overlay-header">
+          <div>
+            <span class="eyebrow">Preferences</span>
+            <h2 id="settings-title">Settings</h2>
+          </div>
+          <button id="settings-close" type="button" class="lightbox-close" aria-label="Close settings">&times;</button>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-copy">
+            <strong>Appearance</strong>
+            <span class="muted">Choose a theme</span>
+          </div>
+          <div class="settings-theme-options" role="group" aria-label="Appearance theme">
+            <button type="button" class="settings-theme-option" data-theme-choice="light" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+              <span>Light</span>
+            </button>
+            <button type="button" class="settings-theme-option" data-theme-choice="dark" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5Z"/></svg>
+              <span>Dark</span>
+            </button>
+            <button type="button" class="settings-theme-option" data-theme-choice="default" aria-pressed="false" title="LinkHub blue default theme">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="7"/></svg>
+              <span>Default</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- My Store: a standalone place to open/manage your own marketplace stand,
        reachable from the "My Store" button — not buried in Account Settings. -->
     <div
@@ -969,7 +972,7 @@
       class="app-overlay hidden"
       aria-hidden="true"
     >
-      <div class="app-overlay-panel account-panel">
+      <div class="app-overlay-panel account-panel store-manage-panel">
         <div class="overlay-header">
           <div>
             <span class="eyebrow">Your Marketplace</span>
@@ -1001,6 +1004,7 @@
             ><span>Branding</span><span>Share</span>
           </div>
         </div>
+        <div id="store-billing-panel" class="store-billing-panel hidden"></div>
         <form id="store-manage-form" class="account-form">
           <p id="store-manage-intro" class="muted">
             Create a professional LinkHub storefront for your business and put
@@ -1139,31 +1143,47 @@
           <fieldset id="store-design" class="store-design">
             <legend>3 · Make it yours</legend>
             <div class="store-form-section-title store-form-section-title-design"><span>3</span><div><strong>Brand your storefront</strong><small>Choose a style, then fine-tune it below.</small></div></div>
-            <div class="store-design-presets" aria-label="Quick store styles"><button type="button" class="store-design-preset active" data-store-preset="clean"><strong>Clean</strong><span>Simple + bright</span></button><button type="button" class="store-design-preset" data-store-preset="bold"><strong>Bold</strong><span>Stronger accent</span></button><button type="button" class="store-design-preset" data-store-preset="classic"><strong>Classic</strong><span>More editorial</span></button></div>
-            <div class="store-design-row">
-              <span class="store-design-label">Accent colour</span>
-              <div class="store-design-controls">
-                <div id="store-design-accents" class="store-swatches"></div>
-                <input id="store-design-accent-custom" type="color" aria-label="Pick your own colour" />
+            <p id="store-design-tier-note" class="store-tier-note" aria-live="polite"></p>
+            <div class="store-design-studio">
+              <div class="store-design-workbench">
+                <div class="store-design-presets" aria-label="Quick store styles"><button type="button" class="store-design-preset active" data-store-preset="clean"><strong>Clean</strong><span>Simple + bright</span></button><button type="button" class="store-design-preset" data-store-preset="bold"><strong>Bold</strong><span>Stronger accent</span></button><button type="button" class="store-design-preset" data-store-preset="classic"><strong>Classic</strong><span>More editorial</span></button></div>
+                <div class="store-design-row">
+                  <span class="store-design-label">Accent colour</span>
+                  <div class="store-design-controls">
+                    <div id="store-design-accents" class="store-swatches"></div>
+                    <input id="store-design-accent-custom" type="color" aria-label="Pick your own colour" />
+                  </div>
+                </div>
+                <div class="store-design-row">
+                  <span class="store-design-label">Font style</span>
+                  <div id="store-design-fonts" class="store-choice"></div>
+                </div>
+                <div class="store-design-row">
+                  <span class="store-design-label">Listing layout</span>
+                  <div id="store-design-layouts" class="store-choice"></div>
+                </div>
+                <div class="store-design-row store-design-stack">
+                  <label class="store-design-label" for="store-design-announcement">Announcement <span class="muted">(optional)</span></label>
+                  <input id="store-design-announcement" type="text" maxlength="140" placeholder="e.g. Free delivery in Joburg this weekend" />
+                </div>
+                <div class="store-design-row store-design-stack">
+                  <div class="store-featured-heading"><span class="store-design-label">Featured listings</span><span id="store-featured-count" class="store-featured-count">0 selected</span></div>
+                  <div id="store-featured-search-note" class="store-featured-search-note">Search is available with an active paid store plan.</div>
+                  <label class="store-featured-search hidden"><span class="sr-only">Search your active listings</span><input id="store-featured-search" type="search" autocomplete="off" placeholder="Search title, category or location" /></label>
+                  <div id="store-design-featured" class="store-featured-list" aria-live="polite"></div>
+                </div>
+              </div>
+              <div class="store-design-preview-pane">
+                <div class="store-preview-toolbar">
+                  <strong>Live storefront preview</strong>
+                  <div class="store-preview-modes" role="group" aria-label="Preview size">
+                    <button type="button" class="active" data-store-preview-mode="desktop" aria-pressed="true">Desktop</button>
+                    <button type="button" data-store-preview-mode="mobile" aria-pressed="false">Mobile</button>
+                  </div>
+                </div>
+                <div id="store-design-preview" class="store-preview" data-preview-mode="desktop" aria-label="Preview of your store"></div>
               </div>
             </div>
-            <div class="store-design-row">
-              <span class="store-design-label">Font style</span>
-              <div id="store-design-fonts" class="store-choice"></div>
-            </div>
-            <div class="store-design-row">
-              <span class="store-design-label">Listing layout</span>
-              <div id="store-design-layouts" class="store-choice"></div>
-            </div>
-            <div class="store-design-row store-design-stack">
-              <label class="store-design-label" for="store-design-announcement">Announcement <span class="muted">(optional)</span></label>
-              <input id="store-design-announcement" type="text" maxlength="140" placeholder="e.g. Free delivery in Joburg this weekend" />
-            </div>
-            <div class="store-design-row store-design-stack">
-              <span class="store-design-label">Featured listings <span class="muted">(up to 3, shown first)</span></span>
-              <div id="store-design-featured" class="store-featured-list"></div>
-            </div>
-            <div id="store-design-preview" class="store-preview" aria-label="Preview of your store"></div>
           </fieldset>
           <div class="account-actions">
             <button id="store-manage-save" type="submit">Save Store</button>
@@ -1392,7 +1412,7 @@
 
     <!-- Store: a public view of one seller's listings, reachable via "Visit Store" or ?store=<id> -->
     <div id="store-overlay" class="app-overlay hidden" aria-hidden="true">
-      <div class="app-overlay-panel">
+      <div class="app-overlay-panel storefront-panel">
         <div class="overlay-header">
           <div>
             <span class="eyebrow">Seller Marketplace</span>
@@ -1418,6 +1438,8 @@
             </button>
           </div>
         </div>
+        <div id="store-locked-notice" class="store-locked-notice hidden"></div>
+        <img id="store-banner" class="store-banner hidden" alt="" />
         <div id="store-profile-head" class="store-profile-head">
           <img id="store-logo" class="store-logo hidden" alt="" />
           <div id="store-logo-fallback" class="store-logo store-logo-initials hidden" aria-hidden="true"></div>
@@ -1429,8 +1451,16 @@
           </div>
         </div>
         <div id="store-announcement" class="store-announcement hidden"></div>
-        <img id="store-banner" class="store-banner hidden" alt="" />
-        <div id="store-count" class="muted"></div>
+        <div class="store-catalog-toolbar">
+          <div class="store-catalog-heading">
+            <h3>Shop the collection</h3>
+            <div id="store-count" class="muted"></div>
+          </div>
+          <label id="store-product-search-wrap" class="store-product-search hidden">
+            <span class="sr-only">Search products in this store</span>
+            <input id="store-product-search" type="search" autocomplete="off" placeholder="Search this store's products" />
+          </label>
+        </div>
         <div id="store-grid" class="listing-grid"></div>
         <section id="store-reviews" class="reviews-section" aria-label="Seller reviews">
           <h3 class="reviews-heading">Seller reviews</h3>
@@ -1468,6 +1498,8 @@
           </button>
         </div>
         <div id="admin-reports-list" class="muted">Loading…</div>
+        <h3 class="admin-billing-heading">Billing requests</h3>
+        <div id="admin-billing-list" class="muted">Loading…</div>
       </div>
     </div>
 
@@ -1665,6 +1697,6 @@
       </form>
     </div>
 
-    <script type="module" src="app.js?v=20260922-collapse-shine"></script>
+    <script type="module" src="app.js?v=20261002-paystack"></script>
   </body>
 </html>

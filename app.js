@@ -394,7 +394,8 @@ function buildDrawerMenu() {
       { icon: ICON_CART, label: 'My Cart', action: () => openCart() },
       { icon: ICON_STORE, label: hasStore ? 'My Store' : 'Open a Store', action: () => openStoreManage() },
       { icon: dashboardIcon(), label: 'Dashboard', action: () => openDashboard() },
-      { icon: ICON_GEAR, label: 'Account Settings', action: () => openAccountSettings() },
+      { icon: ICON_GEAR, label: 'Settings', action: () => openAppearanceSettings() },
+      { icon: ICON_GEAR, label: 'Account Details', action: () => openAccountSettings() },
     ]
     if (isSiteOwner) buttons.push({ icon: ICON_SHIELD, label: 'Reports', action: () => openAdminReports() })
     buttons.push({ icon: ICON_DOC, label: 'Terms & Conditions', action: () => openTerms() })
@@ -416,6 +417,7 @@ function buildDrawerMenu() {
     logoutBtn.innerHTML = `${ICON_LOGOUT}<span>Logout</span>`
     logoutBtn.addEventListener('click', async () => {
       closeDrawer()
+      await removePushOnThisDevice()
       await db.auth.signOut()
       authMsg.textContent = 'Logged out.'
       await handleAuthChange()
@@ -432,6 +434,12 @@ function buildDrawerMenu() {
       authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
     navDrawerMenu.appendChild(signInBtn)
+    const settingsBtn = document.createElement('button')
+    settingsBtn.type = 'button'
+    settingsBtn.className = 'drawer-item'
+    settingsBtn.innerHTML = `${ICON_GEAR}<span>Settings</span>`
+    settingsBtn.addEventListener('click', () => { closeDrawer(); openAppearanceSettings() })
+    navDrawerMenu.appendChild(settingsBtn)
     const installBtn = document.createElement('button')
     installBtn.type = 'button'
     installBtn.className = 'drawer-item'
@@ -546,6 +554,12 @@ function desktopButtonWithIcon(label, icon, action, primary = false, danger = fa
   return button
 }
 
+function createSettingsNavButton() {
+  const button = desktopButtonWithIcon('Settings', ICON_GEAR, openAppearanceSettings)
+  button.classList.add('settings-nav-button')
+  return button
+}
+
 function isInAppBrowser() {
   // WhatsApp/Facebook/Instagram/Messenger/Twitter open links in an embedded
   // webview with no browser chrome. That lack of chrome can make
@@ -649,6 +663,7 @@ function navMenuIcon(name) {
     store: 'M3 9l1.6-5h14.8L21 9M4 9v11h16V9M9.5 20v-6h5v6',
     dashboard: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
     account: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0',
+    settings: 'M9.7 2.9h4.6l.7 2.3a7.8 7.8 0 0 1 1.9 1.1l2.3-.7 2.3 4-1.7 1.6a7.8 7.8 0 0 1 0 2.2l1.7 1.6-2.3 4-2.3-.7a7.8 7.8 0 0 1-1.9 1.1l-.7 2.3H9.7L9 19.4a7.8 7.8 0 0 1-1.9-1.1l-2.3.7-2.3-4 1.7-1.6a7.8 7.8 0 0 1 0-2.2L2.5 9.6l2.3-4 2.3.7A7.8 7.8 0 0 1 9 5.2l.7-2.3Z M12 8.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4',
     reports: 'M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h6',
     install: 'M12 4v11m0 0-4-4m4 4 4-4M5 20h14',
     terms: 'M7 3h10v18H7zM10 8h4M10 12h4M10 16h3',
@@ -746,6 +761,7 @@ function buildDesktopNav() {
     desktopNav.appendChild(desktopButtonWithIcon('Cart', ICON_CART, () => openCart()))
     desktopNav.appendChild(desktopButton('Sign in / Sign up', () => authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' }), true))
     desktopNav.appendChild(desktopButtonWithIcon('Install', ICON_INSTALL, () => promptInstall()))
+    desktopNav.appendChild(createSettingsNavButton())
     desktopNav.appendChild(desktopButton('Terms', () => openTerms()))
     updateCartCounts()
     return
@@ -761,7 +777,8 @@ function buildDesktopNav() {
     { label: 'My Listings', icon: 'listings', action: () => openMyListings() },
     { label: store?.name ? 'My Store' : 'Open Store', icon: 'store', action: () => openStoreManage() },
     { label: 'Dashboard', icon: 'dashboard', action: () => openDashboard() },
-    { label: 'Account', icon: 'account', action: () => openAccountSettings() },
+    { label: 'Settings', icon: 'settings', action: () => openAppearanceSettings() },
+    { label: 'Account details', icon: 'account', action: () => openAccountSettings() },
   ]
   if (String(currentUser.email || '').toLowerCase() === OWNER_EMAIL) menuItems.push({ label: 'Reports', icon: 'reports', action: () => openAdminReports() })
   menuItems.push(
@@ -770,6 +787,7 @@ function buildDesktopNav() {
     { label: 'Terms', icon: 'terms', action: () => openTerms() },
     { divider: true },
     { label: 'Logout', icon: 'logout', danger: true, action: async () => {
+      await removePushOnThisDevice()
       await db.auth.signOut()
       authMsg.textContent = 'Logged out.'
       await handleAuthChange()
@@ -1088,23 +1106,154 @@ function maybeBrowserNotify(title, body, data = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Web Push: alerts that arrive even when LinkHub is closed.
+// The public key is safe to keep here. The private key lives only in the
+// Supabase secrets of the send-push Edge Function.
+// ---------------------------------------------------------------------------
+const PUSH_PUBLIC_KEY = 'BK6O3cUoI2MNhluaPmvly8b2BYSNt99-niNp1-LiD3M4XXdB5XS8C8Ce7ZtchvX7Twe_JOteZDLp6guKwPPAOVU'
+
+function pushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+}
+
+function isIosBrowserTab() {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const installed = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
+  return ios && !installed
+}
+
+function pushKeyToBytes(base64Url) {
+  const padded = base64Url + '='.repeat((4 - (base64Url.length % 4)) % 4)
+  const raw = atob(padded.replace(/-/g, '+').replace(/_/g, '/'))
+  return Uint8Array.from(raw, (ch) => ch.charCodeAt(0))
+}
+
+function sameBytes(a, b) {
+  if (!a || !b || a.byteLength !== b.byteLength) return false
+  const x = new Uint8Array(a)
+  const y = new Uint8Array(b)
+  return x.every((value, i) => value === y[i])
+}
+
+// Registers this device for push and tells the server about it.
+// Returns 'on', 'default' (not asked yet), 'denied', 'unsupported' or 'error'.
+// It only shows the browser's permission popup when ask is true.
+async function syncPushSubscription({ ask = false } = {}) {
+  try {
+    if (!useSupabase || !currentUser || !PUSH_PUBLIC_KEY) return 'error'
+    if (!pushSupported()) return 'unsupported'
+    if (Notification.permission === 'denied') return 'denied'
+    if (Notification.permission === 'default') {
+      if (!ask) return 'default'
+      const answer = await Notification.requestPermission()
+      if (answer !== 'granted') return answer === 'denied' ? 'denied' : 'default'
+    }
+
+    const registration = await navigator.serviceWorker.ready
+    const keyBytes = pushKeyToBytes(PUSH_PUBLIC_KEY)
+    let subscription = await registration.pushManager.getSubscription()
+    // A subscription made with a different key can never receive our pushes.
+    if (subscription && !sameBytes(subscription.options?.applicationServerKey, keyBytes)) {
+      await subscription.unsubscribe().catch(() => {})
+      subscription = null
+    }
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes })
+    }
+
+    const { endpoint, keys } = subscription.toJSON()
+    if (!endpoint || !keys?.p256dh || !keys?.auth) return 'error'
+
+    // Tell the server at most once a day per device and account.
+    const stamp = `${currentUser.id}|${endpoint}|${new Date().toISOString().slice(0, 10)}`
+    let lastStamp = null
+    try { lastStamp = localStorage.getItem('linkhub-push-synced') } catch {}
+    if (lastStamp !== stamp) {
+      const { error } = await db.rpc('save_push_subscription', {
+        p_endpoint: endpoint,
+        p_p256dh: keys.p256dh,
+        p_auth: keys.auth,
+        p_user_agent: navigator.userAgent.slice(0, 250)
+      })
+      if (error) throw error
+      try { localStorage.setItem('linkhub-push-synced', stamp) } catch {}
+    }
+    return 'on'
+  } catch (e) {
+    console.warn('Push setup failed:', e)
+    return 'error'
+  }
+}
+
+// On logout the phone stops receiving this account's alerts. Never blocks logging out.
+async function removePushOnThisDevice() {
+  const work = (async () => {
+    if (!pushSupported()) return
+    const registration = await navigator.serviceWorker.getRegistration()
+    const subscription = await registration?.pushManager.getSubscription()
+    if (!subscription) return
+    await db.rpc('remove_push_subscription', { p_endpoint: subscription.endpoint })
+    await subscription.unsubscribe()
+    try { localStorage.removeItem('linkhub-push-synced') } catch {}
+  })()
+  await Promise.race([work.catch(() => {}), new Promise((resolve) => setTimeout(resolve, 2500))])
+}
+
 async function enableBrowserNotifications() {
+  // iPhone only allows alerts for apps added to the Home Screen.
+  if (isIosBrowserTab()) {
+    showUxToast('On iPhone, add LinkHub to your Home Screen first, then open it from there and turn alerts on.', 'error')
+    return
+  }
   if (!('Notification' in window)) {
     showUxToast('Your browser does not support notifications.', 'error')
     return
   }
   try {
-    const permission = await Notification.requestPermission()
-    if (permission === 'granted') {
+    if (!pushSupported()) {
+      // Older browsers and app WebViews: alerts work only while LinkHub is open.
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        notificationsEnable?.classList.add('hidden')
+        showUxToast('Browser notifications are on.')
+      } else if (permission === 'denied') {
+        showUxToast('Notifications are blocked in your browser settings.', 'error')
+      }
+      return
+    }
+    const state = await syncPushSubscription({ ask: true })
+    if (state === 'on') {
       notificationsEnable?.classList.add('hidden')
-      showUxToast('Browser notifications are on.')
-    } else if (permission === 'denied') {
+      showUxToast('Alerts are on, even when LinkHub is closed.')
+    } else if (state === 'denied') {
       showUxToast('Notifications are blocked in your browser settings.', 'error')
+    } else if (state === 'error') {
+      showUxToast('Could not turn on alerts. Please try again.', 'error')
     }
   } catch {
     showUxToast('Could not turn on browser notifications.', 'error')
   }
 }
+
+// Opening LinkHub from an alert lands on the notifications panel.
+function openNotificationsFromAlert() {
+  if (!currentUser) return
+  openNotifications().catch(() => {})
+}
+
+function consumeOpenNotificationsParam() {
+  const params = new URLSearchParams(location.search)
+  if (params.get('open') !== 'notifications') return
+  params.delete('open')
+  const query = params.toString()
+  history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`)
+  openNotificationsFromAlert()
+}
+
+navigator.serviceWorker?.addEventListener('message', (event) => {
+  if (event.data?.type === 'open-notifications') openNotificationsFromAlert()
+})
 
 async function loadNotificationList() {
   if (!notificationsList) return
@@ -1282,6 +1431,8 @@ function startGlobalMessageNotifications() {
   stopGlobalMessageNotifications()
   if (!useSupabase || !currentUser) return
   refreshNotificationCount().catch(() => {})
+  // If alerts were already allowed on this device, keep it registered for push.
+  syncPushSubscription().catch(() => {})
   if (typeof db.channel === 'function') {
     try {
       notificationChannel = db.channel(`linkhub-notifications-${currentUser.id}`)
@@ -1866,6 +2017,7 @@ async function handleAuthChange() {
   buildDrawerMenu()
   buildDesktopNav()
   if (user) startGlobalMessageNotifications()
+  if (user) consumeOpenNotificationsParam()
   // Re-render listings so owner-only actions update visibility and so the create form can
   // tell whether this account already has listings before choosing its default collapsed state.
   await fetchAndRenderListings()
@@ -3153,6 +3305,7 @@ const storeLogoImg = document.getElementById('store-logo')
 const storeCategoryEl = document.getElementById('store-category')
 const storeBioEl = document.getElementById('store-bio')
 const storeContactMeta = document.getElementById('store-contact-meta')
+const storeProductSearch = document.getElementById('store-product-search')
 let activeStoreUserId = null
 
 async function shareActiveStore() {
@@ -3183,10 +3336,23 @@ async function shareActiveStore() {
 function renderStoreListings() {
   if (!storeGrid || !activeStoreUserId) return
   storeGrid.innerHTML = ''
-  const items = currentListings.filter((item) => String(item.user_id) === String(activeStoreUserId) && !item.sold)
-  if (storeCount) storeCount.textContent = `${items.length} listing${items.length === 1 ? '' : 's'}`
-  if (!items.length) {
+  const paidStore = computeStoreAccess(getStoreForUser(activeStoreUserId)).status === 'active'
+  document.getElementById('store-product-search-wrap')?.classList.toggle('hidden', !paidStore)
+  if (!paidStore && storeProductSearch) storeProductSearch.value = ''
+  const allItems = currentListings.filter((item) => String(item.user_id || item.seller_id || '') === String(activeStoreUserId) && !item.sold)
+  const query = paidStore ? (storeProductSearch?.value || '').trim().toLowerCase() : ''
+  const items = query
+    ? allItems.filter((item) => [item.title, item.category, item.location, item.description].some((value) => String(value || '').toLowerCase().includes(query)))
+    : allItems
+  if (storeCount) storeCount.textContent = query
+    ? `${items.length} of ${allItems.length} listings`
+    : `${allItems.length} listing${allItems.length === 1 ? '' : 's'}`
+  if (!allItems.length) {
     storeGrid.innerHTML = '<div class="muted">This seller doesn\'t have any active listings right now.</div>'
+    return
+  }
+  if (!items.length) {
+    storeGrid.innerHTML = `<div class="store-search-empty">No products match “${escapeHtml(query)}”.</div>`
     return
   }
   const featured = new Set((storeDesignsById[String(activeStoreUserId)]?.featured_ids || []).map(String))
@@ -3203,6 +3369,7 @@ function renderStoreListings() {
 function openStore(userId) {
   if (!storeOverlay || !userId) return
   activeStoreUserId = userId
+  if (storeProductSearch) storeProductSearch.value = ''
   const s = getStoreForUser(userId)
   if (storeNameHeading) storeNameHeading.textContent = s?.name || 'Seller Marketplace'
   if (storeBioEl) { const copy=[s?.tagline,s?.bio].filter(Boolean).join('\n'); storeBioEl.textContent=copy; storeBioEl.style.whiteSpace=s?.tagline&&s?.bio?'pre-line':'' }
@@ -3261,6 +3428,31 @@ function openStore(userId) {
   recordStoreVisit(userId)
   document.getElementById('store-dashboard-btn')?.classList.toggle('hidden', !(currentUser && String(currentUser.id) === String(userId)))
   renderStoreListings()
+  {
+    const access = computeStoreAccess(s)
+    const locked = access.status === 'locked' || access.status === 'pending_deletion'
+    const lockedNotice = document.getElementById('store-locked-notice')
+    if (lockedNotice) {
+      const isOwnerViewer = currentUser && String(currentUser.id) === String(userId)
+      lockedNotice.textContent = locked
+        ? (isOwnerViewer
+            ? 'Your storefront is locked because access has expired. Open "My Store" to pay and restore it.'
+            : 'This store is currently unavailable.')
+        : ''
+      lockedNotice.classList.toggle('hidden', !locked)
+    }
+    if (locked) {
+      storeGrid?.classList.add('hidden')
+      storeCount?.classList.add('hidden')
+      storeBannerImg?.classList.add('hidden')
+      document.getElementById('store-announcement')?.classList.add('hidden')
+      document.getElementById('store-reviews')?.classList.add('hidden')
+      if (storeContactMeta) storeContactMeta.innerHTML = ''
+    }
+  }
+  const storefrontPanel = storeOverlay.querySelector('.storefront-panel')
+  if (storefrontPanel) storefrontPanel.scrollTop = 0
+  storeOverlay.scrollTop = 0
   storeOverlay.classList.remove('hidden')
   storeOverlay.setAttribute('aria-hidden', 'false')
   document.documentElement.classList.add('lightbox-open')
@@ -3284,6 +3476,7 @@ function closeStore() {
 }
 
 storeClose?.addEventListener('click', closeStore)
+storeProductSearch?.addEventListener('input', renderStoreListings)
 storeShareBtn?.addEventListener('click', shareActiveStore)
 storeEditBtn?.addEventListener('click', () => openStoreManage())
 storeOverlay?.addEventListener('click', (ev) => {
@@ -3316,9 +3509,10 @@ function renderBusinessExploreGrid() {
       const listingCount = currentListings.filter((item) =>
         String(item.user_id || item.seller_id || '') === ownerId && !item.sold
       ).length
-      return { ...store, ownerId, listingCount }
+      const boostActive = !!store.boost_active && new Date(store.boost_paid_until || 0).getTime() > Date.now()
+      return { ...store, ownerId, listingCount, boostActive }
     })
-    .sort((a, b) => b.listingCount - a.listingCount)
+    .sort((a, b) => Number(b.boostActive) - Number(a.boostActive) || b.listingCount - a.listingCount)
     .slice(0, 12)
 
   if (businessExploreSection) businessExploreSection.style.display = stores.length ? '' : 'none'
@@ -3336,7 +3530,7 @@ function renderBusinessExploreGrid() {
         <div class="business-explore-card-top">
           ${logo}
           <div style="min-width:0">
-            <div class="business-explore-name">${escapeHtml(store.name)}</div>
+            <div class="business-explore-name-row"><div class="business-explore-name">${escapeHtml(store.name)}</div>${store.boostActive ? '<span class="business-explore-boost">Boosted</span>' : ''}</div>
             <div class="business-explore-meta">${escapeHtml(meta ? `${meta} • ${countLabel}` : countLabel)}</div>
           </div>
         </div>
@@ -3382,6 +3576,351 @@ function indexStoreRows(rows) {
   return next
 }
 
+// --- Store billing & subscriptions ------------------------------------------
+// Store billing flow:
+// pick a plan -> free 31-day trial with explicit confirmation (Boost is never
+// included in the trial) -> Paystack checkout or manual transfer -> confirmed
+// payments extend paid_until by 30 days, with no
+// auto-renewal. Unpaid access locks the storefront, reminds at 30/60 days
+// locked, warns at 90 days with a 14-day grace period, then only the store
+// record + storefront is deleted — the LinkHub account and marketplace
+// listings are never touched. Stores that already existed before this shipped
+// get a one-time choice: start the trial, or delete the store.
+const BILLING_PLANS = {
+  store: {
+    label: 'LinkHub Store', price: 50,
+    summary: 'A complete branded storefront for independent sellers.',
+    designFeatures: ['16 curated colours + custom colour', '3 storefront presets', 'Unlimited featured listings', 'Customer product search', 'Store analytics CSV export']
+  },
+  business: {
+    label: 'LinkHub Business', price: 100,
+    summary: 'More control over your storefront and brand presentation.',
+    designFeatures: ['Everything in LinkHub Store', 'Custom fonts and grid/list layouts', 'Store announcements', 'Customer product search', 'Store analytics CSV export']
+  }
+}
+const BOOST_PRICE = 150
+const TRIAL_DAYS = 31
+const GRACE_DAYS = 14
+const DELETION_WARNING_DAYS = 90
+const DAY_MS = 24 * 60 * 60 * 1000
+// Set right before the store is saved for the first time (by the trial
+// confirmation, or by "pay now"), then consumed by saveStoreManage() and
+// cleared after.
+let pendingTrialPlan = null
+// True when the plan choice was "pay now" rather than "start trial" — makes
+// saveStoreManage() skip the trial dates and kick off Paystack right after the
+// store row is created.
+let pendingPayNow = false
+
+// Shows only the plan-picker (hides the step progress + the store form)
+// until the person has either started a trial or chosen to pay now — so
+// nobody sees the store-setup wizard before they've picked something.
+// Existing stores (already have a name) always show the full form.
+function updateStoreManageGate() {
+  const mine = getStoreForUser(currentUser?.id)
+  const committed = !!mine?.name || !!pendingTrialPlan
+  document.getElementById('store-progress')?.classList.toggle('hidden', !committed)
+  document.getElementById('store-manage-form')?.classList.toggle('hidden', !committed)
+}
+
+function daysBetween(fromMs, toMs) { return (toMs - fromMs) / DAY_MS }
+
+// A store row that exists but has never chosen a plan/trial and was never
+// given a legacy choice — i.e. it predates this feature.
+function isLegacyUnmigratedStore(store) {
+  return !!store?.name && !store.plan && !store.trial_confirmed_at && !store.legacy_migration_choice
+}
+
+// Pure function: works out what state a store's access is in from its stored
+// dates alone. Never writes anything — see runStoreBillingCleanup() for that.
+function computeStoreAccess(store) {
+  if (!store?.name) return { status: 'none' }
+  if (isLegacyUnmigratedStore(store)) return { status: 'legacy_choice_required' }
+  if (store.legacy_migration_choice === 'declined') return { status: 'deleted' }
+
+  const now = Date.now()
+  const paidUntil = store.paid_until ? new Date(store.paid_until).getTime() : 0
+  const trialEnds = store.trial_ends_at ? new Date(store.trial_ends_at).getTime() : 0
+
+  if (paidUntil > now) return { status: 'active', until: paidUntil, plan: store.plan }
+  if (trialEnds > now) return { status: 'trial', until: trialEnds, plan: store.plan, daysLeft: Math.ceil(daysBetween(now, trialEnds)) }
+
+  if (!trialEnds && !paidUntil) return { status: 'awaiting_plan' }
+
+  const lockedAt = store.locked_at ? new Date(store.locked_at).getTime() : Math.max(trialEnds, paidUntil)
+  const daysLocked = daysBetween(lockedAt, now)
+
+  if (daysLocked >= DELETION_WARNING_DAYS) {
+    const warnedAt = store.deletion_warned_at ? new Date(store.deletion_warned_at).getTime() : lockedAt + DELETION_WARNING_DAYS * DAY_MS
+    const graceUntil = store.grace_until ? new Date(store.grace_until).getTime() : warnedAt + GRACE_DAYS * DAY_MS
+    if (now > graceUntil) return { status: 'delete_due', lockedAt }
+    return { status: 'pending_deletion', graceUntil, daysLeft: Math.max(0, Math.ceil(daysBetween(now, graceUntil))) }
+  }
+
+  let reminderDue = null
+  if (daysLocked >= 60 && !store.reminder_60_sent_at) reminderDue = 60
+  else if (daysLocked >= 30 && !store.reminder_30_sent_at) reminderDue = 30
+
+  return { status: 'locked', daysLocked: Math.floor(daysLocked), reminderDue }
+}
+
+// Persists a partial update to a store row for any userId (used both for the
+// signed-in user's own store and, by the owner account, other people's
+// stores when approving a payment). Mirrors the id/user_id fallback that the
+// rest of the store code already needs to handle either schema shape.
+async function patchStoreRow(userId, fields) {
+  if (!useSupabase) return
+  let { error } = await db.from('stores').update(fields).eq('id', userId)
+  if (error && /column.*id|user_id/i.test(error.message || '')) {
+    const retry = await db.from('stores').update(fields).eq('user_id', userId)
+    error = retry.error
+  }
+  if (error) { console.warn('Could not update store billing fields', error); return }
+  const existing = storesById[String(userId)]
+  if (existing) storesById[String(userId)] = { ...existing, ...fields }
+}
+
+function showStoreBillingReminderToast(days, store) {
+  showUxToast(`Reminder: "${store.name}" has been locked for ${days} days. Pay to restore your storefront before it's deleted at 90 days.`)
+}
+
+// Runs on load for the signed-in user's own store: advances locked_at /
+// deletion_warned_at / grace_until as time passes, and deletes the store once
+// the grace period is over. Like runListingCleanup(), this only acts on the
+// current user's own data — a real background reminder/deletion job (e.g. a
+// scheduled Supabase Edge Function) is still needed for stores whose owner
+// never reopens the app; flagging that as outstanding, same as the other
+// pending SQL migrations.
+async function runStoreBillingCleanup() {
+  if (!currentUser || !useSupabase) return
+  const store = getStoreForUser(currentUser.id)
+  if (!store?.name) return
+  const access = computeStoreAccess(store)
+  const nowIso = new Date().toISOString()
+
+  if (access.status === 'locked' && !store.locked_at) {
+    await patchStoreRow(currentUser.id, { locked_at: nowIso })
+    return
+  }
+  if (access.status === 'locked' && access.reminderDue) {
+    const field = access.reminderDue === 30 ? 'reminder_30_sent_at' : 'reminder_60_sent_at'
+    await patchStoreRow(currentUser.id, { [field]: nowIso })
+    showStoreBillingReminderToast(access.reminderDue, store)
+    return
+  }
+  if (access.status === 'pending_deletion' && !store.deletion_warned_at) {
+    const graceUntil = new Date(Date.now() + GRACE_DAYS * DAY_MS).toISOString()
+    await patchStoreRow(currentUser.id, { deletion_warned_at: nowIso, grace_until: graceUntil })
+    showUxToast(`Final warning: "${store.name}" will be deleted in ${GRACE_DAYS} days unless you pay.`)
+    return
+  }
+  if (access.status === 'delete_due') {
+    await deleteMyStore({ silent: true, reason: 'Your LinkHub store was removed after 90 days without payment and a 14-day grace period. Your account and marketplace listings were kept.' })
+  }
+}
+
+function billingStatusLabel(access) {
+  switch (access.status) {
+    case 'trial': return `Free trial — ${access.daysLeft} day${access.daysLeft === 1 ? '' : 's'} left`
+    case 'active': return `${BILLING_PLANS[access.plan]?.label || 'Plan'} active until ${new Date(access.until).toLocaleDateString()}`
+    case 'locked': return `Storefront locked — unpaid for ${access.daysLocked} day${access.daysLocked === 1 ? '' : 's'}`
+    case 'pending_deletion': return `Final warning — store deletes in ${access.daysLeft} day${access.daysLeft === 1 ? '' : 's'} unless paid`
+    default: return ''
+  }
+}
+
+function billingStatusIcon(tone) {
+  if (tone === 'good') return '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.3l2.6 2.6L16.2 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  if (tone === 'danger') return '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 3.5l9 15.5H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v4.2M12 16.7v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+  return '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5v5.4l3.4 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+}
+
+function storePlanPickerHtml(selected) {
+  const planCards = Object.entries(BILLING_PLANS).map(([key, p]) => `
+      <label class="store-plan-card${selected === key ? ' is-selected' : ''}">
+        <input type="radio" name="store-plan-choice" value="${key}" ${selected === key ? 'checked' : ''}>
+        <span class="store-plan-card-name">${escapeHtml(p.label)}</span>
+        <span class="store-plan-card-price">R${p.price}<span class="store-plan-card-period">/mo</span></span>
+        <span class="store-plan-card-summary">${escapeHtml(p.summary)}</span>
+        ${p.designFeatures.map((feature) => `<span class="store-plan-card-feature">${escapeHtml(feature)}</span>`).join('')}
+        <span class="store-plan-card-note muted">after your free trial</span>
+      </label>`).join('')
+  // Boost is shown so people can see the full price ladder up front, but it
+  // isn't part of the trial or the radio group — it only becomes buyable
+  // once the store actually exists (see the "trial"/"active" branches of
+  // renderStoreBillingPanel).
+  const boostCard = `
+      <div class="store-plan-card store-plan-card-boost">
+        <div class="store-plan-card-top">
+          <span class="store-plan-card-name">LinkHub Boost</span>
+          <span class="store-plan-card-badge">No trial</span>
+        </div>
+        <span class="store-plan-card-price">R${BOOST_PRICE}<span class="store-plan-card-period">/mo</span></span>
+        <span class="store-plan-card-summary">A 30-day promotion that gives your business priority placement in Explore businesses. Requires an active Store or Business plan.</span>
+      </div>`
+  return `<div class="store-plan-picker">${planCards}${boostCard}</div>`
+}
+
+function storePaymentBoxHtml(kind, planKey) {
+  const price = kind === 'boost' ? BOOST_PRICE : (BILLING_PLANS[planKey]?.price || BILLING_PLANS.store.price)
+  const label = kind === 'boost' ? 'LinkHub Boost' : (BILLING_PLANS[planKey]?.label || 'your plan')
+  return `
+    <div class="store-billing-payment">
+      <div class="store-billing-payment-row">
+        <div>
+          <div class="store-billing-payment-label">${escapeHtml(label)}</div>
+          <div class="store-billing-payment-price">R${price}<span class="store-plan-card-period">/30 days</span></div>
+        </div>
+        <button type="button" class="store-billing-paystack-btn" data-kind="${kind}" data-plan="${planKey || ''}">Pay with Paystack</button>
+      </div>
+      <div class="store-billing-secure">${ICON_SHIELD} Secured by Paystack · payment details never touch LinkHub</div>
+    </div>`
+}
+
+// Renders the plan/trial/payment panel inside the My Store overlay based on
+// the signed-in user's own store access state.
+function renderStoreBillingPanel() {
+  const panel = document.getElementById('store-billing-panel')
+  if (!panel || !currentUser) return
+  const store = getStoreForUser(currentUser.id)
+  const access = computeStoreAccess(store)
+  panel.classList.remove('hidden')
+  panel.dataset.status = access.status
+
+  const statusTone = access.status === 'active' || access.status === 'trial' ? 'good'
+    : access.status === 'pending_deletion' ? 'danger'
+    : access.status === 'locked' ? 'warning' : null
+  const statusHeader = statusTone
+    ? `<div class="store-billing-status is-${statusTone}">${billingStatusIcon(statusTone)}<span>${billingStatusLabel(access)}</span></div>`
+    : ''
+
+  let body = ''
+  if (access.status === 'none' || access.status === 'legacy_choice_required' || access.status === 'awaiting_plan') {
+    const isLegacy = access.status === 'legacy_choice_required'
+    body = `
+      <div class="store-billing-banner${isLegacy ? ' is-warning' : ''}">
+        ${isLegacy
+          ? `<strong>Your store needs a plan.</strong> Start a free 31-day trial, pay now if you're ready, or delete your store. Boost is never included in the trial.`
+          : `Pick a plan below. Start with a free 31-day trial, or skip it and pay now — the trial is optional.`}
+      </div>
+      ${storePlanPickerHtml(store?.plan || 'store')}
+      <div class="account-actions">
+        <button type="button" id="store-start-trial-btn" class="muted-btn">Start my free 31-day trial</button>
+        <button type="button" id="store-pay-now-btn" class="store-billing-paynow-btn">Skip trial — pay now</button>
+        ${isLegacy ? '<button type="button" id="store-legacy-delete-btn" class="account-delete-btn">Delete my store instead</button>' : ''}
+      </div>`
+  } else if (access.status === 'trial' || access.status === 'active') {
+    const boostActive = store.boost_active && store.boost_paid_until && new Date(store.boost_paid_until).getTime() > Date.now()
+    body = `
+      ${statusHeader}
+      ${storePaymentBoxHtml('plan', store.plan)}
+      ${boostActive ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>` : storePaymentBoxHtml('boost')}`
+  } else if (access.status === 'locked') {
+    body = `
+      ${statusHeader}
+      <p class="store-billing-subtext">Your storefront is hidden from buyers until you pay. It's deleted automatically 90 days after locking (with a final 14-day warning).</p>
+      ${storePaymentBoxHtml('plan', store.plan)}`
+  } else if (access.status === 'pending_deletion') {
+    body = `
+      ${statusHeader}
+      <p class="store-billing-subtext">Your account and marketplace listings are safe — only the store page will be removed.</p>
+      ${storePaymentBoxHtml('plan', store.plan)}`
+  }
+  panel.innerHTML = body
+}
+
+// Starts a Paystack transaction through an Edge Function and redirects to
+// Paystack. The secret key stays server-side.
+async function payWithPaystack(kind, planKey) {
+  if (!currentUser || !useSupabase) return
+  storeManageMsg.textContent = 'Starting checkout…'
+  try {
+    const { data: sessionData } = await db.auth.getSession()
+    const token = sessionData?.session?.access_token || SUPABASE_ANON_KEY
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/paystack-checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ kind, plan: planKey })
+    })
+    const data = await resp.json().catch(() => ({}))
+    if (!resp.ok || !data?.url) throw new Error(data?.error || 'Could not start checkout')
+    window.location.href = data.url
+  } catch (e) {
+    storeManageMsg.textContent = `Could not start Paystack checkout: ${e?.message || 'Unknown error'}`
+  }
+}
+
+// Paystack redirects here after checkout. The webhook does the actual
+// payment verification and crediting server-side.
+function handlePaystackRedirectIfPresent() {
+  const params = new URLSearchParams(window.location.search)
+  const result = params.get('paystack')
+  if (!result) return
+  if (result === 'success') showUxToast('Payment submitted — your store access will update after Paystack confirms it.')
+  params.delete('paystack')
+  params.delete('reference')
+  params.delete('trxref')
+  const query = params.toString()
+  history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : ''))
+}
+
+document.getElementById('store-billing-panel')?.addEventListener('change', (ev) => {
+  if (ev.target.name !== 'store-plan-choice') return
+  document.querySelectorAll('.store-plan-card').forEach((card) => card.classList.toggle('is-selected', card.contains(ev.target)))
+})
+
+document.getElementById('store-billing-panel')?.addEventListener('click', async (ev) => {
+  const paystackBtn = ev.target.closest('.store-billing-paystack-btn')
+  if (paystackBtn) {
+    await payWithPaystack(paystackBtn.dataset.kind, paystackBtn.dataset.plan)
+    return
+  }
+  if (ev.target.id === 'store-start-trial-btn') {
+    const chosen = document.querySelector('input[name="store-plan-choice"]:checked')?.value
+    if (!chosen || !BILLING_PLANS[chosen]) { storeManageMsg.textContent = 'Please choose a plan first.'; return }
+    const p = BILLING_PLANS[chosen]
+    const confirmed = window.confirm(`Start your free 31-day trial of ${p.label}?\n\nYou won't be charged anything now. After 31 days you'll need to pay R${p.price}/month to keep your storefront visible to buyers — it never renews automatically.`)
+    if (!confirmed) return
+    const existingStore = getStoreForUser(currentUser.id)
+    if (existingStore?.name) {
+      const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * DAY_MS).toISOString()
+      await patchStoreRow(currentUser.id, {
+        plan: chosen, legacy_migration_choice: 'trial', trial_confirmed_at: new Date().toISOString(),
+        trial_ends_at: trialEndsAt, paid_until: null, locked_at: null, deletion_warned_at: null, grace_until: null,
+        reminder_30_sent_at: null, reminder_60_sent_at: null
+      })
+      showUxToast('Your free 31-day trial has started.')
+      renderStoreBillingPanel()
+      updateStoreManageGate()
+    } else {
+      pendingTrialPlan = chosen
+      pendingPayNow = false
+      storeManageMsg.textContent = 'Trial selected — fill in your store details below, then save to open your storefront.'
+      renderDesignControls()
+      updateStoreManageGate()
+    }
+  }
+  if (ev.target.id === 'store-pay-now-btn') {
+    const chosen = document.querySelector('input[name="store-plan-choice"]:checked')?.value
+    if (!chosen || !BILLING_PLANS[chosen]) { storeManageMsg.textContent = 'Please choose a plan first.'; return }
+    const existingStore = getStoreForUser(currentUser.id)
+    if (existingStore?.name) {
+      // Store already exists (e.g. a legacy store) — just pay immediately.
+      await patchStoreRow(currentUser.id, { plan: chosen })
+      await payWithPaystack('plan', chosen)
+    } else {
+      pendingTrialPlan = chosen
+      pendingPayNow = true
+      storeManageMsg.textContent = `Selected ${BILLING_PLANS[chosen].label} — fill in your store details below, then save to pay and go live.`
+      renderDesignControls()
+      updateStoreManageGate()
+    }
+  }
+  if (ev.target.id === 'store-legacy-delete-btn') {
+    await deleteMyStore()
+  }
+})
+
 const storeManageOverlay = document.getElementById('store-manage-overlay')
 const storeManageClose = document.getElementById('store-manage-close')
 const storeManageForm = document.getElementById('store-manage-form')
@@ -3411,10 +3950,33 @@ const storeManageSave = document.getElementById('store-manage-save')
 const storeManageDeleteBtn = document.getElementById('store-manage-delete')
 const storeManageShareBtn = document.getElementById('store-manage-share')
 const storeUseAccountNameBtn = document.getElementById('store-use-account-name')
+const storePreviewObjectUrls = { logo: '', banner: '' }
+
+function releaseStorePreviewObjectUrls() {
+  for (const key of Object.keys(storePreviewObjectUrls)) {
+    if (storePreviewObjectUrls[key]) URL.revokeObjectURL(storePreviewObjectUrls[key])
+    storePreviewObjectUrls[key] = ''
+  }
+}
+
+function setStorePreviewImage(input, preview, key) {
+  if (storePreviewObjectUrls[key]) URL.revokeObjectURL(storePreviewObjectUrls[key])
+  const file = input?.files?.[0]
+  storePreviewObjectUrls[key] = file ? URL.createObjectURL(file) : ''
+  if (file && preview) {
+    preview.src = storePreviewObjectUrls[key]
+    preview.classList.remove('hidden')
+  }
+  renderDesignPreview()
+}
+
+storeManageLogo?.addEventListener('change', () => setStorePreviewImage(storeManageLogo, storeManageLogoPreview, 'logo'))
+storeManageBanner?.addEventListener('change', () => setStorePreviewImage(storeManageBanner, storeManageBannerPreview, 'banner'))
 
 function openStoreManage() {
   if (!storeManageOverlay || !currentUser) return
   const mine = getStoreForUser(currentUser.id)
+  releaseStorePreviewObjectUrls()
   storeManageHeading.textContent = mine?.name ? 'My Store' : 'Open Your Store'
   storeManageIntro.textContent = mine?.name
     ? 'Update your storefront and keep your business listings together in one place.'
@@ -3454,9 +4016,17 @@ function openStoreManage() {
   storeManageViewBtn.style.display = mine?.name ? '' : 'none'
   storeManageShareBtn?.classList.toggle('hidden', !mine?.name)
   storeManageDeleteBtn?.classList.toggle('hidden', !mine?.name)
+  pendingTrialPlan = null
+  pendingPayNow = false
+  renderDesignControls()
+  renderStoreBillingPanel()
+  updateStoreManageGate()
   window.linkhubRefreshStoreUx?.()
   storeManageOverlay.classList.remove('hidden')
   storeManageOverlay.setAttribute('aria-hidden', 'false')
+  storeManageOverlay.scrollTop = 0
+  const storeManagePanel = storeManageOverlay.querySelector('.store-manage-panel')
+  if (storeManagePanel) storeManagePanel.scrollTop = 0
   document.documentElement.classList.add('lightbox-open')
 }
 
@@ -3510,8 +4080,25 @@ async function saveStoreManage(event) {
   const instagramValue = normalizeUrl(instagram_url)
   if (!useSupabase) { storeManageMsg.textContent = 'Stores need a live Supabase connection to save.'; return }
 
-  storeManageMsg.textContent = 'Saving…'
   const existingStore = getStoreForUser(currentUser.id)
+  let billingFields = {}
+  const payNowAfterSave = !existingStore?.name && pendingPayNow
+  if (!existingStore?.name) {
+    if (!pendingTrialPlan || !BILLING_PLANS[pendingTrialPlan]) {
+      storeManageMsg.textContent = 'Choose a plan above before saving — start a trial or pay now.'
+      return
+    }
+    billingFields = pendingPayNow
+      ? { plan: pendingTrialPlan, trial_confirmed_at: null, trial_ends_at: null, paid_until: null }
+      : {
+          plan: pendingTrialPlan,
+          trial_confirmed_at: new Date().toISOString(),
+          trial_ends_at: new Date(Date.now() + TRIAL_DAYS * DAY_MS).toISOString(),
+          paid_until: null
+        }
+  }
+
+  storeManageMsg.textContent = 'Saving…'
   let banner_url = existingStore?.banner_url || null
   let logo_url = existingStore?.logo_url || null
   let uploadedBannerPath = null
@@ -3549,7 +4136,7 @@ async function saveStoreManage(event) {
     return
   }
   try {
-    let payload = { id: currentUser.id, name, category, business_type, tagline, phone, website_url: websiteValue, whatsapp, instagram_url: instagramValue, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString() }
+    let payload = { id: currentUser.id, name, category, business_type, tagline, phone, website_url: websiteValue, whatsapp, instagram_url: instagramValue, location, address, bio, opening_hours, fulfilment, logo_url, banner_url, updated_at: new Date().toISOString(), ...billingFields }
     let { error: storeErr } = await db.from('stores').upsert(payload)
 
     // Some existing stores-table SQL schemas use user_id instead of id.
@@ -3582,13 +4169,23 @@ async function saveStoreManage(event) {
     }
     const designNote = await saveStoreDesign()
     try{localStorage.removeItem(storeDraftKey())}catch{}
-    storeManageMsg.textContent = 'Your store is live. You can now add listings and share your store link with customers.' + designNote
     storeManageViewBtn.style.display = ''
     storeManageShareBtn?.classList.remove('hidden')
     storeManageHeading.textContent = 'My Store'
+    const chosenPlanForPayNow = payNowAfterSave ? pendingTrialPlan : null
+    pendingTrialPlan = null
+    pendingPayNow = false
     await handleAuthChange()
     renderFilteredListings()
     renderBusinessExploreGrid()
+    renderStoreBillingPanel()
+    updateStoreManageGate()
+    if (chosenPlanForPayNow) {
+      storeManageMsg.textContent = 'Your store is saved — taking you to payment now.' + designNote
+      await payWithPaystack('plan', chosenPlanForPayNow)
+    } else {
+      storeManageMsg.textContent = 'Your store is live. You can now add listings and share your store link with customers.' + designNote
+    }
   } catch (e) {
     const failedUploads = [uploadedBannerPath, uploadedLogoPath].filter(Boolean)
     if (failedUploads.length) {
@@ -3618,13 +4215,15 @@ storeManageViewBtn?.addEventListener('click', () => {
 storeUseAccountNameBtn?.addEventListener('click', () => { const fullName=String(currentUser?.user_metadata?.full_name||'').trim(); if(!fullName){storeManageMsg.textContent='Your account does not have a saved name yet.';return} storeManageName.value=fullName; storeManageName.dispatchEvent(new Event('input',{bubbles:true})); window.linkhubRefreshStoreUx?.(); renderDesignPreview() })
 storeManageShareBtn?.addEventListener('click', shareMyStoreLink)
 
-async function deleteMyStore() {
+async function deleteMyStore(opts = {}) {
   if (!currentUser || !useSupabase) return
   const existingStore = getStoreForUser(currentUser.id)
   if (!existingStore?.name) return
 
-  const confirmed = window.confirm(`Delete your LinkHub store “${existingStore.name}”? Your store page and store profile will be removed. Your marketplace listings will NOT be deleted.`)
-  if (!confirmed) return
+  if (!opts?.silent) {
+    const confirmed = window.confirm(`Delete your LinkHub store “${existingStore.name}”? Your store page and store profile will be removed. Your marketplace listings will NOT be deleted.`)
+    if (!confirmed) return
+  }
 
   storeManageMsg.textContent = 'Preparing to delete your store…'
   storeManageDeleteBtn.disabled = true
@@ -3667,7 +4266,7 @@ async function deleteMyStore() {
     await handleAuthChange()
     renderFilteredListings()
     renderBusinessExploreGrid()
-    showUxToast('Your store has been deleted. Your listings were kept.')
+    showUxToast(opts?.reason || 'Your store has been deleted. Your listings were kept.')
   } catch (e) {
     console.warn('Deleting store failed', e)
     for (const item of restoreFiles) {
@@ -3724,7 +4323,86 @@ async function openAdminReports() {
     console.warn('Loading reports failed:', e)
     adminReportsList.innerHTML = '<div class="muted">Could not load reports (check that the SQL policy for the reports table has been run).</div>'
   }
+  await loadAdminBillingRequests()
 }
+
+async function loadAdminBillingRequests() {
+  const el = document.getElementById('admin-billing-list')
+  if (!el) return
+  el.innerHTML = 'Loading…'
+  try {
+    // Paystack payments are auto-approved by the webhook. Manual transfers
+    // can still be reviewed from this payment history.
+    const { data, error } = await db.from('billing_requests').select('*').order('created_at', { ascending: false }).limit(20)
+    if (error) throw error
+    if (!data || !data.length) { el.innerHTML = '<div class="muted">No payments yet.</div>'; return }
+    el.innerHTML = data.map((r) => {
+      const storeName = storesById[String(r.user_id)]?.name || `User ${String(r.user_id).slice(0, 8)}`
+      const when = r.created_at ? new Date(r.created_at).toLocaleString() : ''
+      const actions = r.status === 'pending'
+        ? `<div class="account-actions">
+            <button type="button" class="admin-billing-approve">Approve</button>
+            <button type="button" class="muted-btn admin-billing-reject">Reject</button>
+          </div>`
+        : `<div class="report-row-meta muted">${escapeHtml(r.status)}</div>`
+      return `<div class="report-row" data-billing-id="${escapeHtml(r.id)}" data-billing-user="${escapeHtml(r.user_id)}" data-billing-plan="${escapeHtml(r.plan)}">
+        <div class="report-row-title">${escapeHtml(storeName)} — ${escapeHtml(r.plan)} (R${r.amount})</div>
+        <div class="report-row-meta muted">${escapeHtml(when)}</div>
+        ${actions}
+      </div>`
+    }).join('')
+  } catch (e) {
+    console.warn('Loading billing requests failed:', e)
+    el.innerHTML = '<div class="muted">Could not load billing requests (has the billing_requests migration been applied?).</div>'
+  }
+}
+
+document.getElementById('admin-billing-list')?.addEventListener('click', async (ev) => {
+  const row = ev.target.closest('[data-billing-id]')
+  if (!row) return
+  const id = row.dataset.billingId
+  const userId = row.dataset.billingUser
+  const plan = row.dataset.billingPlan
+  const disableRow = () => row.querySelectorAll('button').forEach((b) => { b.disabled = true })
+  const enableRow = () => row.querySelectorAll('button').forEach((b) => { b.disabled = false })
+
+  if (ev.target.classList.contains('admin-billing-approve')) {
+    disableRow()
+    try {
+      const { error } = await db.from('billing_requests').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: OWNER_EMAIL }).eq('id', id)
+      if (error) throw error
+      const store = storesById[String(userId)]
+      const base = Date.now()
+      if (plan === 'boost') {
+        await patchStoreRow(userId, { boost_active: true, boost_paid_until: new Date(base + 30 * DAY_MS).toISOString() })
+      } else {
+        const currentPaidUntil = store?.paid_until ? new Date(store.paid_until).getTime() : 0
+        const from = currentPaidUntil > base ? currentPaidUntil : base
+        await patchStoreRow(userId, {
+          plan, paid_until: new Date(from + 30 * DAY_MS).toISOString(),
+          locked_at: null, deletion_warned_at: null, grace_until: null,
+          reminder_30_sent_at: null, reminder_60_sent_at: null
+        })
+      }
+      row.remove()
+      showUxToast('Payment approved.')
+    } catch (e) {
+      showUxToast(`Could not approve payment: ${e?.message || 'Unknown error'}`)
+      enableRow()
+    }
+  } else if (ev.target.classList.contains('admin-billing-reject')) {
+    disableRow()
+    try {
+      const { error } = await db.from('billing_requests').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: OWNER_EMAIL }).eq('id', id)
+      if (error) throw error
+      row.remove()
+      showUxToast('Payment rejected.')
+    } catch (e) {
+      showUxToast(`Could not reject payment: ${e?.message || 'Unknown error'}`)
+      enableRow()
+    }
+  }
+})
 
 function closeAdminReports() {
   if (!adminOverlay) return
@@ -3906,8 +4584,10 @@ async function fetchAndRenderListings() {
     window.linkhubApplyStoreDefaults?.()
     await loadRatingsAndDesigns()
     await runListingCleanup()
+    await runStoreBillingCleanup()
     renderFilteredListings()
     renderBusinessExploreGrid()
+    handlePaystackRedirectIfPresent()
     if (myListingsOverlay && !myListingsOverlay.classList.contains('hidden')) renderMyListings()
     if (storeOverlay && !storeOverlay.classList.contains('hidden')) renderStoreListings()
     else openStoreFromUrlIfPresent()
@@ -4977,6 +5657,27 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !listingOverlay.classList.contains('hidden')) closeListingOverlay()
 })
 
+function handleListingImageError(event) {
+  const image = event.target
+  if (!(image instanceof HTMLImageElement)) return
+  const surface = image.closest('.listing-img-wrap,.gallery-thumb,.listing-overlay-gallery,.mini-listing-img,.business-explore-logo,.store-preview-banner,.store-preview-logo')
+  if (!surface) return
+  if (surface.classList.contains('business-explore-logo')) {
+    const fallback = document.createElement('div')
+    fallback.className = 'business-explore-icon'
+    fallback.innerHTML = ICON_STORE
+    surface.replaceWith(fallback)
+    return
+  }
+  surface.classList.add('image-unavailable')
+  image.remove()
+  if (surface.classList.contains('store-preview-logo')) {
+    surface.textContent = initialsFromName(storeManageName?.value || '')
+  }
+}
+
+document.addEventListener('error', handleListingImageError, true)
+
 function renderListing(l, container = listingsContainer) {
   if (!(container instanceof Element)) container = listingsContainer
   if (!container) return
@@ -5214,7 +5915,7 @@ const REVIEW_KINDS = {
   seller: { table: 'seller_ratings', key: 'seller_id', label: 'seller', placeholder: 'How was dealing with this seller? (optional)' },
 }
 const REVIEW_PREVIEW_COUNT = 4
-const STORE_ACCENTS = ['#1678e8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+const STORE_ACCENTS = ['#1678e8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1', '#eab308', '#0ea5e9', '#a855f7', '#64748b']
 const STORE_FONTS = [['modern', 'Modern'], ['classic', 'Classic'], ['friendly', 'Friendly']]
 const STORE_LAYOUTS = [['grid', 'Grid'], ['list', 'List']]
 
@@ -5579,8 +6280,8 @@ function renderStoreRatingChip(userId) {
 function applyStoreDesign(userId) {
   const panel = storeOverlay?.querySelector('.app-overlay-panel')
   if (!panel) return
-  const d = storeDesignsById[String(userId)]
-  const accent = /^#[0-9a-f]{6}$/i.test(d?.accent || '') ? d.accent : ''
+  const d = normalizeStoreDesignForTier(storeDesignsById[String(userId)], userId)
+  const accent = /^#[0-9a-f]{6}$/i.test(d.accent || '') ? d.accent : ''
   if (accent) {
     panel.style.setProperty('--store-accent', accent)
     panel.style.setProperty('--store-accent-soft', hexToRgba(accent, 0.16))
@@ -5590,13 +6291,13 @@ function applyStoreDesign(userId) {
     panel.style.removeProperty('--store-accent-soft')
     delete panel.dataset.storeThemed
   }
-  panel.dataset.storeFont = d?.font || 'modern'
+  panel.dataset.storeFont = d.font || 'modern'
   const note = document.getElementById('store-announcement')
   if (note) {
-    note.textContent = d?.announcement || ''
-    note.classList.toggle('hidden', !d?.announcement)
+    note.textContent = d.announcement || ''
+    note.classList.toggle('hidden', !d.announcement)
   }
-  storeGrid?.classList.toggle('store-layout-list', d?.layout === 'list')
+  storeGrid?.classList.toggle('store-layout-list', d.layout === 'list')
 }
 
 function recordStoreVisit(storeId) {
@@ -5619,54 +6320,146 @@ function recordContactTap(item) {
 // ---------------------------------------------------------------------------
 const designState = { accent: STORE_ACCENTS[0], font: 'modern', layout: 'grid', featured: [] }
 
+function storeDesignPlan(userId = currentUser?.id) {
+  if (String(userId) === String(currentUser?.id) && pendingTrialPlan) return pendingTrialPlan
+  return getStoreForUser(userId)?.plan || 'store'
+}
+
+function normalizeStoreDesignForTier(design, userId = currentUser?.id) {
+  const business = storeDesignPlan(userId) === 'business'
+  const accent = /^#[0-9a-f]{6}$/i.test(design?.accent || '') ? design.accent.toLowerCase() : STORE_ACCENTS[0]
+  return {
+    accent,
+    font: business && STORE_FONTS.some(([value]) => value === design?.font) ? design.font : 'modern',
+    layout: business && STORE_LAYOUTS.some(([value]) => value === design?.layout) ? design.layout : 'grid',
+    announcement: business ? (design?.announcement || '') : '',
+    featured_ids: (Array.isArray(design?.featured_ids) ? design.featured_ids : []).map(String)
+  }
+}
+
 function renderDesignControls() {
   const accents = document.getElementById('store-design-accents')
   if (!accents) return
+  const business = storeDesignPlan() === 'business'
+  const tierNote = document.getElementById('store-design-tier-note')
+  if (tierNote) tierNote.textContent = business
+    ? 'LinkHub Business includes custom colour, font and layout choices, announcements, unlimited featured listings, customer product search and analytics export.'
+    : 'LinkHub Store includes 16 colours plus your own custom colour, presets, unlimited featured listings, customer product search and analytics export.'
   accents.innerHTML = STORE_ACCENTS.map((c) => `<button type="button" class="store-swatch${designState.accent.toLowerCase() === c ? ' active' : ''}" data-color="${c}" style="background:${c}" aria-label="Accent ${c}"></button>`).join('')
   const custom = document.getElementById('store-design-accent-custom')
-  if (custom) custom.value = designState.accent
+  if (custom) {
+    custom.value = designState.accent
+    custom.disabled = false
+    custom.title = 'Choose your own accent colour'
+  }
   const choice = (id, list, current, attr) => {
     const el = document.getElementById(id)
-    if (el) el.innerHTML = list.map(([value, label]) => `<button type="button" class="store-choice-btn${current === value ? ' active' : ''}" data-${attr}="${value}" aria-pressed="${current === value}">${label}</button>`).join('')
+    if (el) el.innerHTML = business
+      ? list.map(([value, label]) => `<button type="button" class="store-choice-btn${current === value ? ' active' : ''}" data-${attr}="${value}" aria-pressed="${current === value}">${label}</button>`).join('')
+      : '<span class="store-tier-lock">LinkHub Business unlocks these options</span>'
   }
   choice('store-design-fonts', STORE_FONTS, designState.font, 'font')
   choice('store-design-layouts', STORE_LAYOUTS, designState.layout, 'layout')
-  const feat = document.getElementById('store-design-featured')
-  if (feat) {
-    const mine = currentUser ? currentListings.filter((l) => String(l.user_id) === String(currentUser.id) && !l.sold) : []
-    const full = designState.featured.length >= 3
-    feat.innerHTML = mine.length
-      ? mine.map((l) => {
-          const on = designState.featured.includes(String(l.id))
-          return `<label class="store-featured-item"><input type="checkbox" value="${escapeHtml(l.id)}"${on ? ' checked' : ''}${full && !on ? ' disabled' : ''}><span>${escapeHtml(l.title || 'Untitled')}</span></label>`
-        }).join('')
-      : '<p class="muted store-design-empty">Post a listing first, then you can feature it at the top of your store.</p>'
+  renderFeaturedListings()
+  const announcement = document.getElementById('store-design-announcement')
+  if (announcement) {
+    announcement.disabled = !business
+    announcement.placeholder = business ? 'e.g. Free delivery in Joburg this weekend' : 'Available with LinkHub Business'
   }
   renderDesignPreview()
+}
+
+function renderFeaturedListings() {
+  const feat = document.getElementById('store-design-featured')
+  if (!feat) return
+  const paid = !!currentUser && computeStoreAccess(getStoreForUser(currentUser.id)).status === 'active'
+  const search = document.getElementById('store-featured-search')
+  const searchNote = document.getElementById('store-featured-search-note')
+  const count = document.getElementById('store-featured-count')
+  if (search) {
+    search.closest('.store-featured-search')?.classList.toggle('hidden', !paid)
+    search.disabled = !paid
+  }
+  searchNote?.classList.toggle('hidden', paid)
+  if (count) count.textContent = `${designState.featured.length} selected`
+
+  const ownerId = String(currentUser?.id || '')
+  const listings = currentUser
+    ? currentListings.filter((item) => String(item.user_id || item.seller_id || '') === ownerId && !item.sold)
+    : []
+  const query = paid ? (search?.value || '').trim().toLowerCase() : ''
+  const matches = listings.filter((item) => {
+    if (!query) return true
+    return [item.title, item.category, item.location].some((value) => String(value || '').toLowerCase().includes(query))
+  })
+
+  if (!listings.length) {
+    feat.innerHTML = '<p class="muted store-design-empty">Post a listing first, then choose any number to feature on your store.</p>'
+  } else if (!matches.length) {
+    feat.innerHTML = `<p class="muted store-design-empty">No active listings match “${escapeHtml(search.value.trim())}”.</p>`
+  } else {
+    feat.innerHTML = matches.map((item) => {
+      const id = String(item.id)
+      const on = designState.featured.includes(id)
+      return `<label class="store-featured-item"><input type="checkbox" value="${escapeHtml(id)}"${on ? ' checked' : ''}><span>${escapeHtml(item.title || 'Untitled')}</span>${item.category ? `<small>${escapeHtml(item.category)}</small>` : ''}</label>`
+    }).join('')
+  }
 }
 
 function renderDesignPreview() {
   const box = document.getElementById('store-design-preview')
   if (!box) return
   const name = (storeManageName?.value || '').trim() || 'Your store name'
+  const category = (storeManageCategory?.value || '').trim()
+  const businessType = (storeManageType?.value || '').trim()
+  const tagline = (storeManageTagline?.value || '').trim()
+  const location = (storeManageLocation?.value || '').trim()
+  const phone = (storeManagePhone?.value || '').trim()
+  const bio = (storeManageBio?.value || '').trim()
+  const hours = (storeManageHours?.value || '').trim()
+  const fulfilment = (storeManageFulfilment?.value || '').trim()
   const note = (document.getElementById('store-design-announcement')?.value || '').trim()
+  const logo = storePreviewObjectUrls.logo || (storeManageLogoPreview && !storeManageLogoPreview.classList.contains('hidden') ? storeManageLogoPreview.src : '')
+  const banner = storePreviewObjectUrls.banner || (storeManageBannerPreview && !storeManageBannerPreview.classList.contains('hidden') ? storeManageBannerPreview.src : '')
+  const ownerId = String(currentUser?.id || '')
+  const activeListings = currentListings.filter((item) => String(item.user_id || item.seller_id || '') === ownerId && !item.sold)
+  const featured = new Set(designState.featured.map(String))
+  const orderedListings = [...activeListings.filter((item) => featured.has(String(item.id))), ...activeListings.filter((item) => !featured.has(String(item.id)))].slice(0, Math.max(4, featured.size))
+  const listingCards = orderedListings.map((item) => {
+    const image = getListingImages(item).find(isValidImageUrl)
+    return `<article class="store-preview-product">
+      <div class="store-preview-product-image">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : '<span>Product photo</span>'}</div>
+      <div class="store-preview-product-copy"><strong>${escapeHtml(item.title || 'Untitled listing')}</strong><span>${escapeHtml(formatListingPrice(item))}</span></div>
+      ${featured.has(String(item.id)) ? '<span class="store-preview-featured">Featured</span>' : ''}
+    </article>`
+  }).join('')
+  const metadata = [category || businessType, location].filter(Boolean).map(escapeHtml).join(' · ')
+  const contactLinks = [phone ? `<span>☎ ${escapeHtml(phone)}</span>` : '', hours ? `<span>Hours · ${escapeHtml(hours)}</span>` : '', fulfilment ? `<span>${escapeHtml(fulfilment)}</span>` : '', storeManageWebsite?.value.trim() ? '<span>Website</span>' : '', storeManageWhatsapp?.value.trim() ? '<span>WhatsApp</span>' : '', storeManageInstagram?.value.trim() ? '<span>Instagram</span>' : ''].filter(Boolean).join('')
   box.dataset.storeFont = designState.font
   box.style.setProperty('--store-accent', designState.accent)
   box.style.setProperty('--store-accent-soft', hexToRgba(designState.accent, 0.16))
-  box.innerHTML = `<div class="store-preview-banner"></div>
-    <div class="store-preview-head"><span class="store-preview-logo">${escapeHtml(initialsFromName(name))}</span><div><strong>${escapeHtml(name)}</strong><small>Preview of your store page</small></div><span class="store-preview-btn">Contact</span></div>
+  box.innerHTML = `<div class="store-preview-banner">${banner && isValidImageUrl(banner) ? `<img src="${escapeHtml(banner)}" alt="">` : '<span>Store banner</span>'}</div>
+    <div class="store-preview-profile">
+      <div class="store-preview-logo">${logo && isValidImageUrl(logo) ? `<img src="${escapeHtml(logo)}" alt="">` : escapeHtml(initialsFromName(name))}</div>
+      <div class="store-preview-identity"><span class="store-preview-category">${escapeHtml(category || businessType || 'Business storefront')}</span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(metadata || 'Your city and category')}</small></div>
+    </div>
+    ${tagline ? `<p class="store-preview-tagline">${escapeHtml(tagline)}</p>` : ''}
+    ${bio ? `<p class="store-preview-bio">${escapeHtml(bio)}</p>` : ''}
+    ${contactLinks ? `<div class="store-preview-contacts">${contactLinks}</div>` : ''}
     ${note ? `<div class="store-preview-note">${escapeHtml(note)}</div>` : ''}
-    <div class="store-preview-grid ${designState.layout === 'list' ? 'is-list' : ''}"><i></i><i></i><i></i><i></i></div>`
+    <div class="store-preview-products-head"><strong>Your listings</strong><span>${activeListings.length} active</span></div>
+    ${listingCards ? `<div class="store-preview-grid${designState.layout === 'list' ? ' is-list' : ''}">${listingCards}</div>` : '<div class="store-preview-empty">Your active listings will appear here.</div>'}`
 }
 
 function populateStoreDesignForm() {
   const d = currentUser ? storeDesignsById[String(currentUser.id)] : null
-  designState.accent = /^#[0-9a-f]{6}$/i.test(d?.accent || '') ? d.accent.toLowerCase() : STORE_ACCENTS[0]
-  designState.font = d?.font || 'modern'
-  designState.layout = d?.layout || 'grid'
-  designState.featured = (d?.featured_ids || []).map(String)
+  const normalized = normalizeStoreDesignForTier(d)
+  designState.accent = normalized.accent
+  designState.font = normalized.font
+  designState.layout = normalized.layout
+  designState.featured = normalized.featured_ids
   const note = document.getElementById('store-design-announcement')
-  if (note) note.value = d?.announcement || ''
+  if (note) note.value = normalized.announcement
   renderDesignControls()
 }
 
@@ -5685,24 +6478,43 @@ document.getElementById('store-design-featured')?.addEventListener('change', (ev
   const box = event.target.closest('input[type="checkbox"]')
   if (!box) return
   const id = String(box.value)
-  designState.featured = box.checked ? [...new Set([...designState.featured, id])].slice(0, 3) : designState.featured.filter((x) => x !== id)
+  designState.featured = box.checked ? [...new Set([...designState.featured, id])] : designState.featured.filter((x) => x !== id)
   renderDesignControls()
 })
+document.getElementById('store-featured-search')?.addEventListener('input', renderFeaturedListings)
 document.getElementById('store-design-announcement')?.addEventListener('input', renderDesignPreview)
-storeManageName?.addEventListener('input', renderDesignPreview)
-document.querySelectorAll('.store-design-preset').forEach(btn=>btn.addEventListener('click',()=>{const p=btn.dataset.storePreset;if(p==='bold'){designState.accent='#1678e8';designState.font='friendly';designState.layout='grid'}else if(p==='classic'){designState.accent='#c9a25d';designState.font='classic';designState.layout='list'}else{designState.accent='#1678e8';designState.font='modern';designState.layout='grid'}renderDesignControls();document.querySelectorAll('.store-design-preset').forEach(el=>el.classList.toggle('active',el===btn));saveStoreDraft()}))
+;[storeManageName, storeManageCategory, storeManageType, storeManageTagline, storeManageLocation, storeManagePhone, storeManageBio, storeManageHours, storeManageFulfilment, storeManageWebsite, storeManageWhatsapp, storeManageInstagram].forEach((field) => field?.addEventListener('input', renderDesignPreview))
+;[storeManageType, storeManageFulfilment].forEach((field) => field?.addEventListener('change', renderDesignPreview))
+document.querySelector('.store-preview-modes')?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-store-preview-mode]')
+  if (!button) return
+  const mode = button.dataset.storePreviewMode
+  document.getElementById('store-design-preview').dataset.previewMode = mode
+  document.querySelectorAll('[data-store-preview-mode]').forEach((item) => {
+    const active = item === button
+    item.classList.toggle('active', active)
+    item.setAttribute('aria-pressed', String(active))
+  })
+})
+document.querySelectorAll('.store-design-preset').forEach(btn=>btn.addEventListener('click',()=>{const p=btn.dataset.storePreset,business=storeDesignPlan()==='business';if(p==='bold'){designState.accent=business?'#1678e8':'#ef4444';designState.font=business?'friendly':'modern';designState.layout='grid'}else if(p==='classic'){designState.accent=business?'#c9a25d':'#f59e0b';designState.font=business?'classic':'modern';designState.layout=business?'list':'grid'}else{designState.accent='#1678e8';designState.font='modern';designState.layout='grid'}renderDesignControls();document.querySelectorAll('.store-design-preset').forEach(el=>el.classList.toggle('active',el===btn));saveStoreDraft()}))
 
 // Returns '' when saved, or a short message to show under the form.
 async function saveStoreDesign() {
   if (!useSupabase || !currentUser) return ''
-  const announcement = (document.getElementById('store-design-announcement')?.value || '').trim().slice(0, 140)
-  const row = {
-    owner_id: currentUser.id,
-    accent: designState.accent.toLowerCase(),
+  const normalized = normalizeStoreDesignForTier({
+    accent: designState.accent,
     font: designState.font,
     layout: designState.layout,
-    announcement: announcement || null,
-    featured_ids: designState.featured.slice(0, 3),
+    announcement: (document.getElementById('store-design-announcement')?.value || '').trim().slice(0, 140),
+    featured_ids: designState.featured
+  })
+  const row = {
+    owner_id: currentUser.id,
+    accent: normalized.accent,
+    font: normalized.font,
+    layout: normalized.layout,
+    announcement: normalized.announcement || null,
+    featured_ids: normalized.featured_ids,
     updated_at: new Date().toISOString(),
   }
   const { error } = await db.from('store_designs').upsert(row, { onConflict: 'owner_id' })
@@ -5718,6 +6530,8 @@ const dashboardOverlay = document.getElementById('dashboard-overlay')
 const dashboardBody = document.getElementById('dashboard-body')
 let dashboardDays = 30
 let dashboardRequest = 0
+let dashboardData = null
+let dashboardDataIsFallback = false
 
 function dashboardIcon() {
   return '<svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -5742,6 +6556,8 @@ function closeDashboard() {
 async function loadDashboard(days) {
   if (!dashboardBody) return
   dashboardDays = days
+  dashboardData = null
+  dashboardDataIsFallback = false
   const request = ++dashboardRequest
   dashboardBody.innerHTML = '<div class="dash-loading-state"><span class="dash-loading-spinner" aria-hidden="true"></span><strong>Loading your dashboard…</strong><span class="muted">Pulling your latest store activity.</span></div>'
   if (!useSupabase) {
@@ -5752,7 +6568,8 @@ async function loadDashboard(days) {
     const { data, error } = await db.rpc('store_dashboard', { p_days: days })
     if (error) throw error
     if (request !== dashboardRequest) return
-    dashboardBody.innerHTML = dashboardHtml(data || {})
+    dashboardData = data || {}
+    dashboardBody.innerHTML = dashboardHtml(dashboardData)
     wireDashboard()
   } catch (e) {
     if (request !== dashboardRequest) return
@@ -5762,6 +6579,8 @@ async function loadDashboard(days) {
     try {
       const fallback = await buildDashboardFallback(days)
       if (request !== dashboardRequest) return
+      dashboardData = fallback
+      dashboardDataIsFallback = true
       dashboardBody.innerHTML = dashboardHtml(fallback, {
         warning: /does not exist|schema cache|Could not find/i.test(e?.message || '')
           ? 'Some live analytics are unavailable because the store dashboard SQL function is not active yet.'
@@ -5818,7 +6637,54 @@ function dashFunnelHtml(vis,interest){const s=[['Store visitors',Number(vis.uniq
 function dashRatingsHtml(r){const sc=Number(r.seller_count||0),sa=sc?Number(r.seller_avg||0):0,pc=Number(r.product_count||0),pa=pc?Number(r.product_avg||0):0,stars=a=>a?`${'★'.repeat(Math.round(a))}${'☆'.repeat(Math.max(0,5-Math.round(a)))}`:'☆☆☆☆☆';return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Trust</span><h3>Ratings</h3></div><span class="dash-card-meta">All time</span></div><div class="dash-rating-grid"><div class="dash-rating-big"><strong>${sc?sa.toFixed(1):'—'}</strong><span class="dash-stars">${stars(sa)}</span><small class="muted">Seller rating · ${sc} review${sc===1?'':'s'}</small></div><div class="dash-rating-big"><strong>${pc?pa.toFixed(1):'—'}</strong><span class="dash-stars">${stars(pa)}</span><small class="muted">Product rating · ${pc} review${pc===1?'':'s'}</small></div></div></section>`}
 function dashSalesHtml(s){const t=Array.isArray(s.totals)?s.totals:[],r=Array.isArray(s.recent)?s.recent:[],m=Math.max(1,...t.map(x=>Number(x.amount)||0));return`<section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Sales</span><h3>Sales performance</h3></div><span class="dash-card-meta">${Number(s.count||0).toLocaleString()} sold</span></div>${t.length?`<div class="dash-sales-total-row">${t.map(x=>`<div><strong>${escapeHtml(formatMoney(x.amount,x.currency))}</strong><span class="muted">${escapeHtml(x.currency||'ZAR')} revenue</span></div>`).join('')}</div><div class="dash-sales-bars">${t.map(x=>`<div class="dash-sales-bar-row"><span>${escapeHtml(x.currency||'ZAR')}</span><div class="dash-top-bar"><i style="width:${Math.max(4,Math.round((Number(x.amount)/m)*100))}%"></i></div><strong>${escapeHtml(formatMoney(x.amount,x.currency))}</strong></div>`).join('')}</div>`:'<p class="muted">Mark a listing as sold and your sales history will appear here.</p>'}${r.length?`<div class="dash-sales-subhead">Recent sales</div><ul class="dash-sales">${r.map(x=>`<li><span>${escapeHtml(x.title||'Item')}</span><span class="muted">${escapeHtml(timeAgo(x.sold_at))}</span><strong>${x.price!=null?escapeHtml(formatMoney(x.price,x.currency)):'—'}</strong></li>`).join('')}</ul>`:''}</section>`}
 function dashboardHtml(d, options={}){const vis=d.visits||{},interest=d.interest||{},sales=d.sales||{},ratings=d.ratings||{},days=d.days||dashboardDays,store=getStoreForUser(currentUser?.id),top=(d.listing_views?.top||[]).filter(x=>Number(x.views)>=0),topMax=Math.max(1,...top.map(x=>Number(x.views)||0)),vc=Number(vis.unique||0),cc=Number(interest.contact_taps||0),ch=Number(interest.chats||0),of=Number(interest.offers||0),sold=Number(sales.count||0),active=Number(d.active_listings||0),lv=Number(d.listing_views?.total||0),avg=active?Math.round(lv/active):0,rate=vc?Math.round(cc/vc*100):0,has=vc||cc||ch||of||sold,sc=Number(ratings.seller_count||0),sr=sc?`${Number(ratings.seller_avg||0).toFixed(1)} ★`:'—',title=store?.name||'Your LinkHub store',range=[7,30,90].map(n=>`<button type="button" class="dash-range-btn${n===days?' active':''}" data-days="${n}">${n} days</button>`).join('');return`${options.warning?`<div class="dash-system-note is-info"><span class="dash-system-note-icon">!</span><div><strong>Analytics status</strong><span>${escapeHtml(options.warning)}</span></div><button type="button" class="dash-retry-btn">Retry</button></div>`:''}<div class="dash-hero"><div class="dash-hero-main"><span class="dash-live-dot"></span><div><span class="dash-eyebrow">${escapeHtml(title)}</span><strong>Store performance</strong><span class="muted">A live view of visitors, products, customer interest, sales and trust.</span></div></div><div class="dash-range" role="group" aria-label="Time range">${range}</div></div><div class="dash-kpis"><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('users')}</span><span class="dash-kpi-label">Visitors</span><strong class="dash-kpi-value">${vc.toLocaleString()}</strong><span class="dash-kpi-sub">unique store visitors · ${days} days</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('eye')}</span><span class="dash-kpi-label">Listing views</span><strong class="dash-kpi-value">${lv.toLocaleString()}</strong><span class="dash-kpi-sub">${active} active listing${active===1?'':'s'} · ${avg} avg each</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('phone')}</span><span class="dash-kpi-label">Contact taps</span><strong class="dash-kpi-value">${cc.toLocaleString()}</strong><span class="dash-kpi-sub">${rate}% of visitors reached out</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('message')}</span><span class="dash-kpi-label">Chats</span><strong class="dash-kpi-value">${ch.toLocaleString()}</strong><span class="dash-kpi-sub">${of} offer${of===1?'':'s'} received</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('bag')}</span><span class="dash-kpi-label">Sold</span><strong class="dash-kpi-value">${sold.toLocaleString()}</strong><span class="dash-kpi-sub">items marked sold · ${days} days</span></div><div class="dash-kpi"><span class="dash-kpi-icon">${dashSvgIcon('star')}</span><span class="dash-kpi-label">Seller rating</span><strong class="dash-kpi-value">${sr}</strong><span class="dash-kpi-sub">${sc} seller review${sc===1?'':'s'}</span></div></div>${!has?`<div class="dash-empty dash-empty-rich"><div class="dash-empty-icon">${dashSvgIcon('store')}</div><div><strong>Your dashboard is ready.</strong><span class="muted">Share your store link and start listing products. The cards below will fill up as people interact with your store.</span></div><button type="button" class="dash-share-btn">Share my store</button></div>`:''}<div class="dash-grid dash-grid-two"><section class="dash-card dash-chart-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Reach</span><h3>Store visitors</h3></div><span class="dash-card-meta">${days} days</span></div>${visitsChartSvg(vis.series)||'<div class="dash-no-chart"><strong>No visitor activity yet</strong><span class="muted">When people open your store, their activity will appear here.</span></div>'}</section>${dashFunnelHtml(vis,interest)}</div><div class="dash-grid dash-grid-two">${dashCompletionHtml(store)}${dashRatingsHtml(ratings)}</div><div class="dash-grid dash-grid-two"><section class="dash-card"><div class="dash-card-head"><div><span class="dash-eyebrow">Listings</span><h3>Most viewed products</h3></div><span class="dash-card-meta">all time</span></div>${top.length?`<ul class="dash-top">${top.map((x,i)=>`<li><span class="dash-top-rank">${i+1}</span><span class="dash-top-title">${escapeHtml(x.title||'Untitled')}</span><span class="dash-top-bar"><i style="width:${Number(x.views)>0?Math.max(4,Math.round(Number(x.views)/topMax*100)):0}%"></i></span><span class="dash-top-count">${Number(x.views).toLocaleString()}</span></li>`).join('')}</ul>`:'<p class="muted">Your product views will appear here.</p>'}</section>${dashSalesHtml(sales)}</div>`}
-function wireDashboard(){dashboardBody?.querySelectorAll('.dash-range-btn').forEach(btn=>btn.addEventListener('click',()=>loadDashboard(Number(btn.dataset.days))));dashboardBody?.querySelector('.dash-share-btn')?.addEventListener('click',shareMyStoreLink)}
+function wireDashboard(){dashboardBody?.querySelectorAll('.dash-range-btn').forEach(btn=>btn.addEventListener('click',()=>loadDashboard(Number(btn.dataset.days))));dashboardBody?.querySelector('.dash-share-btn')?.addEventListener('click',shareMyStoreLink);if(computeStoreAccess(getStoreForUser(currentUser?.id)).status==='active'){const range=dashboardBody?.querySelector('.dash-range');if(range){const button=document.createElement('button');button.type='button';button.className='dash-export-btn';button.setAttribute('aria-label','Export dashboard data as CSV');button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m-4-4 4 4 4-4M5 17v3h14v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Export CSV</span>';range.append(button)}}}
+
+function exportDashboardCsv() {
+  if (!dashboardData || computeStoreAccess(getStoreForUser(currentUser?.id)).status !== 'active') return
+  const data = dashboardData
+  const visits = data.visits || {}
+  const views = data.listing_views || {}
+  const interest = data.interest || {}
+  const sales = data.sales || {}
+  const ratings = data.ratings || {}
+  const rows = [
+    ['LinkHub store report', getStoreForUser(currentUser?.id)?.name || 'My store'],
+    ['Date range', `${Number(data.days || dashboardDays)} days`],
+    ['Data source', dashboardDataIsFallback ? 'Available account data (live analytics unavailable)' : 'Live store analytics'],
+    [],
+    ['Metric', 'Value'],
+    ['Unique visitors', Number(visits.unique) || 0],
+    ['Total visits', Number(visits.total) || 0],
+    ['Listing views', Number(views.total) || 0],
+    ['Contact taps', Number(interest.contact_taps) || 0],
+    ['Chats', Number(interest.chats) || 0],
+    ['Offers', Number(interest.offers) || 0],
+    ['Items sold', Number(sales.count) || 0],
+    ['Seller rating', ratings.seller_avg == null ? '' : Number(ratings.seller_avg)],
+    ['Seller reviews', Number(ratings.seller_count) || 0],
+    ['Product rating', ratings.product_avg == null ? '' : Number(ratings.product_avg)],
+    ['Product reviews', Number(ratings.product_count) || 0],
+    [],
+    ['Revenue currency', 'Amount'],
+    ...(Array.isArray(sales.totals) ? sales.totals.map((item) => [item.currency || 'ZAR', Number(item.amount) || 0]) : []),
+    [],
+    ['Top listing', 'Views'],
+    ...(Array.isArray(views.top) ? views.top.map((item) => [item.title || 'Untitled listing', Number(item.views) || 0]) : [])
+  ]
+  const csv = rows.map((row) => row.map((cell) => {
+    let value = String(cell ?? '')
+    if (/^\s*[=+@\-]/.test(value)) value = `'${value}`
+    return `"${value.replace(/"/g, '""')}"`
+  }).join(',')).join('\r\n')
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const storeName = (getStoreForUser(currentUser?.id)?.name || 'store').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  link.href = url
+  link.download = `linkhub-${storeName}-${dashboardDays}-days.csv`
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 async function shareMyStoreLink() {
   if (!currentUser) return
@@ -5840,6 +6706,7 @@ document.getElementById('store-dashboard-btn')?.addEventListener('click', () => 
 // Retry control for the dashboard status banner.
 dashboardBody?.addEventListener('click', (event) => {
   if (event.target.closest('.dash-retry-btn')) loadDashboard(dashboardDays)
+  if (event.target.closest('.dash-export-btn')) exportDashboardCsv()
 })
 
 // ===========================================================================
@@ -6054,22 +6921,53 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
-// Theme (light/dark) — applied immediately so there's no flash of the wrong theme
-const themeToggleBtn = document.getElementById('theme-toggle-btn')
+// Theme is applied immediately so the page doesn't flash the wrong palette.
+const openSettingsFromAccount = document.getElementById('open-settings-from-account')
+const settingsOverlay = document.getElementById('settings-overlay')
+const settingsClose = document.getElementById('settings-close')
 function applyTheme(theme) {
-  document.documentElement.classList.toggle('light-theme', theme === 'light')
-  if (themeToggleBtn) {
-    themeToggleBtn.classList.toggle('is-light', theme === 'light')
-    const label = themeToggleBtn.querySelector('.theme-toggle-label')
-    if (label) label.textContent = theme === 'light' ? 'Light' : 'Dark'
-  }
+  const selectedTheme = ['light', 'dark', 'default'].includes(theme) ? theme : 'default'
+  document.documentElement.classList.toggle('light-theme', selectedTheme === 'light')
+  document.documentElement.dataset.theme = selectedTheme
+  document.querySelectorAll('[data-theme-choice]').forEach((button) => {
+    const active = button.dataset.themeChoice === selectedTheme
+    button.classList.toggle('active', active)
+    button.setAttribute('aria-pressed', String(active))
+  })
 }
-applyTheme(localStorage.getItem('linkhub-theme') || 'dark')
-themeToggleBtn?.addEventListener('click', () => {
-  const next = document.documentElement.classList.contains('light-theme') ? 'dark' : 'light'
-  localStorage.setItem('linkhub-theme', next)
-  applyTheme(next)
+let savedTheme = 'default'
+try { savedTheme = localStorage.getItem('linkhub-theme') || 'default' } catch { /* private browsing */ }
+applyTheme(savedTheme)
+
+function setTheme(theme) {
+  const selectedTheme = ['light', 'dark', 'default'].includes(theme) ? theme : 'default'
+  try { localStorage.setItem('linkhub-theme', selectedTheme) } catch { /* private browsing */ }
+  applyTheme(selectedTheme)
+}
+
+function openAppearanceSettings() {
+  if (!settingsOverlay) return
+  settingsOverlay.classList.remove('hidden')
+  settingsOverlay.setAttribute('aria-hidden', 'false')
+  document.documentElement.classList.add('lightbox-open')
+}
+
+function closeAppearanceSettings() {
+  if (!settingsOverlay) return
+  settingsOverlay.classList.add('hidden')
+  settingsOverlay.setAttribute('aria-hidden', 'true')
+  document.documentElement.classList.remove('lightbox-open')
+}
+
+document.querySelectorAll('[data-theme-choice]').forEach((button) => {
+  button.addEventListener('click', () => setTheme(button.dataset.themeChoice))
 })
+settingsClose?.addEventListener('click', closeAppearanceSettings)
+settingsOverlay?.addEventListener('click', (event) => {
+  if (event.target === settingsOverlay) closeAppearanceSettings()
+})
+
+openSettingsFromAccount?.addEventListener('click', openAppearanceSettings)
 
 
 // Smooth, unified navigation transitions for section jumps.
