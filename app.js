@@ -3974,13 +3974,23 @@ function renderStoreBillingPanel() {
       </div>`
   } else if (access.status === 'trial' || access.status === 'active') {
     const boostActive = store.boost_active && store.boost_paid_until && new Date(store.boost_paid_until).getTime() > Date.now()
-    // Boost is an add-on to a PAID store plan only: no Boost box during the
-    // free trial, and none while a Boost is already running.
+    // No Boost purchase box in the panel. Only shows status if a Boost is running.
     const boostBox = boostActive
       ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>`
-      : (access.status === 'active' ? storePaymentBoxHtml('boost') : '')
+      : ''
+    // Only the plan already taken is shown (read-only, no radio). Other plans
+    // stay hidden until this one expires.
+    const takenPlan = BILLING_PLANS[access.plan]
+    const takenPlanCard = takenPlan ? `
+      <div class="store-plan-picker"><div class="store-plan-card is-selected">
+        <span class="store-plan-card-name">${escapeHtml(takenPlan.label)}</span>
+        <span class="store-plan-card-price">R${takenPlan.price}<span class="store-plan-card-period">/mo</span></span>
+        <span class="store-plan-card-summary">${escapeHtml(takenPlan.summary)}</span>
+        <span class="store-plan-card-note muted">Your current plan</span>
+      </div></div>` : ''
     body = `
       ${statusHeader}
+      ${takenPlanCard}
       ${access.status === 'active' ? '<p class="store-billing-subtext">Your plan is already active. No payment is needed right now.</p>' : `<p class="store-billing-subtext">Your free trial is active. Payment is not due until the trial ends.</p>`}
       ${boostBox}`
   } else if (access.status === 'locked') {
