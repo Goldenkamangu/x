@@ -3635,7 +3635,7 @@ function renderBusinessExploreGrid() {
       const listingCount = currentListings.filter((item) =>
         String(item.user_id || item.seller_id || '') === ownerId && !item.sold
       ).length
-      const boostActive = !!store.boost_active && new Date(store.boost_paid_until || 0).getTime() > Date.now()
+      const boostActive = !!store.boost_active && new Date(store.boost_paid_until || 0).getTime() > Date.now() && computeStoreAccess(store).status === 'active'
       return { ...store, ownerId, listingCount, boostActive }
     })
     .sort((a, b) => Number(b.boostActive) - Number(a.boostActive) || b.listingCount - a.listingCount)
@@ -3888,7 +3888,7 @@ function billingStatusIcon(tone) {
   return '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5v5.4l3.4 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 }
 
-function storePlanPickerHtml(selected) {
+function storePlanPickerHtml(selected, periodNote = 'after your free trial') {
   const planCards = Object.entries(BILLING_PLANS).map(([key, p]) => `
       <label class="store-plan-card${selected === key ? ' is-selected' : ''}">
         <input type="radio" name="store-plan-choice" value="${key}" ${selected === key ? 'checked' : ''}>
@@ -3896,7 +3896,7 @@ function storePlanPickerHtml(selected) {
         <span class="store-plan-card-price">R${p.price}<span class="store-plan-card-period">/mo</span></span>
         <span class="store-plan-card-summary">${escapeHtml(p.summary)}</span>
         ${p.designFeatures.map((feature) => `<span class="store-plan-card-feature">${escapeHtml(feature)}</span>`).join('')}
-        <span class="store-plan-card-note muted">after your free trial</span>
+        <span class="store-plan-card-note muted">${escapeHtml(periodNote)}</span>
       </label>`).join('')
   // Boost is shown so people can see the full price ladder up front, but it
   // isn't part of the trial or the radio group — it only becomes buyable
@@ -3916,7 +3916,7 @@ function storePlanPickerHtml(selected) {
 
 function storePaymentBoxHtml(kind, planKey) {
   const price = kind === 'boost' ? BOOST_PRICE : (BILLING_PLANS[planKey]?.price || BILLING_PLANS.store.price)
-  const label = kind === 'boost' ? 'LinkHub Boost' : (BILLING_PLANS[planKey]?.label || 'your plan')
+  const label = kind === 'boost' ? 'LinkHub Boost · optional add-on' : (BILLING_PLANS[planKey]?.label || 'your plan')
   return `
     <div class="store-billing-payment">
       <div class="store-billing-payment-row">
@@ -3928,6 +3928,16 @@ function storePaymentBoxHtml(kind, planKey) {
       </div>
       <div class="store-billing-secure">${ICON_SHIELD} Secured by Paystack · payment details never touch LinkHub</div>
     </div>`
+}
+
+// Expired plan: pick a plan again (Store or Business) and pay for it.
+function storeRenewPlanHtml(store) {
+  return `
+    ${storePlanPickerHtml(BILLING_PLANS[store?.plan] ? store.plan : '', 'per 30 days')}
+    <div class="account-actions">
+      <button type="button" id="store-renew-plan-btn" class="store-billing-paynow-btn">Pay with Paystack</button>
+    </div>
+    <div class="store-billing-secure">${ICON_SHIELD} Secured by Paystack · payment details never touch LinkHub</div>`
 }
 
 // Renders the plan/trial/payment panel inside the My Store overlay based on
@@ -3964,20 +3974,25 @@ function renderStoreBillingPanel() {
       </div>`
   } else if (access.status === 'trial' || access.status === 'active') {
     const boostActive = store.boost_active && store.boost_paid_until && new Date(store.boost_paid_until).getTime() > Date.now()
+    // Boost is an add-on to a PAID store plan only: no Boost box during the
+    // free trial, and none while a Boost is already running.
+    const boostBox = boostActive
+      ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>`
+      : (access.status === 'active' ? storePaymentBoxHtml('boost') : '')
     body = `
       ${statusHeader}
       ${access.status === 'active' ? '<p class="store-billing-subtext">Your plan is already active. No payment is needed right now.</p>' : `<p class="store-billing-subtext">Your free trial is active. Payment is not due until the trial ends.</p>`}
-      ${boostActive ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>` : storePaymentBoxHtml('boost')}`
+      ${boostBox}`
   } else if (access.status === 'locked') {
     body = `
       ${statusHeader}
       <p class="store-billing-subtext">Your storefront is hidden from buyers until you pay. It's deleted automatically 90 days after locking (with a final 14-day warning).</p>
-      ${storePaymentBoxHtml('plan', store.plan)}`
+      ${storeRenewPlanHtml(store)}`
   } else if (access.status === 'pending_deletion') {
     body = `
       ${statusHeader}
       <p class="store-billing-subtext">Your account and marketplace listings are safe — only the store page will be removed.</p>
-      ${storePaymentBoxHtml('plan', store.plan)}`
+      ${storeRenewPlanHtml(store)}`
   }
   panel.innerHTML = body
 }
@@ -3986,6 +4001,23 @@ function renderStoreBillingPanel() {
 // Paystack. The secret key stays server-side.
 async function payWithPaystack(kind, planKey) {
   if (!currentUser || !useSupabase) return
+  // Guard (the Edge Function enforces the same rules): one store plan at a
+  // time, and Boost only as an add-on to an active paid plan.
+  {
+    const mine = getStoreForUser(currentUser.id)
+    const planPaid = !!mine?.name && computeStoreAccess(mine).status === 'active'
+    const boostRunning = !!mine?.boost_active && new Date(mine.boost_paid_until || 0).getTime() > Date.now()
+    let blocked = ''
+    if (kind === 'plan' && planPaid) blocked = 'Your store plan is already active. You can choose a new plan once it expires.'
+    else if (kind === 'boost' && !planPaid) blocked = 'LinkHub Boost needs an active paid Store or Business plan.'
+    else if (kind === 'boost' && boostRunning) blocked = 'Boost is already active on your store.'
+    if (blocked) {
+      storeManageMsg.textContent = blocked
+      showUxToast(blocked)
+      renderStoreBillingPanel()
+      return
+    }
+  }
   storeManageMsg.textContent = 'Opening secure checkout…'
   openLinkHubProgress('Opening secure checkout', 'Connecting to Paystack and preparing your payment.', 24, 'Starting payment')
   try {
@@ -4115,6 +4147,16 @@ document.getElementById('store-billing-panel')?.addEventListener('click', async 
       pendingPayNow = false
       await payWithPaystack('plan', chosen)
     }
+  }
+  if (ev.target.id === 'store-renew-plan-btn') {
+    const chosen = document.querySelector('input[name="store-plan-choice"]:checked')?.value
+    if (!chosen || !BILLING_PLANS[chosen]) {
+      storeManageMsg.textContent = 'Please choose a plan first.'
+      showStorePlanRequired('Pick LinkHub Store or LinkHub Business before continuing to payment.')
+      return
+    }
+    await payWithPaystack('plan', chosen)
+    return
   }
   if (ev.target.id === 'store-legacy-delete-btn') {
     await deleteMyStore()
