@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v9'; // v9: Web Push alerts (works with the site closed)
+const CACHE_NAME = 'linkhub-shell-v10'; // v10: billing panel fix (one plan at a time, no Boost box)
 const APP_SHELL = [
   './',
   './index.html',
