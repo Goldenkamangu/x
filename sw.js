@@ -88,7 +88,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// Web Push: alerts for new messages and offers, even when LinkHub is closed.
+// Web Push: alerts for messages, offers, and account reminders while LinkHub is closed.
 // The server (send-push Edge Function) sends { title, body, tag, url }.
 // ---------------------------------------------------------------------------
 self.addEventListener('push', (event) => {
@@ -115,7 +115,7 @@ self.addEventListener('push', (event) => {
     // to show something, so they always show it.
     const isApple = /iPhone|iPad|iPod|Macintosh/.test(self.navigator.userAgent || '');
     const appIsVisible = windows.some((client) => client.visibilityState === 'visible');
-    if (appIsVisible && !isApple) return;
+    if (appIsVisible && !isApple && data.type !== 'system') return;
     await self.registration.showNotification(title, options);
   })());
 });

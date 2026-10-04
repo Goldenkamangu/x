@@ -199,11 +199,92 @@ const authMsg = document.getElementById('auth-msg')
 const authSection = document.getElementById('auth-section')
 const heroCtaSell = document.getElementById('hero-cta-sell')
 const heroCtaBrowse = document.getElementById('hero-cta-browse')
+const authDismissBtn = document.getElementById('auth-dismiss')
+const FIRST_VISIT_KEY = 'linkhub-first-visit-v1'
+const AUTH_DISMISSED_KEY = 'linkhub-auth-section-dismissed-v1'
+let authSectionDismissed = false
+let authExplicitlyOpened = false
+try { authSectionDismissed = localStorage.getItem(AUTH_DISMISSED_KEY) === 'true' } catch (_) {}
+if (heroCtaBrowse && authSection) heroCtaBrowse.closest('.hero')?.after(authSection)
+if (authSectionDismissed && authSection) authSection.style.display = 'none'
+const marketplacePage = document.getElementById('marketplace-page')
+const marketplaceListingsPanel = document.getElementById('marketplace-listings-panel')
+const marketplaceStoresPanel = document.getElementById('marketplace-stores-panel')
+const businessStoreCta = document.getElementById('business-store-cta')
+const homeHowItWorks = document.querySelector('.home-how-it-works')
+const marketplaceTabs = [...document.querySelectorAll('[data-marketplace-tab]')]
+const marketplaceFeed = document.getElementById('feed')
+if (marketplaceListingsPanel && marketplaceFeed) marketplaceListingsPanel.appendChild(marketplaceFeed)
+if (marketplacePage && homeHowItWorks) marketplacePage.after(homeHowItWorks)
+if (marketplaceStoresPanel && businessStoreCta) marketplaceStoresPanel.prepend(businessStoreCta)
+
+function openMarketplace(tab = 'listings', { fromUrl = false, scroll = true } = {}) {
+  const selected = tab === 'stores' ? 'stores' : 'listings'
+  document.body.classList.add('marketplace-open')
+  marketplacePage?.classList.remove('hidden')
+  marketplaceListingsPanel?.classList.toggle('hidden', selected !== 'listings')
+  marketplaceStoresPanel?.classList.toggle('hidden', selected !== 'stores')
+  marketplaceTabs.forEach((button) => button.setAttribute('aria-selected', String(button.dataset.marketplaceTab === selected)))
+  setMobileNavActive('browse')
+  if (!fromUrl) {
+    const url = new URL(window.location.href)
+    const alreadyAtMarketplace = url.searchParams.get('view') === 'marketplace'
+    url.searchParams.set('view', 'marketplace')
+    url.searchParams.set('tab', selected)
+    history[alreadyAtMarketplace ? 'replaceState' : 'pushState'](history.state, '', url.pathname + url.search + url.hash)
+  }
+  if (scroll) requestAnimationFrame(() => {
+    if (fromUrl && marketplacePage) {
+      const top = marketplacePage.getBoundingClientRect().top + window.scrollY - 66
+      window.scrollTo(0, Math.max(0, top))
+    } else {
+      marketplacePage?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  })
+}
+
+function closeMarketplace({ fromHistory = false } = {}) {
+  if (!fromHistory) {
+    const url = new URL(window.location.href)
+    url.searchParams.set('view', 'home')
+    url.searchParams.delete('tab')
+    history.pushState(history.state, '', url.pathname + url.search + url.hash)
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function scrollToAuthSection(block = 'start') {
+  authExplicitlyOpened = true
+  if (authSection) authSection.style.display = ''
+  if (document.body.classList.contains('marketplace-open')) closeMarketplace()
+  requestAnimationFrame(() => authSection?.scrollIntoView({ behavior: 'smooth', block }))
+}
+
+function syncMarketplaceFromUrl() {
+  const params = new URLSearchParams(window.location.search)
+  const view = params.get('view')
+  let firstVisit = true
+  try {
+    firstVisit = localStorage.getItem(FIRST_VISIT_KEY) !== 'true'
+    if (firstVisit) localStorage.setItem(FIRST_VISIT_KEY, 'true')
+  } catch (_) {}
+  openMarketplace(params.get('tab'), { fromUrl: true, scroll: view === 'marketplace' || (!view && !firstVisit) })
+}
+
+marketplaceTabs.forEach((button) => button.addEventListener('click', () => openMarketplace(button.dataset.marketplaceTab)))
+document.getElementById('marketplace-home')?.addEventListener('click', () => closeMarketplace())
+authDismissBtn?.addEventListener('click', () => {
+  authSectionDismissed = true
+  authExplicitlyOpened = false
+  try { localStorage.setItem(AUTH_DISMISSED_KEY, 'true') } catch (_) {}
+  if (authSection) authSection.style.display = 'none'
+})
+window.addEventListener('popstate', syncMarketplaceFromUrl)
+queueMicrotask(syncMarketplaceFromUrl)
 const heroListingCount = document.getElementById('hero-listing-count')
 
 // The create-listing card collapses to a compact rail/bar when it is not being used. It opens back up
 // whenever a "Post a Listing" / "Sell" button is tapped, or when editing an existing listing starts.
-const createListingCollapsedBar = document.getElementById('create-listing-collapsed-bar')
 const createListingCollapseBtn = document.getElementById('create-listing-collapse-btn')
 const CREATE_LISTING_MOBILE_WIDTH = 900
 const CREATE_LISTING_PREF_KEY = 'linkhub-create-listing-preferences-v1'
@@ -249,9 +330,6 @@ function markCreateListingPublished() {
 function setCreateListingCollapsed(collapsed) {
   if (!createListingSection) return
   createListingSection.classList.toggle('listing-collapsed', collapsed)
-  const layout = document.querySelector('.container')
-  layout?.classList.toggle('listing-compose-collapsed', collapsed)
-  createListingCollapsedBar?.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
 }
 
 function shouldDefaultCreateListingCollapsed() {
@@ -270,7 +348,7 @@ function applyCreateListingDefaultState() {
 
 function openCreateListingSection({ focus = true, trackOpen = true } = {}) {
   if (!currentUser || !createListingSection) {
-    authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollToAuthSection()
     return
   }
   if (trackOpen) noteCreateListingOpen()
@@ -293,13 +371,10 @@ function collapseCreateListingIfIdle() {
   applyCreateListingDefaultState()
 }
 
-createListingCollapsedBar?.addEventListener('click', () => openCreateListingSection())
 createListingCollapseBtn?.addEventListener('click', () => setCreateListingCollapsed(true))
 
 heroCtaSell?.addEventListener('click', () => openCreateListingSection())
-heroCtaBrowse?.addEventListener('click', () => {
-  document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-})
+heroCtaBrowse?.addEventListener('click', () => openMarketplace('listings'))
 const accountOverlay = document.getElementById('account-overlay')
 const accountClose = document.getElementById('account-close')
 const accountCancel = document.getElementById('account-cancel')
@@ -389,6 +464,7 @@ function buildDrawerMenu() {
     navDrawerUser.innerHTML = `${escapeHtml(displayName)}<div class="muted">${escapeHtml(currentUser.email || '')}</div>`
     navDrawerUser.style.display = ''
     const buttons = [
+      { icon: ICON_LISTINGS, label: 'Marketplace', action: () => openMarketplace('listings') },
       { icon: '<svg class=\"icon\" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" aria-hidden=\"true\"><path d=\"M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 21h4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>', label: 'Notifications', action: () => openNotifications() },
       { icon: ICON_LISTINGS, label: 'My Listings', action: () => openMyListings() },
       { icon: ICON_CART, label: 'My Cart', action: () => openCart() },
@@ -425,13 +501,22 @@ function buildDrawerMenu() {
     navDrawerMenu.appendChild(logoutBtn)
   } else {
     navDrawerUser.style.display = 'none'
+    const exploreStoresBtn = document.createElement('button')
+    exploreStoresBtn.type = 'button'
+    exploreStoresBtn.className = 'drawer-item'
+    exploreStoresBtn.innerHTML = `${ICON_LISTINGS}<span>Marketplace</span>`
+    exploreStoresBtn.addEventListener('click', () => {
+      closeDrawer()
+      openMarketplace('listings')
+    })
+    navDrawerMenu.appendChild(exploreStoresBtn)
     const signInBtn = document.createElement('button')
     signInBtn.type = 'button'
     signInBtn.className = 'drawer-item'
     signInBtn.innerHTML = `${ICON_SIGNIN}<span>Sign In / Sign Up</span>`
     signInBtn.addEventListener('click', () => {
       closeDrawer()
-      authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollToAuthSection()
     })
     navDrawerMenu.appendChild(signInBtn)
     const settingsBtn = document.createElement('button')
@@ -525,9 +610,7 @@ mobileBottomNav?.addEventListener('click', (event) => {
   setMobileNavActive(action)
 
   if (action === 'browse') {
-    requestAnimationFrame(() => {
-      document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    requestAnimationFrame(() => openMarketplace('listings'))
   } else if (action === 'sell') {
     requestAnimationFrame(() => openCreateListingSection())
   } else if (action === 'cart') {
@@ -758,8 +841,9 @@ function buildDesktopNav() {
   if (!desktopNav) return
   desktopNav.innerHTML = ''
   if (!currentUser) {
+    desktopNav.appendChild(desktopButton('Marketplace', () => openMarketplace('listings')))
     desktopNav.appendChild(desktopButtonWithIcon('Cart', ICON_CART, () => openCart()))
-    desktopNav.appendChild(desktopButton('Sign in / Sign up', () => authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' }), true))
+    desktopNav.appendChild(desktopButton('Sign in / Sign up', () => scrollToAuthSection(), true))
     desktopNav.appendChild(desktopButtonWithIcon('Install', ICON_INSTALL, () => promptInstall()))
     desktopNav.appendChild(createSettingsNavButton())
     desktopNav.appendChild(desktopButton('Terms', () => openTerms()))
@@ -770,7 +854,7 @@ function buildDesktopNav() {
   const rawDisplayName = currentUser.user_metadata?.full_name || getDisplayNameFromEmail(currentUser.email)
   const displayName = rawDisplayName.trim().split(/\s+/).filter(Boolean)[0] || 'Account'
   const store = getStoreForUser(currentUser.id)
-  desktopNav.appendChild(desktopButton('Browse', () => document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  desktopNav.appendChild(desktopButton('Marketplace', () => openMarketplace('listings')))
   desktopNav.appendChild(desktopButtonWithIcon('Cart', ICON_CART, () => openCart()))
   desktopNav.appendChild(desktopButton('Post a Listing', () => openCreateListingSection({ focus: false }), true))
   const menuItems = [
@@ -940,6 +1024,23 @@ function showUxToast(message, tone = 'default') {
   uxToast.classList.add('show')
   clearTimeout(uxToastTimer)
   uxToastTimer = setTimeout(() => uxToast.classList.remove('show'), 2400)
+}
+
+function notifyAccount(message, title = 'LinkHub update', tag = 'linkhub-update') {
+  showUxToast(message, 'warning')
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body: message, tag }) } catch {}
+  }
+}
+
+function notifyAccountOnce(key, message, title = 'LinkHub account notice') {
+  if (!currentUser) return
+  const noticeKey = `linkhub-notice:${currentUser.id}:${key}`
+  try {
+    if (localStorage.getItem(noticeKey)) return
+    localStorage.setItem(noticeKey, new Date().toISOString())
+  } catch {}
+  notifyAccount(message, title, noticeKey)
 }
 
 function notificationSeenKey() {
@@ -1566,7 +1667,7 @@ cartOverlay?.addEventListener('click', ev => { if (ev.target === cartOverlay) cl
 cartClear?.addEventListener('click', () => { cartIds.clear(); persistCart(); renderCart(); renderFilteredListings(); showUxToast('Cart cleared.') })
 cartItemsEl?.addEventListener('click', ev => {
   const browse = ev.target.closest('.cart-browse-btn')
-  if (browse) { closeCart(); document.getElementById('feed')?.scrollIntoView({behavior:'smooth', block:'start'}); return }
+  if (browse) { closeCart(); openMarketplace('listings'); return }
   const remove = ev.target.closest('.cart-remove-btn')
   if (remove) { removeFromCart(remove.dataset.id); showUxToast('Removed from cart.'); return }
   const view = ev.target.closest('.cart-view-btn')
@@ -2002,6 +2103,7 @@ async function handleAuthChange() {
   const { data } = await db.auth.getUser()
   const user = data.user
   currentUser = user
+  if (heroCtaSell) heroCtaSell.textContent = user ? 'Post a listing' : 'Sign in to post'
   loadCartyConversationForCurrentUser()
   loadFavoritesForCurrentUser()
   if (user) {
@@ -2011,7 +2113,7 @@ async function handleAuthChange() {
     setFormCompact(true)
     setTimeout(() => window.linkhubApplyStoreDefaults?.(), 0)
   } else {
-    authSection.style.display = ''
+    authSection.style.display = authSectionDismissed && !authExplicitlyOpened ? 'none' : ''
     createListingSection.style.display = 'none'
   }
   buildDrawerMenu()
@@ -2195,9 +2297,10 @@ function showLinkHubResult(success, title, detail) {
   if (linkhubActionDetail) linkhubActionDetail.textContent = detail
   linkhubActionProgressWrap?.classList.add('hidden')
   linkhubActionMissing?.classList.add('hidden')
+  if (linkhubActionClose) linkhubActionClose.textContent = 'Close'
   linkhubActionClose?.classList.remove('hidden')
   linkhubActionFix?.classList.add('hidden')
-  if (success) linkhubActionTimer = setTimeout(closeLinkHubActionModal, 1100)
+  if (success) linkhubActionTimer = setTimeout(closeLinkHubActionModal, 2200)
 }
 
 linkhubActionClose?.addEventListener('click', () => {
@@ -3303,6 +3406,7 @@ const storeOverlay = document.getElementById('store-overlay')
 const storeClose = document.getElementById('store-close')
 const storeShareBtn = document.getElementById('store-share')
 const storeEditBtn = document.getElementById('store-edit')
+const storePostListingBtn = document.getElementById('store-post-listing')
 const storeGrid = document.getElementById('store-grid')
 const storeCount = document.getElementById('store-count')
 const storeNameHeading = document.getElementById('store-name')
@@ -3418,6 +3522,7 @@ function openStore(userId) {
   if (storeEditBtn) {
     const isMine = currentUser && String(currentUser.id) === String(userId)
     storeEditBtn.classList.toggle('hidden', !isMine)
+    storePostListingBtn?.classList.toggle('hidden', !isMine)
   }
   if (storeBannerImg) {
     if (s?.banner_url) {
@@ -3481,7 +3586,21 @@ function closeStore() {
   }
 }
 
+window.addEventListener('popstate', () => queueMicrotask(() => {
+  if (activeStoreUserId || !storeOverlay?.classList.contains('hidden')) return
+  const params = new URLSearchParams(window.location.search)
+  if (!params.has('store')) return
+  params.delete('store')
+  const query = params.toString()
+  history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash)
+}))
+
 storeClose?.addEventListener('click', closeStore)
+storePostListingBtn?.addEventListener('click', () => {
+  if (!currentUser || String(currentUser.id) !== String(activeStoreUserId)) return
+  closeStore()
+  openCreateListingSection()
+})
 storeProductSearch?.addEventListener('input', renderStoreListings)
 storeShareBtn?.addEventListener('click', shareActiveStore)
 storeEditBtn?.addEventListener('click', () => openStoreManage())
@@ -3504,12 +3623,13 @@ function openStoreFromUrlIfPresent() {
 // so the section rendered with an empty grid.
 const businessExploreSection = document.getElementById('business-explore')
 const businessExploreGrid = document.getElementById('business-explore-grid')
+const businessExploreCount = document.getElementById('business-explore-count')
 
 function renderBusinessExploreGrid() {
   if (!businessExploreGrid) return
 
   const stores = Object.values(storesById || {})
-    .filter((store) => store && store.name)
+    .filter((store) => store && store.name && store.name !== 'New Store')
     .map((store) => {
       const ownerId = String(store.user_id || store.id || '')
       const listingCount = currentListings.filter((item) =>
@@ -3519,51 +3639,41 @@ function renderBusinessExploreGrid() {
       return { ...store, ownerId, listingCount, boostActive }
     })
     .sort((a, b) => Number(b.boostActive) - Number(a.boostActive) || b.listingCount - a.listingCount)
-    .slice(0, 12)
 
-  if (businessExploreSection) businessExploreSection.style.display = stores.length ? '' : 'none'
-  if (!stores.length) { businessExploreGrid.innerHTML = ''; return }
+  if (businessExploreCount) businessExploreCount.textContent = `${stores.length} store${stores.length === 1 ? '' : 's'}`
+  if (!stores.length) {
+    businessExploreGrid.innerHTML = '<p class="business-explore-empty">No stores are open yet. Check back soon.</p>'
+    return
+  }
 
   businessExploreGrid.innerHTML = stores.map((store) => {
     const countLabel = `${store.listingCount} listing${store.listingCount === 1 ? '' : 's'}`
     const meta = [store.category, store.location || store.city].filter(Boolean).join(' • ')
+    const design = normalizeStoreDesignForTier(storeDesignsById[store.ownerId], store.ownerId)
     const logo = store.logo_url
       ? `<div class="business-explore-logo"><img src="${escapeHtml(store.logo_url)}" alt="" loading="lazy" data-logo-name="${escapeHtml(store.name || '')}" data-logo-seed="${escapeHtml(store.ownerId || '')}"></div>`
       : `<div class="business-explore-icon">${ICON_STORE}</div>`
-    const hasWhatsApp = !!buildWhatsAppUrl(store.phone)
+    const whatsappUrl = buildWhatsAppUrl(store.phone)
     return `
-      <div class="business-explore-card" data-owner-id="${escapeHtml(store.ownerId)}" role="button" tabindex="0">
-        <div class="business-explore-card-top">
+      <article class="business-explore-card" style="--store-brand:${design.accent};--store-brand-contrast:${accentContrastColor(design.accent)}">
+        <button type="button" class="business-explore-open" data-owner-id="${escapeHtml(store.ownerId)}" aria-label="View ${escapeHtml(store.name)} store">
           ${logo}
-          <div style="min-width:0">
+          <span class="business-explore-card-copy">
             <div class="business-explore-name-row"><div class="business-explore-name">${escapeHtml(store.name)}</div>${store.boostActive ? '<span class="business-explore-boost">Boosted</span>' : ''}</div>
             <div class="business-explore-meta">${escapeHtml(meta ? `${meta} • ${countLabel}` : countLabel)}</div>
-          </div>
-        </div>
-        ${store.bio ? `<div class="business-explore-bio">${escapeHtml(store.bio)}</div>` : ''}
+            ${store.bio ? `<div class="business-explore-bio">${escapeHtml(store.bio)}</div>` : ''}
+            <span class="business-explore-view-label">View storefront <span aria-hidden="true">→</span></span>
+          </span>
+        </button>
         <div class="business-explore-actions">
-          <button type="button" class="hero-btn hero-btn-primary business-explore-view-btn">View Store</button>
-          ${hasWhatsApp ? `<button type="button" class="muted-btn business-explore-contact-btn">WhatsApp</button>` : ''}
+          ${whatsappUrl ? `<a class="business-explore-contact-btn" href="${escapeHtml(whatsappUrl)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
         </div>
-      </div>
+      </article>
     `
   }).join('')
 
-  businessExploreGrid.querySelectorAll('.business-explore-card').forEach((card) => {
-    const ownerId = card.dataset.ownerId
-    const store = stores.find((s) => s.ownerId === ownerId)
-    const openThisStore = () => openStore(ownerId)
-    card.addEventListener('click', (ev) => { if (!ev.target.closest('button')) openThisStore() })
-    card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openThisStore() } })
-    card.querySelector('.business-explore-view-btn')?.addEventListener('click', openThisStore)
-    const contactBtn = card.querySelector('.business-explore-contact-btn')
-    if (contactBtn && store) {
-      const url = buildWhatsAppUrl(store.phone)
-      contactBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation()
-        if (url) window.open(url, '_blank', 'noopener')
-      })
-    }
+  businessExploreGrid.querySelectorAll('.business-explore-open').forEach((button) => {
+    button.addEventListener('click', () => openStore(button.dataset.ownerId))
   })
 }
 
@@ -3596,7 +3706,7 @@ const BILLING_PLANS = {
   store: {
     label: 'LinkHub Store', price: 50,
     summary: 'A complete branded storefront for independent sellers.',
-    designFeatures: ['16 curated colours + custom colour', '3 storefront presets', 'Unlimited featured listings', 'Customer product search', 'Store analytics CSV export']
+    designFeatures: ['16 main colours + custom color', '3 optional brand accents', '3 storefront presets', 'Unlimited featured listings', 'Customer product search', 'Store analytics CSV export']
   },
   business: {
     label: 'LinkHub Business', price: 100,
@@ -3728,37 +3838,36 @@ function showStoreBillingReminderToast(days, store) {
   showUxToast(`Reminder: "${store.name}" has been locked for ${days} days. Pay to restore your storefront before it's deleted at 90 days.`)
 }
 
-// Runs on load for the signed-in user's own store: advances locked_at /
-// deletion_warned_at / grace_until as time passes, and deletes the store once
-// the grace period is over. Like runListingCleanup(), this only acts on the
-// current user's own data — a real background reminder/deletion job (e.g. a
-// scheduled Supabase Edge Function) is still needed for stores whose owner
-// never reopens the app; flagging that as outstanding, same as the other
-// pending SQL migrations.
+// Runs on load for the signed-in user's own store as an immediate fallback.
+// The scheduled billing-cron Edge Function handles reminders and deletion
+// even when the owner does not reopen the app.
 async function runStoreBillingCleanup() {
   if (!currentUser || !useSupabase) return
   const store = getStoreForUser(currentUser.id)
   if (!store?.name) return
   const access = computeStoreAccess(store)
   const nowIso = new Date().toISOString()
+  const noticeCycle = store.paid_until || store.trial_ends_at || store.locked_at || 'store'
 
   if (access.status === 'locked' && !store.locked_at) {
     await patchStoreRow(currentUser.id, { locked_at: nowIso })
     return
   }
-  if (access.status === 'locked' && access.reminderDue) {
-    const field = access.reminderDue === 30 ? 'reminder_30_sent_at' : 'reminder_60_sent_at'
-    await patchStoreRow(currentUser.id, { [field]: nowIso })
-    showStoreBillingReminderToast(access.reminderDue, store)
+  if (access.status === 'locked') {
+    const days = access.daysLocked >= 60 ? 60 : access.daysLocked >= 30 ? 30 : null
+    if (days) notifyAccountOnce(`store-${noticeCycle}-lock-${days}`, `Your store "${store.name}" has been locked for ${days} days. Pay to restore it before deletion begins at day 90.`, 'Store payment reminder')
     return
   }
-  if (access.status === 'pending_deletion' && !store.deletion_warned_at) {
-    const graceUntil = new Date(Date.now() + GRACE_DAYS * DAY_MS).toISOString()
-    await patchStoreRow(currentUser.id, { deletion_warned_at: nowIso, grace_until: graceUntil })
-    showUxToast(`Final warning: "${store.name}" will be deleted in ${GRACE_DAYS} days unless you pay.`)
-    return
+  if (access.status === 'pending_deletion') {
+    for (const days of [14, 7, 3, 1]) {
+      if (access.daysLeft <= days) {
+        notifyAccountOnce(`store-${noticeCycle}-delete-${days}`, `Your store "${store.name}" will be deleted in about ${access.daysLeft} day${access.daysLeft === 1 ? '' : 's'} unless payment restores it. Your marketplace listings remain safe.`, days === 14 ? 'Final store deletion warning' : 'Store deletion countdown')
+        break
+      }
+    }
   }
   if (access.status === 'delete_due') {
+    notifyAccountOnce(`store-${noticeCycle}-delete-today`, `Your store "${store.name}" is being removed after the grace period. Your account and marketplace listings are not deleted.`, 'Store deletion today')
     await deleteMyStore({ silent: true, reason: 'Your LinkHub store was removed after 90 days without payment and a 14-day grace period. Your account and marketplace listings were kept.' })
   }
 }
@@ -3857,7 +3966,7 @@ function renderStoreBillingPanel() {
     const boostActive = store.boost_active && store.boost_paid_until && new Date(store.boost_paid_until).getTime() > Date.now()
     body = `
       ${statusHeader}
-      ${storePaymentBoxHtml('plan', store.plan)}
+      ${access.status === 'active' ? '<p class="store-billing-subtext">Your plan is already active. No payment is needed right now.</p>' : `<p class="store-billing-subtext">Your free trial is active. Payment is not due until the trial ends.</p>`}
       ${boostActive ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>` : storePaymentBoxHtml('boost')}`
   } else if (access.status === 'locked') {
     body = `
@@ -3877,10 +3986,12 @@ function renderStoreBillingPanel() {
 // Paystack. The secret key stays server-side.
 async function payWithPaystack(kind, planKey) {
   if (!currentUser || !useSupabase) return
-  storeManageMsg.textContent = 'Starting checkout…'
+  storeManageMsg.textContent = 'Opening secure checkout…'
+  openLinkHubProgress('Opening secure checkout', 'Connecting to Paystack and preparing your payment.', 24, 'Starting payment')
   try {
     const { data: sessionData } = await db.auth.getSession()
     const token = sessionData?.session?.access_token || SUPABASE_ANON_KEY
+    updateLinkHubProgress('Opening secure checkout', 'Your account is ready. Requesting a secure Paystack checkout link.', 58, 'Preparing checkout')
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/paystack-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
@@ -3888,25 +3999,63 @@ async function payWithPaystack(kind, planKey) {
     })
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok || !data?.url) throw new Error(data?.error || 'Could not start checkout')
-    window.location.href = data.url
+    try { sessionStorage.setItem('linkhub-paystack-pending', JSON.stringify({ kind, plan: planKey, startedAt: Date.now() })) } catch {}
+    updateLinkHubProgress('Secure checkout is ready', 'Taking you to Paystack. LinkHub never receives your card details.', 100, 'Redirecting to Paystack')
+    window.location.assign(data.url)
   } catch (e) {
-    storeManageMsg.textContent = `Could not start Paystack checkout: ${e?.message || 'Unknown error'}`
+    try { sessionStorage.removeItem('linkhub-paystack-pending') } catch {}
+    const detail = e?.message || 'Unknown error'
+    storeManageMsg.textContent = `Could not start Paystack checkout: ${detail}`
+    showLinkHubResult(false, 'Checkout could not be started', detail)
   }
 }
 
 // Paystack redirects here after checkout. The webhook does the actual
 // payment verification and crediting server-side.
-function handlePaystackRedirectIfPresent() {
+async function handlePaystackRedirectIfPresent() {
   const params = new URLSearchParams(window.location.search)
   const result = params.get('paystack')
-  if (!result) return
-  if (result === 'success') showUxToast('Payment submitted — your store access will update after Paystack confirms it.')
+  if (!result) {
+    let pending = null
+    try { pending = JSON.parse(sessionStorage.getItem('linkhub-paystack-pending') || 'null') } catch {}
+    if (pending) {
+      try { sessionStorage.removeItem('linkhub-paystack-pending') } catch {}
+      showLinkHubResult(false, 'Payment was not confirmed', 'Paystack did not return a completed payment. Check your plan status before trying again to avoid a duplicate charge.')
+    }
+    return
+  }
+  try { sessionStorage.removeItem('linkhub-paystack-pending') } catch {}
+  const reference = params.get('reference') || params.get('trxref')
   params.delete('paystack')
   params.delete('reference')
   params.delete('trxref')
   const query = params.toString()
   history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : ''))
+  if (result === 'success') {
+    openLinkHubProgress('Verifying your payment', 'Paystack returned you to LinkHub. Waiting for secure payment confirmation.', 48, 'Checking confirmation')
+    let confirmed = false
+    if (reference && useSupabase && currentUser) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const { data, error } = await db.from('billing_requests').select('id,plan,status').eq('reference', reference).eq('source', 'paystack').eq('status', 'approved').maybeSingle()
+        if (!error && data) { confirmed = true; break }
+        if (attempt < 7) await new Promise((resolve) => setTimeout(resolve, 1200))
+      }
+    }
+    if (confirmed) {
+      await fetchAndRenderListings()
+      showLinkHubResult(true, 'Payment confirmed', 'Your plan is active. You can finish your storefront setup whenever you are ready.')
+      if (getStoreForUser(currentUser?.id)?.name === 'New Store') setTimeout(() => openStoreManage(), 1200)
+    } else {
+      showLinkHubResult(false, 'Payment confirmation is taking longer', 'Your payment was submitted to Paystack, but LinkHub has not received confirmation yet. Please do not pay again; check your store plan again shortly.')
+    }
+  } else {
+    showLinkHubResult(false, 'Payment was not completed', 'No completed payment was confirmed. You can return to your plan and try again.')
+  }
 }
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) handlePaystackRedirectIfPresent()
+})
 
 document.getElementById('store-billing-panel')?.addEventListener('change', (ev) => {
   if (ev.target.name !== 'store-plan-choice') return
@@ -3935,7 +4084,8 @@ document.getElementById('store-billing-panel')?.addEventListener('click', async 
       await patchStoreRow(currentUser.id, {
         plan: chosen, legacy_migration_choice: 'trial', trial_confirmed_at: new Date().toISOString(),
         trial_ends_at: trialEndsAt, paid_until: null, locked_at: null, deletion_warned_at: null, grace_until: null,
-        reminder_30_sent_at: null, reminder_60_sent_at: null
+        reminder_30_sent_at: null, reminder_60_sent_at: null,
+        deletion_notice_7_sent_at: null, deletion_notice_3_sent_at: null, deletion_notice_1_sent_at: null
       })
       showUxToast('Your free 31-day trial has started.')
       renderStoreBillingPanel()
@@ -3961,11 +4111,9 @@ document.getElementById('store-billing-panel')?.addEventListener('click', async 
       await patchStoreRow(currentUser.id, { plan: chosen })
       await payWithPaystack('plan', chosen)
     } else {
-      pendingTrialPlan = chosen
-      pendingPayNow = true
-      storeManageMsg.textContent = `Selected ${BILLING_PLANS[chosen].label} — fill in your store details below, then save to pay and go live.`
-      renderDesignControls()
-      updateStoreManageGate()
+      pendingTrialPlan = null
+      pendingPayNow = false
+      await payWithPaystack('plan', chosen)
     }
   }
   if (ev.target.id === 'store-legacy-delete-btn') {
@@ -4028,12 +4176,15 @@ storeManageBanner?.addEventListener('change', () => setStorePreviewImage(storeMa
 function openStoreManage() {
   if (!storeManageOverlay || !currentUser) return
   const mine = getStoreForUser(currentUser.id)
+  const isPendingPaymentSetup = mine?.name === 'New Store'
   releaseStorePreviewObjectUrls()
-  storeManageHeading.textContent = mine?.name ? 'My Store' : 'Open Your Store'
-  storeManageIntro.textContent = mine?.name
+  storeManageHeading.textContent = isPendingPaymentSetup ? 'Finish Store Setup' : mine?.name ? 'My Store' : 'Open Your Store'
+  storeManageIntro.textContent = isPendingPaymentSetup
+    ? 'Your plan is active. Add your store name, products, and brand details to finish setting up your storefront.'
+    : mine?.name
     ? 'Update your storefront and keep your business listings together in one place.'
     : "You do not need your own website. Open a free LinkHub storefront, add your products as listings, and share one link with customers."
-  storeManageName.value = mine?.name || ''
+  storeManageName.value = isPendingPaymentSetup ? '' : mine?.name || ''
   storeManageCategory.value = mine?.category || ''
   storeManageType.value = mine?.business_type || ''
   storeManageTagline.value = mine?.tagline || ''
@@ -4065,9 +4216,9 @@ function openStoreManage() {
   storeManageMsg.textContent = ''
   populateStoreDesignForm()
   if(!mine?.name && restoreStoreDraft()){ storeManageMsg.textContent='Your unfinished store setup was restored.'; window.linkhubRefreshStoreUx?.(); renderDesignPreview() }
-  storeManageViewBtn.style.display = mine?.name ? '' : 'none'
-  storeManageShareBtn?.classList.toggle('hidden', !mine?.name)
-  storeManageDeleteBtn?.classList.toggle('hidden', !mine?.name)
+  storeManageViewBtn.style.display = mine?.name && !isPendingPaymentSetup ? '' : 'none'
+  storeManageShareBtn?.classList.toggle('hidden', !mine?.name || isPendingPaymentSetup)
+  storeManageDeleteBtn?.classList.toggle('hidden', !mine?.name || isPendingPaymentSetup)
   pendingTrialPlan = null
   pendingPayNow = false
   renderDesignControls()
@@ -4100,7 +4251,7 @@ businessStoreOpenBtn?.addEventListener('click', () => {
   if (currentUser) {
     openStoreManage()
   } else {
-    authSection?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrollToAuthSection('center')
     authMsg.textContent = 'Sign in or create an account first, then you can open your free LinkHub store.'
   }
 })
@@ -4259,8 +4410,38 @@ async function saveStoreManage(event) {
 storeManageForm?.addEventListener('submit', saveStoreManage)
 storeManageClose?.addEventListener('click', closeStoreManage)
 function storeDraftKey(){return `linkhub-store-draft-${currentUser?.id||'guest'}`}
-function saveStoreDraft(){if(!currentUser||!storeManageOverlay||storeManageOverlay.classList.contains('hidden'))return;try{localStorage.setItem(storeDraftKey(),JSON.stringify({name:storeManageName?.value||'',category:storeManageCategory?.value||'',business_type:storeManageType?.value||'',tagline:storeManageTagline?.value||'',phone:storeManagePhone?.value||'',website_url:storeManageWebsite?.value||'',whatsapp:storeManageWhatsapp?.value||'',instagram_url:storeManageInstagram?.value||'',location:storeManageLocation?.value||'',address:storeManageAddress?.value||'',bio:storeManageBio?.value||'',opening_hours:storeManageHours?.value||'',fulfilment:storeManageFulfilment?.value||'',announcement:document.getElementById('store-design-announcement')?.value||''}))}catch{}}
-function restoreStoreDraft(){if(!currentUser)return false;try{const d=JSON.parse(localStorage.getItem(storeDraftKey())||'null');if(!d||!Object.values(d).some(v=>String(v||'').trim()))return false;const set=(e,v)=>{if(e&&v!=null)e.value=v};set(storeManageName,d.name);set(storeManageCategory,d.category);set(storeManageType,d.business_type);set(storeManageTagline,d.tagline);set(storeManagePhone,d.phone);set(storeManageWebsite,d.website_url);set(storeManageWhatsapp,d.whatsapp);set(storeManageInstagram,d.instagram_url);set(storeManageLocation,d.location);set(storeManageAddress,d.address);set(storeManageBio,d.bio);set(storeManageHours,d.opening_hours);set(storeManageFulfilment,d.fulfilment);const a=document.getElementById('store-design-announcement');if(a)a.value=d.announcement||'';return true}catch{return false}}
+function saveStoreDraft() {
+  if (!currentUser || !storeManageOverlay || storeManageOverlay.classList.contains('hidden')) return
+  try {
+    localStorage.setItem(storeDraftKey(), JSON.stringify({
+      name: storeManageName?.value || '', category: storeManageCategory?.value || '', business_type: storeManageType?.value || '',
+      tagline: storeManageTagline?.value || '', phone: storeManagePhone?.value || '', website_url: storeManageWebsite?.value || '',
+      whatsapp: storeManageWhatsapp?.value || '', instagram_url: storeManageInstagram?.value || '', location: storeManageLocation?.value || '',
+      address: storeManageAddress?.value || '', bio: storeManageBio?.value || '', opening_hours: storeManageHours?.value || '',
+      fulfilment: storeManageFulfilment?.value || '', announcement: document.getElementById('store-design-announcement')?.value || '',
+      accent: designState.accent, accents: designState.accents
+    }))
+  } catch {}
+}
+function restoreStoreDraft() {
+  if (!currentUser) return false
+  try {
+    const draft = JSON.parse(localStorage.getItem(storeDraftKey()) || 'null')
+    if (!draft || !Object.values(draft).some((value) => String(value || '').trim())) return false
+    const set = (element, value) => { if (element && value != null) element.value = value }
+    set(storeManageName, draft.name); set(storeManageCategory, draft.category); set(storeManageType, draft.business_type)
+    set(storeManageTagline, draft.tagline); set(storeManagePhone, draft.phone); set(storeManageWebsite, draft.website_url)
+    set(storeManageWhatsapp, draft.whatsapp); set(storeManageInstagram, draft.instagram_url); set(storeManageLocation, draft.location)
+    set(storeManageAddress, draft.address); set(storeManageBio, draft.bio); set(storeManageHours, draft.opening_hours)
+    set(storeManageFulfilment, draft.fulfilment)
+    const announcement = document.getElementById('store-design-announcement')
+    if (announcement) announcement.value = draft.announcement || ''
+    if (/^#[0-9a-f]{6}$/i.test(draft.accent || '')) designState.accent = draft.accent
+    if (Array.isArray(draft.accents)) designState.accents = [0, 1, 2].map((index) => /^#[0-9a-f]{6}$/i.test(draft.accents[index] || '') ? draft.accents[index] : '')
+    renderDesignControls()
+    return true
+  } catch { return false }
+}
 [storeManageName,storeManageCategory,storeManageType,storeManageTagline,storeManagePhone,storeManageWebsite,storeManageWhatsapp,storeManageInstagram,storeManageLocation,storeManageAddress,storeManageBio,storeManageHours,storeManageFulfilment].forEach(el=>el?.addEventListener('input',saveStoreDraft));document.getElementById('store-design-announcement')?.addEventListener('input',saveStoreDraft)
 storeManageOverlay?.addEventListener('click', (ev) => {
   if (ev.target === storeManageOverlay) closeStoreManage()
@@ -4439,7 +4620,8 @@ document.getElementById('admin-billing-list')?.addEventListener('click', async (
         await patchStoreRow(userId, {
           plan, paid_until: new Date(from + 30 * DAY_MS).toISOString(),
           locked_at: null, deletion_warned_at: null, grace_until: null,
-          reminder_30_sent_at: null, reminder_60_sent_at: null
+          reminder_30_sent_at: null, reminder_60_sent_at: null,
+          deletion_notice_7_sent_at: null, deletion_notice_3_sent_at: null, deletion_notice_1_sent_at: null
         })
       }
       row.remove()
@@ -4604,13 +4786,34 @@ async function runListingCleanup() {
   for (const item of currentListings) {
     const owns = isSiteOwner || (item.user_id && String(item.user_id) === String(currentUser.id))
     if (!owns) continue
+    const isMine = String(item.user_id || '') === String(currentUser.id)
     if (!item.sold && item.created_at) {
       const ageDays = (now - new Date(item.created_at).getTime()) / 86400000
-      if (ageDays >= 62) { toDelete.push(item.id); continue }
+      const daysLeft = Math.ceil(62 - ageDays)
+      if (isMine && daysLeft > 0) {
+        for (const threshold of [30, 7, 1]) {
+          if (daysLeft <= threshold) {
+            notifyAccountOnce(`listing-delete-${item.id}-${threshold}`, `Your listing "${item.title || 'Untitled listing'}" will be deleted in about ${daysLeft} day${daysLeft === 1 ? '' : 's'} unless you renew or update it.`, 'Listing deletion reminder')
+            break
+          }
+        }
+      }
+      if (ageDays >= 62) {
+        if (isMine) notifyAccountOnce(`listing-delete-${item.id}-today`, `Your listing "${item.title || 'Untitled listing'}" is being removed after 62 days.`, 'Listing deletion today')
+        toDelete.push(item.id)
+        continue
+      }
     }
     if (item.sold && item.sold_at) {
       const soldAgeDays = (now - new Date(item.sold_at).getTime()) / 86400000
-      if (soldAgeDays >= 3) toDelete.push(item.id)
+      const daysLeft = Math.ceil(3 - soldAgeDays)
+      if (isMine && daysLeft > 0 && daysLeft <= 2) {
+        notifyAccountOnce(`sold-listing-delete-${item.id}-${daysLeft}`, `The sold listing "${item.title || 'Untitled listing'}" will be removed in about ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`, 'Sold listing cleanup reminder')
+      }
+      if (soldAgeDays >= 3) {
+        if (isMine) notifyAccountOnce(`sold-listing-delete-${item.id}-today`, `The sold listing "${item.title || 'Untitled listing'}" is being removed from your history.`, 'Sold listing cleanup today')
+        toDelete.push(item.id)
+      }
     }
   }
   if (!toDelete.length) return
@@ -5744,7 +5947,7 @@ function renderListing(l, container = listingsContainer) {
   d.className = 'listing' + (l.sold ? ' listing-sold' : '')
   d.dataset.listingId = l.id
   d.addEventListener('click', (event) => {
-    if (event.target.closest('button, a, input, select, textarea')) return
+    if (event.target.closest('button, a, input, select, textarea, details')) return
     openListingOverlay(l)
   })
   const parts = []
@@ -5780,6 +5983,13 @@ function renderListing(l, container = listingsContainer) {
       parts.push(`<div class="listing-price">${escapeHtml(l.price)}</div>`)
     }
   }
+  const cardMeta = [l.category, l.location || l.city].filter(Boolean)
+  if (cardMeta.length) parts.push(`<div class="listing-card-meta">${cardMeta.map(escapeHtml).join(' · ')}</div>`)
+  const isOwner = currentUser && l.user_id && l.user_id === currentUser.id
+  const isSiteOwner = currentUser && String(currentUser.email || '').toLowerCase() === OWNER_EMAIL
+  const isFavorited = favoritedIds.has(l.id)
+  const usesDisclosure = container === listingsContainer
+  if (usesDisclosure) parts.push('<details class="listing-tools"><summary>Details &amp; actions</summary>')
   const meta = []
   if (l.payment_type) meta.push(`<div><strong>Payment:</strong> ${escapeHtml(l.payment_type)}</div>`)
   if (l.delivery_type) meta.push(`<div><strong>Delivery:</strong> ${escapeHtml(l.delivery_type)}</div>`)
@@ -5806,9 +6016,6 @@ function renderListing(l, container = listingsContainer) {
     }
   }
 
-  const isOwner = currentUser && l.user_id && l.user_id === currentUser.id
-  const isSiteOwner = currentUser && String(currentUser.email || '').toLowerCase() === OWNER_EMAIL
-  const isFavorited = favoritedIds.has(l.id)
   if (isOwner) {
     parts.push(`<div class="listing-actions" style="margin-top:10px">
       <button class="edit-btn" data-id="${escapeHtml(l.id)}" type="button">Edit</button>
@@ -5837,6 +6044,7 @@ function renderListing(l, container = listingsContainer) {
       parts.push(`<button class="visit-store-btn" data-store-id="${escapeHtml(l.user_id)}" type="button">${ICON_STORE} Visit Store: ${escapeHtml(s.name)}${sellerRatingInlineHtml(l.user_id)}</button>`)
     }
   }
+  if (usesDisclosure) parts.push('</details>')
 
   if (isOwner) {
     const ageDays = l.created_at ? Math.floor((Date.now() - new Date(l.last_confirmed_at || l.created_at).getTime()) / 86400000) : 0
@@ -5973,7 +6181,7 @@ const REVIEW_KINDS = {
   seller: { table: 'seller_ratings', key: 'seller_id', label: 'seller', placeholder: 'How was dealing with this seller? (optional)' },
 }
 const REVIEW_PREVIEW_COUNT = 4
-const STORE_ACCENTS = ['#1678e8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1', '#eab308', '#0ea5e9', '#a855f7', '#64748b']
+const STORE_ACCENTS = ['#2f765e', '#b94736', '#b98220', '#315f7b', '#6c7450', '#905d4c', '#3e7781', '#a14f69', '#725c8a', '#627b42', '#bb6542', '#3f668c', '#8a6b33', '#547c69', '#a84747', '#59636b']
 const STORE_FONTS = [['modern', 'Modern'], ['classic', 'Classic'], ['friendly', 'Friendly']]
 const STORE_LAYOUTS = [['grid', 'Grid'], ['list', 'List']]
 
@@ -6018,7 +6226,7 @@ function requestSignIn() {
   try { closeListingOverlay() } catch { /* not open */ }
   try { closeStore() } catch { /* not open */ }
   closeDashboard()
-  authSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  scrollToAuthSection()
 }
 
 // ---------------------------------------------------------------------------
@@ -6341,12 +6549,10 @@ function applyStoreDesign(userId) {
   const d = normalizeStoreDesignForTier(storeDesignsById[String(userId)], userId)
   const accent = /^#[0-9a-f]{6}$/i.test(d.accent || '') ? d.accent : ''
   if (accent) {
-    panel.style.setProperty('--store-accent', accent)
-    panel.style.setProperty('--store-accent-soft', hexToRgba(accent, 0.16))
+    applyStoreColorVariables(panel, d)
     panel.dataset.storeThemed = '1'
   } else {
-    panel.style.removeProperty('--store-accent')
-    panel.style.removeProperty('--store-accent-soft')
+    ;['--accent', '--highlight', '--store-primary', '--store-primary-soft', '--store-primary-contrast', '--store-accent', '--store-accent-soft', '--store-accent-contrast', '--store-accent-one', '--store-accent-one-soft', '--store-accent-one-contrast', '--store-accent-two', '--store-accent-two-soft', '--store-accent-two-contrast', '--store-accent-three', '--store-accent-three-soft', '--store-accent-three-contrast'].forEach((name) => panel.style.removeProperty(name))
     delete panel.dataset.storeThemed
   }
   panel.dataset.storeFont = d.font || 'modern'
@@ -6376,7 +6582,37 @@ function recordContactTap(item) {
 // ---------------------------------------------------------------------------
 // Store editor: "Design your store"
 // ---------------------------------------------------------------------------
-const designState = { accent: STORE_ACCENTS[0], font: 'modern', layout: 'grid', featured: [] }
+const designState = { accent: STORE_ACCENTS[0], accents: ['', '', ''], font: 'modern', layout: 'grid', featured: [] }
+
+function accentContrastColor(hex) {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex || '')
+  if (!match) return '#ffffff'
+  const channels = [0, 2, 4].map((index) => parseInt(match[1].slice(index, index + 2), 16) / 255)
+  const luminance = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+    .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0)
+  return luminance > 0.183 ? '#000000' : '#ffffff'
+}
+
+function applyStoreColorVariables(element, design) {
+  const primary = design.accent || STORE_ACCENTS[0]
+  const accents = (design.accents || []).map((color) => color || primary)
+  const colors = [primary, ...accents]
+  element.style.setProperty('--accent', primary)
+  element.style.setProperty('--highlight', primary)
+  element.style.setProperty('--store-primary', primary)
+  element.style.setProperty('--store-primary-soft', hexToRgba(primary, 0.18))
+  element.style.setProperty('--store-primary-contrast', accentContrastColor(primary))
+  element.style.setProperty('--store-accent', primary)
+  element.style.setProperty('--store-accent-soft', hexToRgba(primary, 0.18))
+  element.style.setProperty('--store-accent-contrast', accentContrastColor(primary))
+  for (let index = 1; index <= 3; index++) {
+    const color = colors[index]
+    const key = ['one', 'two', 'three'][index - 1]
+    element.style.setProperty(`--store-accent-${key}`, color)
+    element.style.setProperty(`--store-accent-${key}-soft`, hexToRgba(color, 0.18))
+    element.style.setProperty(`--store-accent-${key}-contrast`, accentContrastColor(color))
+  }
+}
 
 function storeDesignPlan(userId = currentUser?.id) {
   if (String(userId) === String(currentUser?.id) && pendingTrialPlan) return pendingTrialPlan
@@ -6388,6 +6624,7 @@ function normalizeStoreDesignForTier(design, userId = currentUser?.id) {
   const accent = /^#[0-9a-f]{6}$/i.test(design?.accent || '') ? design.accent.toLowerCase() : STORE_ACCENTS[0]
   return {
     accent,
+    accents: [1, 2, 3].map((index) => /^#[0-9a-f]{6}$/i.test(design?.[`accent_${index}`] || '') ? design[`accent_${index}`].toLowerCase() : ''),
     font: business && STORE_FONTS.some(([value]) => value === design?.font) ? design.font : 'modern',
     layout: business && STORE_LAYOUTS.some(([value]) => value === design?.layout) ? design.layout : 'grid',
     announcement: business ? (design?.announcement || '') : '',
@@ -6400,16 +6637,20 @@ function renderDesignControls() {
   if (!accents) return
   const business = storeDesignPlan() === 'business'
   const tierNote = document.getElementById('store-design-tier-note')
-  if (tierNote) tierNote.textContent = business
-    ? 'LinkHub Business includes custom colour, font and layout choices, announcements, unlimited featured listings, customer product search and analytics export.'
-    : 'LinkHub Store includes 16 colours plus your own custom colour, presets, unlimited featured listings, customer product search and analytics export.'
-  accents.innerHTML = STORE_ACCENTS.map((c) => `<button type="button" class="store-swatch${designState.accent.toLowerCase() === c ? ' active' : ''}" data-color="${c}" style="background:${c}" aria-label="Accent ${c}"></button>`).join('')
+  if (tierNote) tierNote.textContent = 'Your main store color leads the storefront. Add up to three optional accents; LinkHub branding colors are not applied to your store.'
+  accents.innerHTML = STORE_ACCENTS.map((c) => `<button type="button" class="store-swatch${designState.accent.toLowerCase() === c ? ' active' : ''}" data-color="${c}" style="background:${c}" aria-label="Main store color ${c}"></button>`).join('')
   const custom = document.getElementById('store-design-accent-custom')
   if (custom) {
     custom.value = designState.accent
     custom.disabled = false
-    custom.title = 'Choose your own accent colour'
+    custom.title = 'Choose your main store color'
   }
+  const extraAccents = document.getElementById('store-design-extra-accents')
+  if (extraAccents) extraAccents.innerHTML = designState.accents.map((color, index) => `
+    <label class="store-accent-option">
+      <span class="store-accent-option-toggle"><input type="checkbox" data-store-accent-toggle="${index}"${color ? ' checked' : ''}><span>Accent ${index + 1}</span><small>Optional</small></span>
+      <input type="color" data-store-accent-color="${index}" aria-label="Accent color ${index + 1}" value="${color || STORE_ACCENTS[(index + 3) % STORE_ACCENTS.length]}"${color ? '' : ' disabled'}>
+    </label>`).join('')
   const choice = (id, list, current, attr) => {
     const el = document.getElementById(id)
     if (el) el.innerHTML = business
@@ -6494,8 +6735,7 @@ function renderDesignPreview() {
   const metadata = [category || businessType, location].filter(Boolean).map(escapeHtml).join(' · ')
   const contactLinks = [phone ? `<span>☎ ${escapeHtml(phone)}</span>` : '', hours ? `<span>Hours · ${escapeHtml(hours)}</span>` : '', fulfilment ? `<span>${escapeHtml(fulfilment)}</span>` : '', storeManageWebsite?.value.trim() ? '<span>Website</span>' : '', storeManageWhatsapp?.value.trim() ? '<span>WhatsApp</span>' : '', storeManageInstagram?.value.trim() ? '<span>Instagram</span>' : ''].filter(Boolean).join('')
   box.dataset.storeFont = designState.font
-  box.style.setProperty('--store-accent', designState.accent)
-  box.style.setProperty('--store-accent-soft', hexToRgba(designState.accent, 0.16))
+  applyStoreColorVariables(box, { accent: designState.accent, accents: designState.accents })
   box.innerHTML = `<div class="store-preview-banner">${banner && isValidImageUrl(banner) ? `<img src="${escapeHtml(banner)}" alt="">` : '<span>Store banner</span>'}</div>
     <div class="store-preview-profile">
       <div class="store-preview-logo">${logo && isValidImageUrl(logo) ? `<img src="${escapeHtml(logo)}" alt="">` : escapeHtml(initialsFromName(name))}</div>
@@ -6513,6 +6753,7 @@ function populateStoreDesignForm() {
   const d = currentUser ? storeDesignsById[String(currentUser.id)] : null
   const normalized = normalizeStoreDesignForTier(d)
   designState.accent = normalized.accent
+  designState.accents = normalized.accents
   designState.font = normalized.font
   designState.layout = normalized.layout
   designState.featured = normalized.featured_ids
@@ -6530,8 +6771,25 @@ document.getElementById('store-design')?.addEventListener('click', (event) => {
   else if (layout) designState.layout = layout.dataset.layout
   else return
   renderDesignControls()
+  saveStoreDraft()
 })
-document.getElementById('store-design-accent-custom')?.addEventListener('input', (event) => { designState.accent = event.target.value; renderDesignControls() })
+document.getElementById('store-design-accent-custom')?.addEventListener('change', (event) => {
+  designState.accent = event.target.value
+  renderDesignControls()
+  saveStoreDraft()
+})
+document.getElementById('store-design-extra-accents')?.addEventListener('change', (event) => {
+  const toggle = event.target.closest('[data-store-accent-toggle]')
+  const color = event.target.closest('[data-store-accent-color]')
+  const index = Number(toggle?.dataset.storeAccentToggle ?? color?.dataset.storeAccentColor)
+  if (!Number.isInteger(index) || index < 0 || index > 2) return
+  const picker = document.querySelector(`[data-store-accent-color="${index}"]`)
+  designState.accents[index] = toggle
+    ? (toggle.checked ? picker.value : '')
+    : color.value
+  renderDesignControls()
+  saveStoreDraft()
+})
 document.getElementById('store-design-featured')?.addEventListener('change', (event) => {
   const box = event.target.closest('input[type="checkbox"]')
   if (!box) return
@@ -6554,13 +6812,34 @@ document.querySelector('.store-preview-modes')?.addEventListener('click', (event
     item.setAttribute('aria-pressed', String(active))
   })
 })
-document.querySelectorAll('.store-design-preset').forEach(btn=>btn.addEventListener('click',()=>{const p=btn.dataset.storePreset,business=storeDesignPlan()==='business';if(p==='bold'){designState.accent=business?'#1678e8':'#ef4444';designState.font=business?'friendly':'modern';designState.layout='grid'}else if(p==='classic'){designState.accent=business?'#c9a25d':'#f59e0b';designState.font=business?'classic':'modern';designState.layout=business?'list':'grid'}else{designState.accent='#1678e8';designState.font='modern';designState.layout='grid'}renderDesignControls();document.querySelectorAll('.store-design-preset').forEach(el=>el.classList.toggle('active',el===btn));saveStoreDraft()}))
+document.querySelectorAll('.store-design-preset').forEach((btn) => btn.addEventListener('click', () => {
+  const preset = btn.dataset.storePreset
+  if (preset === 'bold') {
+    designState.accent = '#b94736'
+    designState.font = 'friendly'
+    designState.layout = 'grid'
+  } else if (preset === 'classic') {
+    designState.accent = '#b98220'
+    designState.font = storeDesignPlan() === 'business' ? 'classic' : 'modern'
+    designState.layout = storeDesignPlan() === 'business' ? 'list' : 'grid'
+  } else {
+    designState.accent = STORE_ACCENTS[0]
+    designState.font = 'modern'
+    designState.layout = 'grid'
+  }
+  renderDesignControls()
+  document.querySelectorAll('.store-design-preset').forEach((item) => item.classList.toggle('active', item === btn))
+  saveStoreDraft()
+}))
 
 // Returns '' when saved, or a short message to show under the form.
 async function saveStoreDesign() {
   if (!useSupabase || !currentUser) return ''
   const normalized = normalizeStoreDesignForTier({
     accent: designState.accent,
+    accent_1: designState.accents[0],
+    accent_2: designState.accents[1],
+    accent_3: designState.accents[2],
     font: designState.font,
     layout: designState.layout,
     announcement: (document.getElementById('store-design-announcement')?.value || '').trim().slice(0, 140),
@@ -6569,6 +6848,9 @@ async function saveStoreDesign() {
   const row = {
     owner_id: currentUser.id,
     accent: normalized.accent,
+    accent_1: normalized.accents[0] || null,
+    accent_2: normalized.accents[1] || null,
+    accent_3: normalized.accents[2] || null,
     font: normalized.font,
     layout: normalized.layout,
     announcement: normalized.announcement || null,
