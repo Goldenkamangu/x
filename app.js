@@ -3926,6 +3926,7 @@ function storePaymentBoxHtml(kind, planKey) {
         </div>
         <button type="button" class="store-billing-paystack-btn" data-kind="${kind}" data-plan="${planKey || ''}">Pay with Paystack</button>
       </div>
+      ${kind === 'boost' ? '<p class="store-billing-subtext" style="margin-top:10px">Puts your store at the top of Explore businesses for 30 days, so more buyers see it first. Paid add-on, not part of your plan.</p>' : ''}
       <div class="store-billing-secure">${ICON_SHIELD} Secured by Paystack · payment details never touch LinkHub</div>
     </div>`
 }
@@ -3974,10 +3975,11 @@ function renderStoreBillingPanel() {
       </div>`
   } else if (access.status === 'trial' || access.status === 'active') {
     const boostActive = store.boost_active && store.boost_paid_until && new Date(store.boost_paid_until).getTime() > Date.now()
-    // No Boost purchase box in the panel. Only shows status if a Boost is running.
+    // Boost can only be bought once the plan is paid and active (never during
+    // the free trial — Boost is a real payment, not something trial-covered).
     const boostBox = boostActive
       ? `<p class="store-billing-boost-active">${billingStatusIcon('good')} Boost active until ${new Date(store.boost_paid_until).toLocaleDateString()}</p>`
-      : ''
+      : (access.status === 'active' ? storePaymentBoxHtml('boost') : '')
     // Only the plan already taken is shown (read-only, no radio). Other plans
     // stay hidden until this one expires.
     const takenPlan = BILLING_PLANS[access.plan]

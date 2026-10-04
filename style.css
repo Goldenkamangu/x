@@ -3328,9 +3328,26 @@ html.lightbox-open,html.lightbox-open body{overscroll-behavior:none}
   .store-plan-card-note{font-size:.7rem}
 }
 @media (max-width:640px){.store-billing-payment-row{flex-direction:column;align-items:stretch}.store-billing-paystack-btn{width:100%}}
+/* Roomier spacing in the billing panel (less cramped on phones) */
+.store-billing-panel{gap:20px}
+.store-plan-card{gap:10px}
+.store-plan-card-feature{line-height:1.5}
+.store-plan-card-note{margin-top:10px}
+.store-billing-payment{padding:20px}
+.store-billing-payment-row{gap:16px}
+.store-billing-secure{margin-top:16px}
+.store-billing-panel .account-actions{gap:12px;margin-top:4px}
+@media (max-width:720px){
+  .store-billing-panel{padding:18px 16px}
+  .store-plan-picker{gap:14px}
+  .store-plan-card{gap:10px;padding:18px 44px 18px 16px}
+  .store-plan-card-boost{padding:18px 16px}
+  .store-plan-card-feature{line-height:1.5}
+  .store-plan-card-summary{line-height:1.5;margin-bottom:4px}
+}
 
 /* Store preview, paid discovery and small-screen polish */
-.store-plan-card-feature{font-size:.76rem;font-weight:700;color:#b9dcff}
+.store-plan-card-feature{font-size:.76rem;font-weight:500;color:#b9dcff;padding:3px 0}
 .business-explore-card{transition:transform .18s ease,border-color .18s ease,background .18s ease;animation:business-card-arrive .24s ease both}
 .business-explore-card:nth-child(2){animation-delay:.035s}
 .business-explore-card:nth-child(3){animation-delay:.07s}
