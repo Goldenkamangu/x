@@ -470,7 +470,6 @@ function buildDrawerMenu() {
       { icon: ICON_CART, label: 'My Cart', action: () => openCart() },
       { icon: ICON_STORE, label: hasStore ? 'My Store' : 'Open a Store', action: () => openStoreManage() },
       { icon: dashboardIcon(), label: 'Dashboard', action: () => openDashboard() },
-      { icon: ICON_GEAR, label: 'Settings', action: () => openAppearanceSettings() },
       { icon: ICON_GEAR, label: 'Account Details', action: () => openAccountSettings() },
     ]
     if (isSiteOwner) buttons.push({ icon: ICON_SHIELD, label: 'Reports', action: () => openAdminReports() })
@@ -861,7 +860,6 @@ function buildDesktopNav() {
     { label: 'My Listings', icon: 'listings', action: () => openMyListings() },
     { label: store?.name ? 'My Store' : 'Open Store', icon: 'store', action: () => openStoreManage() },
     { label: 'Dashboard', icon: 'dashboard', action: () => openDashboard() },
-    { label: 'Settings', icon: 'settings', action: () => openAppearanceSettings() },
     { label: 'Account details', icon: 'account', action: () => openAccountSettings() },
   ]
   if (String(currentUser.email || '').toLowerCase() === OWNER_EMAIL) menuItems.push({ label: 'Reports', icon: 'reports', action: () => openAdminReports() })

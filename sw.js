@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v11'; // v11: Boost add-on box back on active plans
+const CACHE_NAME = 'linkhub-shell-v15'; // v15: notifications close button top-right
 const APP_SHELL = [
   './',
   './index.html',

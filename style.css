@@ -4052,3 +4052,55 @@ html.light-theme .business-explore-card{border-color:color-mix(in srgb,var(--sto
   .store-plan-picker .store-plan-card-feature{font-size:.72rem;line-height:1.35}
   .store-plan-picker .store-plan-card-note{font-size:.7rem;line-height:1.35}
 }
+
+/* ===== Notifications on phones: stop cards shrinking/overlapping when there are many ===== */
+#notifications-overlay .notifications-list{
+  flex:1 1 auto;
+  min-height:0;
+  gap:12px !important;
+  padding-top:12px;
+  padding-bottom:16px;
+}
+#notifications-overlay .notification-item,
+#notifications-overlay .notification-item.update-item,
+#notifications-overlay .notification-item.chat-list-item{
+  flex:0 0 auto !important;
+}
+@media (max-width:640px){
+  #notifications-overlay .notification-item.update-item{
+    min-height:84px !important;
+    padding:12px 10px !important;
+  }
+  #notifications-overlay .notification-item.chat-list-item{
+    min-height:78px !important;
+    padding:12px 10px !important;
+  }
+}
+
+/* ===== Notifications: close (X) button at the top-right ===== */
+#notifications-overlay .notifications-header{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  gap:10px;
+}
+#notifications-overlay .notifications-actions{
+  display:contents;
+}
+#notifications-overlay .notifications-header > div:first-child{
+  grid-column:1;
+  grid-row:1;
+  min-width:0;
+}
+#notifications-overlay #notifications-close{
+  grid-column:2;
+  grid-row:1;
+  align-self:start;
+  justify-self:end;
+}
+#notifications-overlay #notifications-enable{
+  grid-column:1 / -1;
+  grid-row:2;
+  width:100%;
+  max-width:none;
+}
