@@ -1398,9 +1398,9 @@ async function loadNotificationList() {
         <span class="notification-dot-wrap"><span class="notification-dot${unread ? '' : ' notification-dot-hidden'}" aria-hidden="true"></span></span>
         ${thumb}
         <span class="notification-copy">
-          <strong>${escapeHtml(typeLabel)}</strong>
-          <span class="notification-listing-title">${escapeHtml(listingTitle)}</span>
-          <span class="notification-from">From ${escapeHtml(sender)}${offerLine ? ` · ${offerLine}` : ''}</span>
+          <strong>${escapeHtml(listingTitle)}</strong>
+          <span class="notification-listing-title">${escapeHtml(typeLabel)} from ${escapeHtml(sender)}</span>
+          <span class="notification-from">${offerLine || 'About this listing'}</span>
           <span class="notification-preview">${escapeHtml(previewText)}</span>
           <small class="notification-time">${escapeHtml(formatNotificationTime(row.created_at))}</small>
         </span>
@@ -2134,7 +2134,7 @@ togglePasswordBtn.addEventListener('click', () => {
 
 // Create listing w/ optional image upload
 // Compresses/resizes an image file in the browser before upload —
-// caps the longest side at 1280px and re-encodes as JPEG at 0.75 quality.
+// caps the longest side at 1280px and re-encodes as WebP (JPEG fallback) at 0.75 quality.
 // Falls back to the original file if anything goes wrong (old browsers, SVGs, etc).
 async function compressImage(file, maxDimension = 1280, quality = 0.75) {
   if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml') return file
@@ -2154,10 +2154,19 @@ async function compressImage(file, maxDimension = 1280, quality = 0.75) {
     const ctx = canvas.getContext('2d')
     ctx.drawImage(bitmap, 0, 0, targetW, targetH)
     bitmap.close?.()
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    // WebP is ~25-35% smaller than JPEG at the same quality. If the browser can't
+    // encode WebP it silently returns PNG, so check the result and fall back to JPEG.
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality))
+    let ext = 'webp'
+    let mime = 'image/webp'
+    if (!blob || blob.type !== 'image/webp') {
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+      ext = 'jpg'
+      mime = 'image/jpeg'
+    }
     if (!blob) return file
-    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg'
-    return new File([blob], newName, { type: 'image/jpeg' })
+    const newName = file.name.replace(/\.[^.]+$/, '') + '.' + ext
+    return new File([blob], newName, { type: mime })
   } catch (e) {
     console.warn('Image compression failed, using original file', e)
     return file
@@ -5100,7 +5109,7 @@ function meaningfulWords(term) {
 // Last-resort search: match individual meaningful words from the raw query
 // against listings, instead of requiring the whole sentence as one substring.
 function smartKeywordSearch(term) {
-  const base = getScopedListings()
+  const base = currentListings // all categories, not just the active chip
   const words = meaningfulWords(term)
   if (!words.length) return base
 
@@ -5227,7 +5236,7 @@ function getCartyMarketplaceContext() {
   // Prefer the currently displayed/search-relevant listings, then fill with
   // the newest available listings so Carty can still answer broad questions.
   const term = searchEl?.value.trim().toLowerCase() || ''
-  const scoped = getScopedListings()
+  const scoped = currentListings // Carty looks at every category
   let relevant = scoped
   if (term) {
     relevant = scoped.filter(item => {
@@ -5240,7 +5249,7 @@ function getCartyMarketplaceContext() {
   return combined.slice(0, 14).map(item => ({
     id: String(item.id),
     title: String(item.title || ''),
-    description: String(item.description || '').slice(0, 220),
+    description: String(item.description || '').slice(0, 140),
     price: item.price ?? null,
     currency: item.price_currency || item.currency || '',
     category: item.category || '',
@@ -5436,7 +5445,7 @@ async function runAiSearch(queryText) {
         // The Edge Function requires the current user message as `query`.
         // The full recent conversation is sent separately for context.
         query: term,
-        history: cartyConversation,
+        history: cartyConversation.slice(-6),
         marketplaceContext: getCartyContext()
       })
     })
@@ -5486,10 +5495,14 @@ async function runAiSearch(queryText) {
   }
 
   const filters = normalizeCartyFilters(data)
-  let results = applyAiFilters(getScopedListings(), filters)
+  let results = applyAiFilters(currentListings, filters)
   if (!results.length) results = smartKeywordSearch(term)
 
   const displayTerm = pickDisplayTerm(term, filters)
+  // Carty results span all categories, so show "All" and get the Recently
+  // viewed strip out of the way (it sat above the results and blocked the scroll).
+  if (activeCategory) { activeCategory = ''; renderCategoryChips() }
+  recentlyViewedSection?.classList.add('hidden')
   listingsContainer.innerHTML = ''
   visibleCount = PAGE_SIZE
 
@@ -5537,8 +5550,141 @@ function updateCartyVoiceToggleUI() {
 }
 updateCartyVoiceToggleUI()
 
-function speakCarty(text) {
-  if (!cartyVoiceEnabled || !text || !('speechSynthesis' in window)) return
+// --- Carty voice -----------------------------------------------------------
+// Preferred: a good AI voice (Groq Orpheus via the LinkHub-Voice edge function).
+// If that fails or its quota runs out (HTTP 429), Carty drops back to the
+// browser's own built-in voice and stops trying the good one for a while.
+const CARTY_HD_VOICE = 'autumn' // autumn, diana, hannah (female) / austin, daniel, troy (male)
+const CARTY_VOICE_URL = `${SUPABASE_URL}/functions/v1/LinkHub-Voice`
+const CARTY_HD_BLOCK_KEY = 'carty-hd-voice-blocked-until'
+const CARTY_HD_MAX_CHUNKS = 3 // each request is limited to 200 characters
+const CARTY_SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
+let cartySpeechRun = 0
+let cartyAudioEl = null
+
+function cartyHdBlocked() {
+  try { return Number(localStorage.getItem(CARTY_HD_BLOCK_KEY) || 0) > Date.now() } catch (e) { return false }
+}
+function blockCartyHdVoice(ms) {
+  try { localStorage.setItem(CARTY_HD_BLOCK_KEY, String(Date.now() + ms)) } catch (e) {}
+}
+
+// Call from a tap/submit so phones allow the audio to play later.
+function unlockCartyAudio() {
+  try {
+    if (!cartyAudioEl) cartyAudioEl = new Audio()
+    if (cartyAudioEl.dataset.unlocked === '1') return
+    cartyAudioEl.src = CARTY_SILENT_WAV
+    const p = cartyAudioEl.play()
+    if (p && p.catch) p.catch(() => {})
+    cartyAudioEl.dataset.unlocked = '1'
+  } catch (e) {}
+}
+
+function stopCartySpeech() {
+  cartySpeechRun++
+  try { cartyAudioEl?.pause() } catch (e) {}
+  try { if ('speechSynthesis' in window) window.speechSynthesis.cancel() } catch (e) {}
+}
+
+// Remove things that sound bad when read aloud (links, markdown, emoji, [brackets]).
+function cartySpeechText(text) {
+  return String(text || '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/[*_`#>~]/g, '')
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Split into pieces of at most `max` characters, at sentence ends where possible.
+function splitForVoice(text, max = 190) {
+  const sentences = text.match(/[^.!?]+[.!?]*\s*/g) || [text]
+  const chunks = []
+  let cur = ''
+  for (let part of sentences) {
+    part = part.trim()
+    while (part.length > max) {
+      let cut = part.lastIndexOf(' ', max)
+      if (cut < 60) cut = max
+      if (cur) { chunks.push(cur); cur = '' }
+      chunks.push(part.slice(0, cut).trim())
+      part = part.slice(cut).trim()
+    }
+    if (!part) continue
+    if ((cur + ' ' + part).trim().length <= max) cur = (cur + ' ' + part).trim()
+    else { if (cur) chunks.push(cur); cur = part }
+  }
+  if (cur) chunks.push(cur)
+  return chunks
+}
+
+async function fetchCartyVoiceChunk(text) {
+  const res = await fetch(CARTY_VOICE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify({ text, voice: CARTY_HD_VOICE })
+  })
+  if (!res.ok) {
+    const err = new Error(`Voice request failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return await res.blob()
+}
+
+function playCartyBlob(blob, run) {
+  return new Promise((resolve, reject) => {
+    if (run !== cartySpeechRun) return resolve()
+    const url = URL.createObjectURL(blob)
+    const audio = cartyAudioEl || (cartyAudioEl = new Audio())
+    const finish = (err) => {
+      audio.onended = null
+      audio.onerror = null
+      URL.revokeObjectURL(url)
+      if (err) reject(err); else resolve()
+    }
+    audio.onended = () => finish()
+    audio.onerror = () => finish(new Error('Audio playback failed'))
+    audio.src = url
+    const p = audio.play()
+    if (p && p.catch) p.catch(finish)
+  })
+}
+
+// Speaks with the good voice, fetching the next piece while the current one plays.
+async function speakCartyHd(text, run) {
+  const chunks = splitForVoice(text).slice(0, CARTY_HD_MAX_CHUNKS)
+  if (!chunks.length) return
+  let pending = fetchCartyVoiceChunk(chunks[0])
+  for (let i = 0; i < chunks.length; i++) {
+    let blob
+    try {
+      blob = await pending
+    } catch (err) {
+      err.remainingText = chunks.slice(i).join(' ')
+      throw err
+    }
+    if (run !== cartySpeechRun) return
+    pending = i + 1 < chunks.length ? fetchCartyVoiceChunk(chunks[i + 1]) : null
+    if (pending) pending.catch(() => {})
+    try {
+      await playCartyBlob(blob, run)
+    } catch (err) {
+      err.remainingText = chunks.slice(i).join(' ')
+      throw err
+    }
+  }
+}
+
+// The browser's own built-in voice (the fallback).
+function speakCartyBrowser(text) {
+  if (!text || !('speechSynthesis' in window)) return
   try {
     window.speechSynthesis.cancel()
     const utter = new SpeechSynthesisUtterance(text)
@@ -5550,11 +5696,28 @@ function speakCarty(text) {
   }
 }
 
+function speakCarty(text) {
+  if (!cartyVoiceEnabled || !text) return
+  stopCartySpeech()
+  const run = cartySpeechRun
+  const clean = cartySpeechText(text)
+  if (!clean) return
+  if (cartyHdBlocked()) { speakCartyBrowser(clean); return }
+  speakCartyHd(clean, run).catch((err) => {
+    if (run !== cartySpeechRun) return
+    console.warn('Carty good voice failed, using browser voice:', err)
+    // Quota used up (429): rest the good voice for 30 min. Other errors: 5 min.
+    // A phone blocking autoplay is not a quota problem, so don't rest it.
+    if (err?.name !== 'NotAllowedError') blockCartyHdVoice(err?.status === 429 ? 30 * 60 * 1000 : 5 * 60 * 1000)
+    speakCartyBrowser(err?.remainingText || clean)
+  })
+}
+
 cartyVoiceToggle?.addEventListener('click', () => {
   cartyVoiceEnabled = !cartyVoiceEnabled
   localStorage.setItem('carty-voice-enabled', cartyVoiceEnabled ? '1' : '0')
   updateCartyVoiceToggleUI()
-  if (!cartyVoiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+  if (!cartyVoiceEnabled) stopCartySpeech()
 })
 
 if (SpeechRecognitionApi && cartyMic) {
@@ -5618,6 +5781,7 @@ cartyForm?.addEventListener('submit', async ev => {
   const term = cartyInput.value.trim()
   if (!term) return
 
+  unlockCartyAudio() // lets the voice play on phones after the reply arrives
   if (cartyMessage?.dataset.initialGreeting === '1') cartyMessage.dataset.initialGreeting = '0'
   addCartyHistory('user', term)
   appendCartyBubble('user', term)
@@ -5653,8 +5817,20 @@ cartyForm?.addEventListener('submit', async ev => {
 
       if (card) {
         card.classList.add('listing-highlight')
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' })
         window.setTimeout(() => card.classList.remove('listing-highlight'), 2600)
+        // Wait for the layout to settle, scroll, then correct if images or
+        // other sections moved things and the scroll stopped short.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const correct = () => {
+            if (!card.isConnected) return
+            const r = card.getBoundingClientRect()
+            const off = (r.top + r.height / 2) - window.innerHeight / 2
+            if (Math.abs(off) > 60) card.scrollIntoView({ behavior: 'auto', block: 'center' })
+          }
+          window.setTimeout(correct, 700)
+          window.setTimeout(correct, 1500)
+        }))
       } else {
         document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
