@@ -4104,3 +4104,88 @@ html.light-theme .business-explore-card{border-color:color-mix(in srgb,var(--sto
   width:100%;
   max-width:none;
 }
+
+/* =====================================================================
+   Open Your Store — plan picker redesign (phone / tablet / desktop)
+   CSS only. Scoped to #store-billing-panel so nothing else is affected.
+   ===================================================================== */
+#store-billing-panel .store-billing-banner{padding:14px 16px;border-radius:var(--r-md);background:rgba(22,120,232,.08);border:1px solid rgba(22,120,232,.22);color:var(--text);font-size:.92rem;line-height:1.55;max-width:1000px;width:100%;margin-inline:auto;box-sizing:border-box}
+#store-billing-panel .store-billing-banner.is-warning{background:rgba(245,194,75,.08);border-color:rgba(245,194,75,.3);color:#f5c24b}
+
+/* Layout: two plans side by side, Boost as a full-width strip underneath */
+#store-billing-panel .store-plan-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%;max-width:1000px;margin-inline:auto;padding:0;overflow:visible}
+#store-billing-panel .store-plan-picker>.store-plan-card:only-child{grid-column:1/-1}
+
+/* Plan cards */
+#store-billing-panel .store-plan-card{position:relative;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;min-height:0;padding:24px 22px 20px;border-radius:20px;border:1.5px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));transition:border-color .15s ease,box-shadow .15s ease,background .15s ease,transform .15s ease}
+#store-billing-panel label.store-plan-card:hover{border-color:rgba(255,255,255,.28);transform:translateY(-1px)}
+#store-billing-panel .store-plan-card.is-selected,#store-billing-panel .store-plan-card:has(input:checked){border-color:var(--accent);background:linear-gradient(180deg,rgba(22,120,232,.17),rgba(22,120,232,.05));box-shadow:0 0 0 3px rgba(22,120,232,.18)}
+#store-billing-panel .store-plan-card-name{padding-right:40px;font-size:.8rem;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+#store-billing-panel .store-plan-card.is-selected .store-plan-card-name,#store-billing-panel .store-plan-card:has(input:checked) .store-plan-card-name{color:var(--highlight)}
+#store-billing-panel .store-plan-card-price{margin-top:2px;font-size:2.2rem;font-weight:800;line-height:1.05;color:var(--text)}
+#store-billing-panel .store-plan-card-period{font-size:.9rem;font-weight:600;color:var(--muted)}
+#store-billing-panel .store-plan-card-summary{display:block;margin-bottom:6px;font-size:.92rem;line-height:1.5;color:var(--muted)}
+
+/* Feature list with check marks */
+#store-billing-panel .store-plan-card-feature{position:relative;display:block;padding:0 0 0 27px;font-size:.88rem;font-weight:500;line-height:1.45;color:var(--text)}
+#store-billing-panel .store-plan-card-feature::before{content:"";position:absolute;left:0;top:.12em;width:17px;height:17px;border-radius:50%;background:rgba(57,217,138,.16) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%2339d98a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat}
+#store-billing-panel .store-plan-card-note{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;line-height:1.4}
+#store-billing-panel .store-plan-card-summary+.store-plan-card-feature{margin-top:4px}
+#store-billing-panel .store-plan-card-feature+.store-plan-card-note{margin-top:14px}
+
+/* Round selector */
+#store-billing-panel .store-plan-card input[type="radio"]{-webkit-appearance:none;appearance:none;position:absolute;top:20px;right:20px;width:24px;height:24px;min-width:24px;min-height:24px;margin:0;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent;box-shadow:none;outline:none;cursor:pointer;transition:border-color .15s ease,background-color .15s ease}
+#store-billing-panel .store-plan-card input[type="radio"]:checked{border-color:var(--accent);background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat}
+#store-billing-panel .store-plan-card input[type="radio"]:focus-visible{box-shadow:0 0 0 3px rgba(47,143,255,.45)}
+
+/* Boost: slim info strip across the bottom */
+#store-billing-panel .store-plan-card-boost{grid-column:1/-1;display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:6px 22px;padding:18px 22px;border-style:dashed;border-radius:18px;background:rgba(255,255,255,.02);opacity:1;cursor:default;transform:none}
+#store-billing-panel .store-plan-card-boost:hover{transform:none;border-color:rgba(255,255,255,.1)}
+#store-billing-panel .store-plan-card-boost .store-plan-card-top{display:flex;align-items:center;gap:10px}
+#store-billing-panel .store-plan-card-boost .store-plan-card-name{padding-right:0}
+#store-billing-panel .store-plan-card-boost .store-plan-card-price{margin:0;font-size:1.5rem}
+#store-billing-panel .store-plan-card-boost .store-plan-card-summary{margin:0;font-size:.86rem}
+#store-billing-panel .store-plan-card-badge{font-size:.62rem;padding:4px 9px}
+
+/* Buttons: trial is the main action, pay-now is the outlined alternative */
+#store-billing-panel .account-actions{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:12px;width:100%;max-width:1000px;margin:6px auto 0}
+#store-billing-panel .account-actions button{width:auto;flex:1 1 260px;max-width:340px;min-height:50px;padding:12px 22px;border-radius:14px;font-size:.95rem;font-weight:700;cursor:pointer}
+#store-billing-panel #store-start-trial-btn{background:var(--accent);color:#fff;border:1.5px solid var(--accent)}
+#store-billing-panel #store-start-trial-btn:hover{background:var(--highlight);border-color:var(--highlight)}
+#store-billing-panel #store-pay-now-btn{background:transparent;color:var(--highlight);border:1.5px solid var(--accent)}
+#store-billing-panel .account-actions .account-delete-btn{flex-basis:100%;max-width:none}
+
+/* Tablet */
+@media (max-width:900px){
+  #store-manage-overlay #store-billing-panel{padding:18px 16px}
+  #store-billing-panel .store-plan-picker{gap:14px}
+  #store-billing-panel .store-plan-card{padding:20px 18px 18px}
+  #store-billing-panel .store-plan-card-price{font-size:1.9rem}
+  #store-billing-panel .store-plan-card-boost{grid-template-columns:auto minmax(0,1fr);padding:16px 18px}
+  #store-billing-panel .store-plan-card-boost .store-plan-card-summary{grid-column:1/-1}
+}
+
+/* Phone: one column, every plan shows its full feature list */
+@media (max-width:640px){
+  #store-billing-panel .store-plan-picker{grid-template-columns:minmax(0,1fr);gap:12px}
+  #store-billing-panel .store-plan-card{padding:16px 16px 14px;border-radius:18px}
+  #store-billing-panel .store-plan-card-price{font-size:1.75rem}
+  #store-billing-panel .store-plan-card-summary{font-size:.86rem}
+  #store-billing-panel .store-plan-card input[type="radio"]{top:16px;right:16px}
+  #store-billing-panel .store-plan-card-boost{grid-template-columns:minmax(0,1fr);gap:6px;padding:14px 16px}
+  #store-billing-panel .store-plan-card-boost .store-plan-card-price{font-size:1.25rem}
+  /* Buttons stay in view at the bottom while the plans scroll */
+  #store-billing-panel .account-actions{width:auto;max-width:none;flex-direction:column;flex-wrap:nowrap;align-items:stretch;position:sticky;bottom:0;z-index:20;margin:4px -32px -18px;padding:10px 32px calc(10px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -12px 18px -6px rgba(0,0,0,.45);gap:8px}
+  #store-billing-panel .account-actions button{flex:0 0 auto;width:100%;max-width:none;min-height:42px;margin:0;padding:8px 10px;font-size:.86rem;border-radius:12px}
+  #store-manage-overlay .store-manage-panel{padding-bottom:0}
+  #store-manage-overlay #store-billing-panel{margin-bottom:0}
+}
+
+/* Light theme */
+html.light-theme #store-billing-panel .store-plan-card{background:#fff;border-color:#d5dce4}
+html.light-theme #store-billing-panel .store-plan-card.is-selected,html.light-theme #store-billing-panel .store-plan-card:has(input:checked){background:#eef5ff;border-color:var(--accent)}
+html.light-theme #store-billing-panel .store-plan-card-boost{background:#f7f9fb}
+html.light-theme #store-billing-panel .store-plan-card-note{border-top-color:#e3e8ee}
+html.light-theme #store-billing-panel .store-plan-card input[type="radio"]{border-color:#b8c2cd}
+html.light-theme #store-billing-panel .store-billing-banner{background:#eef5ff;border-color:#c9defa}
+html.light-theme #store-billing-panel .account-actions{border-top-color:#e3e8ee;box-shadow:0 -10px 16px -8px rgba(0,0,0,.12)}

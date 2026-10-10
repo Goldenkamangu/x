@@ -3,7 +3,7 @@
 // updates to app.js/index.html/style.css show up immediately instead of
 // getting stuck on a stale cached copy.
 
-const CACHE_NAME = 'linkhub-shell-v18'; // v18: Carty good voice with browser fallback
+const CACHE_NAME = 'linkhub-shell-v26'; // v26: all plan features shown, tighter bottom
 const APP_SHELL = [
   './',
   './index.html',

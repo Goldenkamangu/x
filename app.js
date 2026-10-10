@@ -423,6 +423,15 @@ function openDrawer() {
   navHamburger?.classList.add('drawer-is-open')
   document.documentElement.classList.add('lightbox-open')
 }
+// Run something from a menu item. If it opens a window, remember that window so the Back
+// button can bring the menu back (see the popstate handler near the end of this file).
+function lhFromDrawer(action) {
+  closeDrawer()
+  action()
+  setTimeout(() => {
+    lhReturnToDrawerFor = lhOverlayStack.length ? lhOverlayStack[lhOverlayStack.length - 1] : null
+  }, 60)
+}
 function closeDrawer() {
   document.querySelector('.mobile-bottom-nav')?.classList.remove('nav-hidden')
   if (!navDrawer) return
@@ -480,7 +489,7 @@ function buildDrawerMenu() {
       el.type = 'button'
       el.className = 'drawer-item'
       el.innerHTML = `${b.icon}<span>${escapeHtml(b.label)}</span>`
-      el.addEventListener('click', () => { closeDrawer(); b.action() })
+      el.addEventListener('click', () => lhFromDrawer(() => b.action()))
       navDrawerMenu.appendChild(el)
     })
     const divider = document.createElement('div')
@@ -522,7 +531,7 @@ function buildDrawerMenu() {
     settingsBtn.type = 'button'
     settingsBtn.className = 'drawer-item'
     settingsBtn.innerHTML = `${ICON_GEAR}<span>Settings</span>`
-    settingsBtn.addEventListener('click', () => { closeDrawer(); openAppearanceSettings() })
+    settingsBtn.addEventListener('click', () => lhFromDrawer(() => openAppearanceSettings()))
     navDrawerMenu.appendChild(settingsBtn)
     const installBtn = document.createElement('button')
     installBtn.type = 'button'
@@ -534,13 +543,13 @@ function buildDrawerMenu() {
     cartBtn.type = 'button'
     cartBtn.className = 'drawer-item'
     cartBtn.innerHTML = `${ICON_CART}<span>My Cart <span class="nav-cart-count" data-cart-count></span></span>`
-    cartBtn.addEventListener('click', () => { closeDrawer(); openCart() })
+    cartBtn.addEventListener('click', () => lhFromDrawer(() => openCart()))
     navDrawerMenu.appendChild(cartBtn)
     const termsBtn = document.createElement('button')
     termsBtn.type = 'button'
     termsBtn.className = 'drawer-item'
     termsBtn.innerHTML = `${ICON_DOC}<span>Terms & Conditions</span>`
-    termsBtn.addEventListener('click', () => { closeDrawer(); openTerms() })
+    termsBtn.addEventListener('click', () => lhFromDrawer(() => openTerms()))
     navDrawerMenu.appendChild(termsBtn)
   }
 }
@@ -5555,6 +5564,9 @@ updateCartyVoiceToggleUI()
 // If that fails or its quota runs out (HTTP 429), Carty drops back to the
 // browser's own built-in voice and stops trying the good one for a while.
 const CARTY_HD_VOICE = 'autumn' // autumn, diana, hannah (female) / austin, daniel, troy (male)
+// Speaking style added in front of every piece (Orpheus 'vocal direction'). One or two words,
+// e.g. 'cheerful', 'excited'. Set to '' for the plain natural voice.
+const CARTY_HD_STYLE = 'cheerful'
 const CARTY_VOICE_URL = `${SUPABASE_URL}/functions/v1/LinkHub-Voice`
 const CARTY_HD_BLOCK_KEY = 'carty-hd-voice-blocked-until'
 const CARTY_HD_MAX_CHUNKS = 3 // each request is limited to 200 characters
@@ -5628,7 +5640,7 @@ async function fetchCartyVoiceChunk(text) {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
     },
-    body: JSON.stringify({ text, voice: CARTY_HD_VOICE })
+    body: JSON.stringify({ text: CARTY_HD_STYLE ? `[${CARTY_HD_STYLE}] ${text}` : text, voice: CARTY_HD_VOICE })
   })
   if (!res.ok) {
     const err = new Error(`Voice request failed (${res.status})`)
@@ -5659,7 +5671,7 @@ function playCartyBlob(blob, run) {
 
 // Speaks with the good voice, fetching the next piece while the current one plays.
 async function speakCartyHd(text, run) {
-  const chunks = splitForVoice(text).slice(0, CARTY_HD_MAX_CHUNKS)
+  const chunks = splitForVoice(text, 180).slice(0, CARTY_HD_MAX_CHUNKS) // 180 leaves room for the style tag (200 max)
   if (!chunks.length) return
   let pending = fetchCartyVoiceChunk(chunks[0])
   for (let i = 0; i < chunks.length; i++) {
@@ -7286,6 +7298,8 @@ dashboardBody?.addEventListener('click', (event) => {
 const LH_OVERLAY_SELECTOR = '.app-overlay, .lightbox-overlay, #nav-drawer, #carty-panel'
 var lhOverlayStack = []
 var lhOverlayWatched = null
+var lhReturnToDrawerFor = null // the window that was opened from the menu
+var lhBackClosedAt = 0
 var lhSavedScrollY = 0
 var lhPopSuppress = 0
 var lhPopSuppressTimer = 0
@@ -7309,6 +7323,7 @@ function lhOverlayChanged(el) {
   } else if (!open && at !== -1) {
     lhOverlayStack.splice(at, 1)
     el.style.zIndex = ''
+    if (el === lhReturnToDrawerFor && Date.now() - lhBackClosedAt > 400) lhReturnToDrawerFor = null
     if (!lhOverlayStack.length) lhRestoreScroll()
   } else {
     return
@@ -7428,7 +7443,15 @@ window.addEventListener('popstate', (event) => {
   }
   if (!st || !st.lh) return
   const depth = Number(st.lhDepth) || 0
+  const returnFor = lhReturnToDrawerFor
+  const onlyOne = lhOverlayStack.length === 1 && lhOverlayStack[0] === returnFor
+  lhBackClosedAt = Date.now()
   for (let n = lhOverlayStack.length; n > depth; n--) lhCloseOverlayEl(lhOverlayStack[n - 1])
+  if (returnFor && onlyOne && depth === 0) {
+    // Back from a window that was opened from the menu: go back to the menu, not to the bare page.
+    lhReturnToDrawerFor = null
+    try { openDrawer() } catch (e) {}
+  }
   lhScheduleHistorySync()
 })
 
