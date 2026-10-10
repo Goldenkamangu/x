@@ -2714,15 +2714,23 @@ document.body.addEventListener('click', async (ev) => {
     return
   }
   if (btn.classList.contains('confirm-available-btn')) {
-    if (!currentUser) return
+    if (!currentUser) return alert('Please sign in to confirm your listing.')
     try {
       if (useSupabase) {
-        const { error } = await db.from('listings').update({ last_confirmed_at: new Date().toISOString() }).eq('id', id)
+        const { data: updated, error } = await db.from('listings')
+          .update({ last_confirmed_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('user_id', currentUser.id)
+          .select('id')
+          .maybeSingle()
         if (error) throw error
+        if (!updated) throw new Error('The listing was not updated. Check that you own this listing and try again.')
       }
       await fetchAndRenderListings()
+      showUxToast('Listing confirmed. Its 62-day expiry timer has been renewed.')
     } catch (e) {
-      alert('Could not update the listing right now.')
+      console.warn('Could not confirm listing availability:', e)
+      alert(e?.message || 'Could not update the listing right now. Please try again.')
     }
   }
   if (btn.classList.contains('share-btn')) {
@@ -4858,7 +4866,9 @@ async function runListingCleanup() {
     if (!owns) continue
     const isMine = String(item.user_id || '') === String(currentUser.id)
     if (!item.sold && item.created_at) {
-      const ageDays = (now - new Date(item.created_at).getTime()) / 86400000
+      // Match Supabase: confirmation renews the 62-day expiry window.
+      const expiryBase = item.last_confirmed_at || item.created_at
+      const ageDays = (now - new Date(expiryBase).getTime()) / 86400000
       const daysLeft = Math.ceil(62 - ageDays)
       if (isMine && daysLeft > 0) {
         for (const threshold of [30, 7, 1]) {
@@ -6287,12 +6297,17 @@ function renderListing(l, container = listingsContainer) {
   if (usesDisclosure) parts.push('</details>')
 
   if (isOwner) {
-    const ageDays = l.created_at ? Math.floor((Date.now() - new Date(l.last_confirmed_at || l.created_at).getTime()) / 86400000) : 0
-    if (!l.sold && ageDays >= 14) {
-      parts.push(`<div class="stale-nudge">Posted ${ageDays} days ago — <button class="confirm-available-btn" data-id="${escapeHtml(l.id)}" type="button">Still available?</button></div>`)
+    const expiryBase = l.last_confirmed_at || l.created_at
+    const ageDays = expiryBase ? Math.floor((Date.now() - new Date(expiryBase).getTime()) / 86400000) : 0
+    if (!l.sold) {
+      const ageLabel = l.last_confirmed_at
+        ? `Last confirmed ${ageDays} day${ageDays === 1 ? '' : 's'} ago`
+        : `Listed ${ageDays} day${ageDays === 1 ? '' : 's'} ago`
+      // Keep this action available to the seller at any time, not only after day 14.
+      parts.push(`<div class="stale-nudge">${ageLabel} — <button class="confirm-available-btn" data-id="${escapeHtml(l.id)}" type="button">Still available?</button></div>`)
     }
-    if (!l.sold && l.created_at) {
-      const daysLeft = 62 - Math.floor((Date.now() - new Date(l.created_at).getTime()) / 86400000)
+    if (!l.sold && expiryBase) {
+      const daysLeft = 62 - Math.floor((Date.now() - new Date(expiryBase).getTime()) / 86400000)
       if (daysLeft <= 7 && daysLeft > 0) {
         parts.push(`<div class="stale-nudge">This listing will be automatically removed in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (62-day limit).</div>`)
       }
