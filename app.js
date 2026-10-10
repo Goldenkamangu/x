@@ -6299,11 +6299,12 @@ function renderListing(l, container = listingsContainer) {
   if (isOwner) {
     const expiryBase = l.last_confirmed_at || l.created_at
     const ageDays = expiryBase ? Math.floor((Date.now() - new Date(expiryBase).getTime()) / 86400000) : 0
-    if (!l.sold) {
+    // Show the renewal prompt only when a confirmation is due. After a seller
+    // confirms availability, the prompt disappears and returns after 14 days.
+    if (!l.sold && ageDays >= 14) {
       const ageLabel = l.last_confirmed_at
         ? `Last confirmed ${ageDays} day${ageDays === 1 ? '' : 's'} ago`
         : `Listed ${ageDays} day${ageDays === 1 ? '' : 's'} ago`
-      // Keep this action available to the seller at any time, not only after day 14.
       parts.push(`<div class="stale-nudge">${ageLabel} — <button class="confirm-available-btn" data-id="${escapeHtml(l.id)}" type="button">Still available?</button></div>`)
     }
     if (!l.sold && expiryBase) {
